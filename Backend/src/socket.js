@@ -110,6 +110,26 @@ function initSocket(server) {
         // Emit to all sockets inside the conversation room
         io.to(`conv_${msg.conversationId}`).emit('new_message', msg);
 
+        // If message is a Meeting invite, send instant meeting alert
+        if (msg.meeting) {
+          io.to(`conv_${msg.conversationId}`).emit('meeting_started', {
+            meeting: msg.meeting,
+            conversationId: msg.conversationId,
+            senderName: msg.senderName,
+            senderEmail: msg.senderEmail
+          });
+          io.to(`user_${msg.recipientId}`).emit('meeting_popup', {
+            meeting: msg.meeting,
+            conversationId: msg.conversationId,
+            senderName: msg.senderName
+          });
+          io.to(`user_${msg.recipientEmail}`).emit('meeting_popup', {
+            meeting: msg.meeting,
+            conversationId: msg.conversationId,
+            senderName: msg.senderName
+          });
+        }
+
         // Send conversation update to recipient's personal room
         io.to(`user_${msg.recipientId}`).emit('conversation_updated', {
           conversationId: msg.conversationId,

@@ -79,6 +79,34 @@
       "createdAt": "2026-11-05T17:25:06.760Z",
       "updatedAt": "2026-11-05T17:25:06.760Z",
       "readAt": "2026-11-05T17:25:06.794Z"
+    },
+    {
+      "id": "msg-1793912209072-654",
+      "customId": "msg-1793912209072-242",
+      "conversationId": "conv_test_1",
+      "senderId": "usr-admin",
+      "senderEmail": "dynamicsajjan@gamil.com",
+      "senderName": "Admin",
+      "senderRole": "admin",
+      "recipientId": "usr-user",
+      "recipientEmail": "user@company.com",
+      "recipientName": "Team Member",
+      "text": "Join our engineering sync meeting!",
+      "attachment": null,
+      "meeting": {
+        "joinUrl": "https://meet.workhub.space/MEET-WKHUB-TEST1",
+        "id": "MEET-WKHUB-TEST1",
+        "type": "group",
+        "startedAt": "2026-11-06T02:26:46.9983267+05:30",
+        "hostName": "Admin",
+        "hostEmail": "dynamicsajjan@gamil.com",
+        "participantsCount": 4,
+        "status": "active",
+        "title": "Sprint Planning Sync"
+      },
+      "status": "sent",
+      "createdAt": "2026-11-05T20:56:49.072Z",
+      "updatedAt": "2026-11-05T20:56:49.073Z"
     }
   ],
   "userWorkspace": {

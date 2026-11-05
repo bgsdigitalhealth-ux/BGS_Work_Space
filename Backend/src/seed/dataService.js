@@ -2557,12 +2557,13 @@ const createMessage = async (data) => {
     senderRole,
     recipientEmail,
     text,
-    attachment
+    attachment,
+    meeting
   } = data;
 
   if (!conversationId) throw new Error('Conversation ID is required');
   if (!senderId || !senderEmail) throw new Error('Sender identity is required');
-  if (!text && !attachment) throw new Error('Message content or attachment is required');
+  if (!text && !attachment && !meeting) throw new Error('Message content, attachment, or meeting is required');
 
   const allEligible = await getEligibleUsers();
   const recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
@@ -2590,10 +2591,13 @@ const createMessage = async (data) => {
     recipientName: recipient.name,
     text: text || '',
     attachment: attachment || null,
+    meeting: meeting || null,
     status: 'sent',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
+
+  const lastPreview = text || (meeting ? `📹 Meeting: ${meeting.title || 'Live Meeting'}` : (attachment ? `📎 Attachment: ${attachment.name}` : ''));
 
   if (!memoryStore.messages) memoryStore.messages = [];
   memoryStore.messages.push(newMsg);
@@ -2603,7 +2607,7 @@ const createMessage = async (data) => {
   if (convIndex !== -1) {
     const conv = memoryStore.conversations[convIndex];
     conv.lastMessage = {
-      text: text || (attachment ? `📎 Attachment: ${attachment.name}` : ''),
+      text: lastPreview,
       senderId,
       senderEmail: newMsg.senderEmail,
       senderName: newMsg.senderName,
@@ -2625,7 +2629,7 @@ const createMessage = async (data) => {
         { $or: [{ customId: conversationId }, { _id: conversationId }] },
         {
           lastMessage: {
-            text: newMsg.text || (attachment ? `📎 Attachment: ${attachment.name}` : ''),
+            text: lastPreview,
             senderId: newMsg.senderId,
             senderEmail: newMsg.senderEmail,
             senderName: newMsg.senderName,

@@ -231,6 +231,18 @@ export interface MessageAttachment {
   type?: string;
 }
 
+export interface MeetingData {
+  id: string;
+  title: string;
+  type: 'direct' | 'group';
+  status: 'active' | 'ended';
+  startedAt?: string;
+  joinUrl?: string;
+  hostName: string;
+  hostEmail: string;
+  participantsCount?: number;
+}
+
 export interface ChatMessage {
   id: string;
   customId?: string;
@@ -244,6 +256,7 @@ export interface ChatMessage {
   recipientName: string;
   text: string;
   attachment?: MessageAttachment | null;
+  meeting?: MeetingData | null;
   status: 'sent' | 'delivered' | 'read';
   readAt?: string;
   createdAt: string;

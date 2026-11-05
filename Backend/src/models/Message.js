@@ -56,6 +56,16 @@ const messageSchema = new mongoose.Schema({
     type: { type: String },
     url: String
   },
+  meeting: {
+    id: String,
+    title: String,
+    type: { type: String, enum: ['direct', 'group'], default: 'direct' },
+    status: { type: String, enum: ['active', 'ended'], default: 'active' },
+    startedAt: { type: Date, default: Date.now },
+    joinUrl: String,
+    hostName: String,
+    hostEmail: String
+  },
   status: {
     type: String,
     enum: ['sent', 'delivered', 'read'],
