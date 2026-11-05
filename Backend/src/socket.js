@@ -2,9 +2,35 @@ const { Server } = require('socket.io');
 const dataService = require('./seed/dataService');
 
 let io = null;
-// Active online sockets and users:
-// onlineUsers: Map<userId, { socketIds: Set<string>, user: { id, email, name, role } }>
-const onlineUsers = new Map();
+
+// Track active connections: socketId -> { id, email, name, role }
+const activeSockets = new Map();
+
+// Helper to return unique list of currently online users
+function getOnlineUsers() {
+  const users = [];
+  const seenEmails = new Set();
+  const seenIds = new Set();
+
+  for (const info of activeSockets.values()) {
+    if (!info) continue;
+    const email = (info.email || '').toLowerCase().trim();
+    const id = info.id || '';
+
+    if ((email && !seenEmails.has(email)) || (id && !seenIds.has(id))) {
+      if (email) seenEmails.add(email);
+      if (id) seenIds.add(id);
+      users.push({
+        id: info.id,
+        email: email,
+        name: info.name || '',
+        role: info.role || 'user'
+      });
+    }
+  }
+
+  return users;
+}
 
 function initSocket(server) {
   io = new Server(server, {
@@ -18,54 +44,49 @@ function initSocket(server) {
   });
 
   io.on('connection', (socket) => {
-    let currentUserId = null;
-    let currentUserEmail = null;
+    let currentUserData = null;
 
-    // 1. User registers their socket connection
+    // 1. User registers their socket connection upon entering the website
     socket.on('register_user', (userData) => {
       if (!userData || (!userData.id && !userData.email)) return;
-      currentUserId = userData.id || userData.email;
-      currentUserEmail = (userData.email || '').toLowerCase().trim();
 
-      if (!onlineUsers.has(currentUserId)) {
-        onlineUsers.set(currentUserId, {
-          socketIds: new Set(),
-          user: {
-            id: currentUserId,
-            email: currentUserEmail,
-            name: userData.name || '',
-            role: userData.role || 'user'
-          }
-        });
-      }
-      onlineUsers.get(currentUserId).socketIds.add(socket.id);
+      const email = (userData.email || '').toLowerCase().trim();
+      const id = userData.id || email;
+      const name = userData.name || '';
+      const role = userData.role || 'user';
+
+      currentUserData = { id, email, name, role };
+      activeSockets.set(socket.id, currentUserData);
 
       // Join private user rooms for targeted notifications
-      socket.join(`user_${currentUserId}`);
-      if (currentUserEmail) {
-        socket.join(`user_${currentUserEmail}`);
-      }
+      if (id) socket.join(`user_${id}`);
+      if (email) socket.join(`user_${email}`);
 
-      // Send the current list of online users directly to this socket
-      const allOnline = Array.from(onlineUsers.values()).map(e => e.user);
-      socket.emit('online_users', allOnline);
+      // Broadcast full list of online users to ALL connected clients immediately
+      const onlineList = getOnlineUsers();
+      io.emit('online_users', onlineList);
 
-      // Broadcast to everyone else that this user is online
-      socket.broadcast.emit('user_online', {
-        id: currentUserId,
-        email: currentUserEmail,
-        name: userData.name || '',
-        role: userData.role || 'user'
-      });
+      // Also broadcast individual presence event
+      socket.broadcast.emit('user_online', currentUserData);
     });
 
     // Request active online users
     socket.on('get_online_users', (callback) => {
-      const allOnline = Array.from(onlineUsers.values()).map(e => e.user);
+      const onlineList = getOnlineUsers();
       if (typeof callback === 'function') {
-        callback(allOnline);
+        callback(onlineList);
       } else {
-        socket.emit('online_users', allOnline);
+        socket.emit('online_users', onlineList);
+      }
+    });
+
+    // Heartbeat / ping to keep presence active
+    socket.on('presence_heartbeat', (userData) => {
+      if (userData && (userData.id || userData.email)) {
+        const email = (userData.email || '').toLowerCase().trim();
+        const id = userData.id || email;
+        currentUserData = { id, email, name: userData.name || '', role: userData.role || 'user' };
+        activeSockets.set(socket.id, currentUserData);
       }
     });
 
@@ -161,19 +182,28 @@ function initSocket(server) {
       });
     });
 
-    // 7. Disconnect handling
+    // 7. Disconnect handling (when user closes tab or website)
     socket.on('disconnect', () => {
-      if (currentUserId && onlineUsers.has(currentUserId)) {
-        const entry = onlineUsers.get(currentUserId);
-        entry.socketIds.delete(socket.id);
-        if (entry.socketIds.size === 0) {
-          onlineUsers.delete(currentUserId);
+      const removed = activeSockets.get(socket.id);
+      activeSockets.delete(socket.id);
+
+      if (removed) {
+        const stillOnline = getOnlineUsers().some(u => 
+          (removed.email && u.email === removed.email) || 
+          (removed.id && u.id === removed.id)
+        );
+
+        if (!stillOnline) {
+          // Broadcast that this user is now OFFLINE
           io.emit('user_offline', {
-            id: currentUserId,
-            email: currentUserEmail
+            id: removed.id,
+            email: removed.email
           });
         }
       }
+
+      // Broadcast the updated online list to all remaining clients
+      io.emit('online_users', getOnlineUsers());
     });
   });
 
@@ -184,4 +214,4 @@ function getIO() {
   return io;
 }
 
-module.exports = { initSocket, getIO };
+module.exports = { initSocket, getIO, getOnlineUsers };

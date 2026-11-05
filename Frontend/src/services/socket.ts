@@ -2,18 +2,19 @@ import { io, Socket } from 'socket.io-client';
 import { User } from '../types';
 
 let socket: Socket | null = null;
+let activeUser: User | null = null;
+let heartbeatInterval: any = null;
 
 // Determine backend Socket.IO URL
 const getSocketUrl = (): string => {
   const envUrl = (import.meta.env.VITE_API_URL || '').trim();
   if (envUrl) {
-    // If VITE_API_URL is e.g. "https://backend.onrender.com/api", strip "/api"
     return envUrl.replace(/\/api\/?$/, '');
   }
   if (typeof window !== 'undefined') {
-    // In local development with Vite dev server (e.g. port 3000), backend is on port 5000
-    if (window.location.port === '3000') {
-      return `${window.location.protocol}//${window.location.hostname}:5000`;
+    // If local dev on port 3000 or any dev port:
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://${window.location.hostname}:5000`;
     }
     return window.location.origin;
   }
@@ -24,17 +25,41 @@ export const getSocket = (): Socket => {
   if (!socket) {
     const socketUrl = getSocketUrl();
     socket = io(socketUrl, {
-      autoConnect: false,
+      autoConnect: true,
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
       timeout: 20000
     });
 
     socket.on('connect', () => {
       console.log('[Socket.IO] Connected to backend server:', socket?.id);
+      // Immediately register the logged-in user upon connection
+      if (activeUser) {
+        socket?.emit('register_user', {
+          id: activeUser.id,
+          email: (activeUser.email || '').toLowerCase().trim(),
+          name: activeUser.name,
+          role: activeUser.role
+        });
+        socket?.emit('get_online_users');
+      }
+    });
+
+    socket.on('reconnect', () => {
+      console.log('[Socket.IO] Reconnected to server');
+      if (activeUser) {
+        socket?.emit('register_user', {
+          id: activeUser.id,
+          email: (activeUser.email || '').toLowerCase().trim(),
+          name: activeUser.name,
+          role: activeUser.role
+        });
+        socket?.emit('get_online_users');
+      }
     });
 
     socket.on('disconnect', (reason) => {
@@ -51,35 +76,45 @@ export const getSocket = (): Socket => {
 
 export const connectSocketUser = (user: User | null) => {
   if (!user) return;
+  activeUser = user;
   const s = getSocket();
 
-  if (!s.connected) {
-    s.connect();
-  }
-
-  // Register user details for room routing & online status
-  s.emit('register_user', {
-    id: user.id,
-    email: (user.email || '').toLowerCase().trim(),
-    name: user.name,
-    role: user.role
-  });
-
-  // Re-register upon auto-reconnection to resume missed messages
-  s.off('reconnect');
-  s.on('reconnect', () => {
+  // If already connected, register immediately
+  if (s.connected) {
     s.emit('register_user', {
       id: user.id,
       email: (user.email || '').toLowerCase().trim(),
       name: user.name,
       role: user.role
     });
-  });
+    s.emit('get_online_users');
+  } else {
+    s.connect();
+  }
+
+  // Setup periodic presence heartbeat to ensure the backend never loses status
+  if (!heartbeatInterval) {
+    heartbeatInterval = setInterval(() => {
+      if (s.connected && activeUser) {
+        s.emit('presence_heartbeat', {
+          id: activeUser.id,
+          email: (activeUser.email || '').toLowerCase().trim(),
+          name: activeUser.name,
+          role: activeUser.role
+        });
+      }
+    }, 15000);
+  }
 };
 
 export const disconnectSocket = () => {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
   if (socket) {
     socket.disconnect();
     socket = null;
   }
+  activeUser = null;
 };

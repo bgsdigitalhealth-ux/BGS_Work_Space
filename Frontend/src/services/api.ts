@@ -381,6 +381,16 @@ export const api = {
   },
 
   // Real-Time Messaging API
+  getOnlineUsers: async (): Promise<Array<{ id: string; email: string; name?: string; role?: string }>> => {
+    try {
+      const res = await fetch(`${API_BASE}/messages/online-users`);
+      if (!res.ok) return [];
+      return res.json();
+    } catch (e) {
+      return [];
+    }
+  },
+
   getEligibleUsers: async (currentUserId?: string): Promise<EligibleUser[]> => {
     const url = currentUserId ? `${API_BASE}/messages/eligible-users?currentUserId=${encodeURIComponent(currentUserId)}` : `${API_BASE}/messages/eligible-users`;
     const res = await fetch(url);

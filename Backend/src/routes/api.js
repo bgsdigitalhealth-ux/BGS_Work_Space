@@ -580,7 +580,16 @@ router.post(['/reset-data', '/purge-all-data'], async (req, res) => {
 });
 
 // --- Real-Time Messaging Endpoints ---
-const { getIO } = require('../socket');
+const { getIO, getOnlineUsers } = require('../socket');
+
+router.get('/messages/online-users', (req, res) => {
+  try {
+    const list = getOnlineUsers ? getOnlineUsers() : [];
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 router.get('/messages/eligible-users', async (req, res) => {
   try {

@@ -177,10 +177,25 @@ export const MessagesView: React.FC = () => {
     socket.on('messages_read', handleMessagesRead);
     socket.on('user_typing', handleUserTyping);
 
-    // Initial fetch of active online users
+    // Initial fetch of active online users via REST and Socket
+    api.getOnlineUsers().then((list) => {
+      const set = new Set<string>();
+      list.forEach(u => {
+        if (u.id) set.add(u.id);
+        if (u.email) set.add(u.email.toLowerCase().trim());
+      });
+      setOnlineUserIds(prev => new Set([...prev, ...set]));
+    }).catch(() => {});
+
     socket.emit('get_online_users');
 
+    // Periodic heartbeat sync to keep online dots accurate
+    const syncInterval = setInterval(() => {
+      socket.emit('get_online_users');
+    }, 6000);
+
     return () => {
+      clearInterval(syncInterval);
       socket.off('online_users', handleOnlineUsers);
       socket.off('user_online', handleUserOnline);
       socket.off('user_offline', handleUserOffline);
@@ -378,6 +393,15 @@ export const MessagesView: React.FC = () => {
   // Helper: check if a user is online
   const isUserOnline = (user?: { id?: string; email?: string }) => {
     if (!user) return false;
+    // If the user being checked is the current active user browsing the website:
+    if (
+      currentUser && (
+        (user.id && user.id === currentUser.id) ||
+        (user.email && currentUser.email && user.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim())
+      )
+    ) {
+      return true; // The user currently browsing the website is by definition Online
+    }
     if (user.id && onlineUserIds.has(user.id)) return true;
     if (user.email && onlineUserIds.has(user.email.toLowerCase().trim())) return true;
     return false;

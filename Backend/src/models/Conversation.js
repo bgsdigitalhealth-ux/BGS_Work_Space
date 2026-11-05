@@ -35,3 +35,4 @@ conversationSchema.index({ participants: 1 });
 conversationSchema.index({ participantEmails: 1 });
 
 module.exports = mongoose.model('Conversation', conversationSchema);
+
