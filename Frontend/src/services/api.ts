@@ -313,6 +313,24 @@ export const api = {
     }
     return res.json();
   },
+  updateUserProfile: async (data: {
+    identifier: string;
+    name?: string;
+    avatar?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }): Promise<{ success: boolean; user: import('../types').User }> => {
+    const res = await fetch(`${API_BASE}/user/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update profile' }));
+      throw new Error(err.error || 'Failed to update profile');
+    }
+    return res.json();
+  },
   getAdmins: async (): Promise<import('../types').User[]> => {
     const res = await fetch(`${API_BASE}/auth/admins`);
     if (!res.ok) throw new Error('Failed to fetch administrators');

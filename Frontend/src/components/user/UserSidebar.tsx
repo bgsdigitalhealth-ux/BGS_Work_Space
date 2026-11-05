@@ -11,7 +11,8 @@ import {
   Users, 
   FileText,
   LogOut,
-  MessageSquare
+  MessageSquare,
+  Settings
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -32,6 +33,7 @@ export const UserSidebar: React.FC = () => {
     { id: 'work-history', label: 'Work History', icon: History },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   const handleNavClick = (item: typeof navItems[0]) => {
@@ -91,10 +93,23 @@ export const UserSidebar: React.FC = () => {
 
       {/* Bottom User Card */}
       <div className="p-5 relative z-10">
-        <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-3.5 shadow-lg flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Team Member'}</p>
-            <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'User'}</p>
+        <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-3 shadow-lg flex items-center justify-between gap-3">
+          <div 
+            onClick={() => setUserNav('settings')}
+            className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
+            title="Open Account Settings"
+          >
+            {currentUser?.avatar?.startsWith('data:') || currentUser?.avatar?.startsWith('http') ? (
+              <img src={currentUser.avatar} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover shrink-0 ring-1 ring-white/20" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                {currentUser?.name ? currentUser.name.charAt(0).toUpperCase() : 'U'}
+              </div>
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-xs text-white font-bold truncate group-hover:text-[#a58df8] transition-colors">{currentUser?.name || 'Team Member'}</p>
+              <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'User'}</p>
+            </div>
           </div>
           <button
             onClick={logout}

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, User, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, ArrowLeft, LogOut, Settings } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
@@ -115,6 +115,17 @@ export const UserHeader: React.FC = () => {
             </p>
           </div>
         )}
+
+        {userNav === 'settings' && (
+          <div>
+            <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">
+              Account Settings
+            </h1>
+            <p className="text-xs text-[#6b7280] font-medium mt-0.5">
+              Personalize your name, photo, and account security
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Right Controls */}
@@ -137,11 +148,15 @@ export const UserHeader: React.FC = () => {
         <div className="relative">
           <button
             onClick={() => setShowDropdown(!showDropdown)}
-            className="flex items-center gap-3 bg-white border border-gray-200/80 px-3.5 py-2 rounded-xl shadow-sm hover:border-gray-300 transition"
+            className="flex items-center gap-3 bg-white border border-gray-200/80 px-3.5 py-2 rounded-xl shadow-sm hover:border-gray-300 transition cursor-pointer"
           >
-            <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm uppercase">
-              {currentUser?.avatar || (currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'TM')}
-            </div>
+            {currentUser?.avatar?.startsWith('data:') || currentUser?.avatar?.startsWith('http') ? (
+              <img src={currentUser.avatar} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-purple-100 shadow-xs" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm uppercase">
+                {currentUser?.avatar || (currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'TM')}
+              </div>
+            )}
             <div className="text-left hidden sm:block">
               <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Team Member'}</div>
               <div className="text-[10px] text-gray-500 font-medium">Team Member</div>
@@ -153,26 +168,28 @@ export const UserHeader: React.FC = () => {
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-xs font-bold text-gray-900">{currentUser?.name || 'Team Member'}</p>
-                <p className="text-[11px] text-gray-500">{currentUser?.email || ''}</p>
+                <p className="text-xs font-bold text-gray-900 truncate">{currentUser?.name || 'Team Member'}</p>
+                <p className="text-[11px] text-gray-500 truncate">{currentUser?.email || ''}</p>
               </div>
               <button
                 onClick={() => {
-                  setUserNav('dashboard');
+                  setUserNav('settings');
                   setShowDropdown(false);
                 }}
-                className="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-purple-50 hover:text-[#5a36e6] flex items-center gap-2 transition-colors cursor-pointer"
               >
-                <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
+                <Settings className="w-3.5 h-3.5 text-gray-400" />
+                <span>Account Settings</span>
               </button>
               <button
                 onClick={() => {
                   setShowDropdown(false);
                   logout();
                 }}
-                className="w-full text-left px-4 py-2 text-xs text-red-600 font-semibold hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 mt-1"
+                className="w-full text-left px-4 py-2.5 text-xs text-red-600 font-semibold hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 mt-1 transition-colors cursor-pointer"
               >
-                <LogOut className="w-3.5 h-3.5" /> Sign Out
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
               </button>
             </div>
           )}

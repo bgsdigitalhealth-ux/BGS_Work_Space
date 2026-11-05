@@ -1669,6 +1669,103 @@ const updateAdminProfile = async (identifier, { name, email, newPassword }) => {
   return { success: false, error: 'Admin account not found' };
 };
 
+const updateUserProfile = async (identifier, { name, avatar, currentPassword, newPassword }) => {
+  const cleanId = (identifier || '').trim().toLowerCase();
+
+  // 1. Check memoryStore
+  let user = (memoryStore.users || []).find(u =>
+    (u.id && u.id.toLowerCase() === cleanId) ||
+    (u.email && u.email.toLowerCase() === cleanId)
+  );
+
+  // 2. Check MongoDB if active
+  if (getStatus()) {
+    try {
+      const dbUser = await User.findOne({
+        $or: [
+          { customId: identifier },
+          { email: cleanId }
+        ]
+      });
+
+      if (dbUser) {
+        if (newPassword) {
+          if (dbUser.password && currentPassword && dbUser.password !== currentPassword) {
+            return { success: false, error: 'Current password is incorrect' };
+          }
+          dbUser.password = newPassword;
+          dbUser.hasPassword = true;
+        }
+
+        if (name && name.trim()) dbUser.name = name.trim();
+        if (avatar !== undefined) dbUser.avatar = avatar;
+        await dbUser.save();
+
+        if (dbUser.memberId || dbUser.email) {
+          await Member.updateOne(
+            { $or: [{ _id: dbUser.memberId }, { email: dbUser.email }] },
+            { $set: { ...(name ? { name: name.trim() } : {}), ...(avatar !== undefined ? { avatar } : {}) } }
+          );
+        }
+
+        if (user) {
+          if (name && name.trim()) user.name = name.trim();
+          if (avatar !== undefined) user.avatar = avatar;
+          if (newPassword) {
+            user.password = newPassword;
+            user.hasPassword = true;
+          }
+        }
+        saveStore();
+
+        const safeUser = {
+          id: dbUser.customId || dbUser._id.toString(),
+          name: dbUser.name,
+          email: dbUser.email,
+          role: dbUser.role,
+          department: dbUser.department,
+          team: dbUser.team,
+          teamRole: dbUser.teamRole,
+          avatar: dbUser.avatar,
+          title: dbUser.title
+        };
+        return { success: true, user: safeUser };
+      }
+    } catch (e) {
+      console.warn('Mongo updateUserProfile error:', e.message);
+    }
+  }
+
+  if (user) {
+    if (newPassword) {
+      if (user.password && currentPassword && user.password !== currentPassword) {
+        return { success: false, error: 'Current password is incorrect' };
+      }
+      user.password = newPassword;
+      user.hasPassword = true;
+    }
+
+    if (name && name.trim()) user.name = name.trim();
+    if (avatar !== undefined) user.avatar = avatar;
+
+    const mem = (memoryStore.members || []).find(m =>
+      (user.memberId && m.id === user.memberId) ||
+      (m.email && m.email.toLowerCase() === user.email.toLowerCase())
+    );
+    if (mem) {
+      if (name && name.trim()) mem.name = name.trim();
+      if (avatar !== undefined) mem.avatar = avatar;
+    }
+
+    saveStore();
+
+    const { password: _, ...safeUser } = user;
+    return { success: true, user: safeUser };
+  }
+
+  return { success: false, error: 'User account not found' };
+};
+
 const getAdmins = async () => {
   if (getStatus()) {
     try {
@@ -2630,6 +2727,7 @@ module.exports = {
   createPassword,
   getUsers,
   updateAdminProfile,
+  updateUserProfile,
   getAdmins,
   createAdmin,
   deleteAdmin,

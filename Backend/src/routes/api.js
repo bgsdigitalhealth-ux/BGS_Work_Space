@@ -517,6 +517,29 @@ router.patch('/user/status/:id', async (req, res) => {
   }
 });
 
+// --- User Profile & Settings Route ---
+router.put('/user/profile', async (req, res) => {
+  try {
+    const { identifier, name, avatar, currentPassword, newPassword } = req.body;
+    if (!identifier) {
+      return res.status(400).json({ error: 'User identifier or email is required' });
+    }
+    const result = await dataService.updateUserProfile(identifier, {
+      name,
+      avatar,
+      currentPassword,
+      newPassword
+    });
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('USER_PROFILE_UPDATED', { user: result.user });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Appointments Routes ---
 router.get('/appointments/stats', async (req, res) => {
   try {

@@ -19,6 +19,7 @@ import { UserWorkDetails } from './components/user/UserWorkDetails';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
+import { UserSettings } from './components/user/UserSettings';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { useApp } from './context/AppContext';
@@ -64,6 +65,7 @@ export const App: React.FC = () => {
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserWorkDetails />}
           {userNav === 'assign-work' && <UserAssignWork />}
           {userNav === 'work-history' && <UserWorkHistory />}
+          {userNav === 'settings' && <UserSettings />}
           {userNav === 'team' && (
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
               <h3 className="text-xl font-bold text-gray-900 mb-2">My Department & Team</h3>

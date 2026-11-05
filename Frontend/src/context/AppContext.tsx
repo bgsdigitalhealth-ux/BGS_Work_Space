@@ -25,6 +25,7 @@ interface AppContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; requiresPasswordSetup?: boolean; name?: string; error?: string }>;
   createPassword: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
+  updateUserProfile: (data: { name?: string; avatar?: string; currentPassword?: string; newPassword?: string }) => Promise<{ success: boolean; error?: string }>;
 
   // Portal ('admin' | 'user') derived from logged-in user role
   portalMode: 'admin' | 'user';
@@ -274,6 +275,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       localStorage.removeItem('workhub_user');
     } catch (e) {
       // ignore
+    }
+  };
+
+  const updateUserProfile = async (data: { name?: string; avatar?: string; currentPassword?: string; newPassword?: string }) => {
+    if (!currentUser) return { success: false, error: 'User is not logged in' };
+    try {
+      const res = await api.updateUserProfile({
+        identifier: currentUser.id || currentUser.email,
+        ...data
+      });
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        try {
+          localStorage.setItem('workhub_user', JSON.stringify(res.user));
+        } catch (e) {
+          // ignore
+        }
+        return { success: true };
+      }
+      return { success: false, error: 'Failed to update profile' };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update profile' };
     }
   };
 
@@ -749,6 +772,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         login,
         createPassword,
         logout,
+        updateUserProfile,
         portalMode,
         adminNav,
         setAdminNav,
