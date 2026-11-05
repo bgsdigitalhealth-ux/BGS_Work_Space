@@ -63,7 +63,7 @@ export const Header: React.FC = () => {
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-1.5 z-50">
               <div className="px-3 py-2 border-b border-gray-100">
                 <p className="text-xs font-bold text-gray-900">{currentUser?.name || 'Admin'}</p>
-                <p className="text-[11px] text-gray-500">{currentUser?.email || 'admin@company.com'}</p>
+                <p className="text-[11px] text-gray-500">{currentUser?.email || 'dynamicsajjan@gamil.com'}</p>
               </div>
               <button
                 onClick={() => {

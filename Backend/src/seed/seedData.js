@@ -32,8 +32,26 @@ const initialData = {
     {
       id: 'usr-admin',
       name: 'Admin',
+      email: 'dynamicsajjan@gamil.com',
+      password: 'Apple9844?',
+      role: 'admin',
+      avatar: 'A',
+      title: 'Administrator'
+    },
+    {
+      id: 'usr-admin-alias',
+      name: 'Admin',
+      email: 'dynamicsajjan@gmail.com',
+      password: 'Apple9844?',
+      role: 'admin',
+      avatar: 'A',
+      title: 'Administrator'
+    },
+    {
+      id: 'usr-admin-backup',
+      name: 'Admin',
       email: 'admin@company.com',
-      password: 'admin123',
+      password: 'Apple9844?',
       role: 'admin',
       avatar: 'A',
       title: 'Administrator'
