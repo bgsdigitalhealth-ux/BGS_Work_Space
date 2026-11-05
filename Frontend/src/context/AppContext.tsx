@@ -16,7 +16,7 @@ import {
   Notification
 } from '../types';
 import { api, API_BASE } from '../services/api';
-import { getSocket, connectSocketUser } from '../services/socket';
+import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
 
 interface AppContextType {
   // Authentication & Session
@@ -267,6 +267,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const logout = () => {
     setCurrentUser(null);
+    setUserNav('dashboard');
+    setAdminNav('dashboard');
+    disconnectSocket();
     try {
       localStorage.removeItem('workhub_user');
     } catch (e) {

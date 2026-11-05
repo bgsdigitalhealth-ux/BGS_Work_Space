@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Database,
   Settings,
-  MessageSquare
+  MessageSquare,
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -27,7 +28,9 @@ export const Sidebar: React.FC = () => {
     scrollToSection, 
     adminNav, 
     setAdminNav,
-    unreadMessagesCount
+    unreadMessagesCount,
+    currentUser,
+    logout
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
@@ -242,10 +245,23 @@ export const Sidebar: React.FC = () => {
         </button>
       </nav>
 
-      {/* Database Mode pill at bottom */}
-      <div className="px-4 py-3 border-t border-indigo-950/60 text-xs">
-        <div className="flex items-center gap-2 text-indigo-300">
-          <Database className="w-3.5 h-3.5 text-emerald-400" />
+      {/* Bottom Admin User Card with Sign Out */}
+      <div className="p-4 border-t border-indigo-950/60">
+        <div className="bg-[#1f1b45] border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Administrator'}</p>
+            <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'admin'}</p>
+          </div>
+          <button
+            onClick={logout}
+            className="p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition shrink-0 cursor-pointer"
+            title="Sign Out to Interface"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-indigo-300/80 text-[11px] mt-2.5 px-1">
+          <Database className="w-3 h-3 text-emerald-400" />
           <span className="font-medium truncate">{stats?.databaseMode || 'MongoDB Ready'}</span>
         </div>
       </div>

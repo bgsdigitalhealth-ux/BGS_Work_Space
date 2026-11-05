@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { 
   ArrowRight, 
-  PlayCircle, 
   ChevronDown, 
   LayoutGrid, 
   Stethoscope, 
@@ -14,7 +13,6 @@ import {
   ClipboardCheck, 
   MessageSquare, 
   X, 
-  CheckCircle2,
   Mail,
   Phone,
   MapPin,
@@ -29,7 +27,6 @@ interface LandingPageProps {
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork }) => {
   const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
-  const [showOverviewModal, setShowOverviewModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
 
@@ -191,21 +188,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
             </p>
 
             {/* Action Buttons Row */}
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-8 flex items-center gap-4">
               <button
                 onClick={onLogin}
                 className="px-8 py-3.5 rounded-full bg-[#5a36e6] hover:bg-[#4b2ac9] text-white font-semibold text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
               >
                 <span>Login to Workspace</span>
                 <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => setShowOverviewModal(true)}
-                className="px-6 py-3.5 rounded-full bg-white/90 hover:bg-white text-gray-800 font-semibold text-sm border border-gray-200/90 shadow-2xs flex items-center gap-2 transition-all cursor-pointer hover:border-purple-300"
-              >
-                <PlayCircle className="w-4 h-4 text-[#5a36e6]" />
-                <span>Watch Overview</span>
               </button>
             </div>
 
@@ -265,15 +254,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
             </div>
           </div>
 
-          {/* Right Hero Graphic: Modern Workspace Living Interior from Screenshot */}
-          <div className="lg:col-span-5 relative flex items-center justify-center">
-            <div className="relative w-full max-w-lg lg:max-w-none h-[380px] sm:h-[460px] lg:h-[540px] rounded-3xl overflow-hidden shadow-2xl border border-white/60 bg-gradient-to-tr from-[#ede4fa] to-white flex items-center justify-end">
+          {/* Right Hero Graphic: Modern Workspace Living Interior */}
+          <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
+            <div className="relative w-full max-w-lg lg:max-w-none h-[380px] sm:h-[480px] lg:h-[560px] rounded-3xl overflow-hidden shadow-xl border border-white/70 bg-[#ede4fa]/30 flex items-center justify-end">
               <img 
                 src="/hero-interior.jpg" 
                 alt="WorkHub Modern Team Workspace" 
                 className="w-full h-full object-cover object-right"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-purple-950/10 via-transparent to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-t from-purple-950/5 via-transparent to-transparent pointer-events-none" />
             </div>
           </div>
         </div>
@@ -318,73 +307,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
                 className="flex-1 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4d2ec4] text-white font-semibold text-xs shadow-md shadow-purple-600/20 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Enter Department Workspace</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- MODAL 2: Watch Overview Walkthrough Modal ---------------- */}
-      {showOverviewModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-2xl border border-gray-100 shadow-2xl p-6 sm:p-8 relative">
-            <button 
-              onClick={() => setShowOverviewModal(false)}
-              className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <span className="text-[11px] font-bold uppercase tracking-wider text-[#714fe0]">Platform Overview</span>
-            <h3 className="text-2xl font-extrabold text-gray-900 mt-1">WorkHub Team Workspace</h3>
-            <p className="text-sm text-gray-500 mt-2">
-              Everything teams need to collaborate, assign daily deliverables, book appointments, and communicate in real-time.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-              <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-100">
-                <div className="flex items-center gap-2 font-bold text-xs text-[#5a36e6] mb-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Any-to-Any Work Assignment</span>
-                </div>
-                <p className="text-xs text-gray-600">Admin-to-User, User-to-Admin, User-to-User, and Admin-to-Admin delegation with live approval stages.</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-100">
-                <div className="flex items-center gap-2 font-bold text-xs text-[#5a36e6] mb-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Real-Time Socket.IO Messages</span>
-                </div>
-                <p className="text-xs text-gray-600">WhatsApp Web style interface with instant delivery, double green checkmarks, attachments, and online indicators.</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-100">
-                <div className="flex items-center gap-2 font-bold text-xs text-[#5a36e6] mb-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Appointment Scheduling</span>
-                </div>
-                <p className="text-xs text-gray-600">Synchronized calendar with live status updates, meeting links, and instant notifications.</p>
-              </div>
-
-              <div className="p-4 rounded-xl bg-purple-50/70 border border-purple-100">
-                <div className="flex items-center gap-2 font-bold text-xs text-[#5a36e6] mb-1">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Cloud MongoDB Atlas Durability</span>
-                </div>
-                <p className="text-xs text-gray-600">All data automatically stored in cloud MongoDB Atlas with zero data loss.</p>
-              </div>
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <button
-                onClick={() => {
-                  setShowOverviewModal(false);
-                  onLogin();
-                }}
-                className="px-6 py-2.5 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white text-xs font-semibold shadow-md flex items-center gap-2 cursor-pointer"
-              >
-                <span>Proceed to Login</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

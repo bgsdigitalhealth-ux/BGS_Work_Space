@@ -27,6 +27,13 @@ export const App: React.FC = () => {
   const { currentUser, userNav, adminNav, members, userWorkspace } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
+  // When user logs out (currentUser becomes null), redirect immediately to the starting face interface
+  React.useEffect(() => {
+    if (!currentUser) {
+      setAuthView('landing');
+    }
+  }, [currentUser]);
+
   // If no user is logged in, show the WorkHub Landing Page as the starting face
   if (!currentUser) {
     if (authView === 'login') {
