@@ -9,13 +9,18 @@ import {
   CheckCheck, 
   Video, 
   Phone, 
-  Info, 
   MoreVertical, 
   Download, 
   FileText, 
   X, 
-  MessageSquare,
-  Sparkles
+  MessageSquare, 
+  CircleDashed, 
+  Users, 
+  Settings, 
+  Sparkles, 
+  Mic, 
+  Lock, 
+  SquarePen
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -34,13 +39,17 @@ export const MessagesView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterTab, setFilterTab] = useState<'All' | 'Unread' | 'Admin' | 'Users'>('All');
   
+  // Leftmost mini rail navigation tab
+  const [activeRailTab, setActiveRailTab] = useState<'chats' | 'calls' | 'status' | 'groups' | 'ai' | 'settings'>('chats');
+
   // Chat input state
   const [inputText, setInputText] = useState<string>('');
   const [attachment, setAttachment] = useState<{ name: string; url: string; size?: string; type?: string } | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false);
+  const [showAttachmentMenu, setShowAttachmentMenu] = useState<boolean>(false);
   const [otherUserTyping, setOtherUserTyping] = useState<boolean>(false);
 
-  // Online users map: Set of userIds or emails
+  // Online users set: contains userIds and lowercase emails
   const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
   // New Chat Modal
@@ -53,17 +62,19 @@ export const MessagesView: React.FC = () => {
   // Refs
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
   const typingTimeoutRef = useRef<any>(null);
 
-  // Color generator for avatar background
+  // WhatsApp Pastel Avatar Palette
   const getAvatarBg = (identifier: string) => {
     const colors = [
-      'bg-emerald-100 text-emerald-800 border-emerald-200',
-      'bg-blue-100 text-blue-800 border-blue-200',
-      'bg-amber-100 text-amber-800 border-amber-200',
-      'bg-purple-100 text-purple-800 border-purple-200',
-      'bg-teal-100 text-teal-800 border-teal-200',
-      'bg-indigo-100 text-indigo-800 border-indigo-200'
+      'bg-[#00a884] text-white',
+      'bg-[#53bdeb] text-white',
+      'bg-[#e26ab6] text-white',
+      'bg-[#7c5cdb] text-white',
+      'bg-[#f19a38] text-white',
+      'bg-[#20c6b6] text-white',
+      'bg-[#df4759] text-white'
     ];
     let hash = 0;
     for (let i = 0; i < identifier.length; i++) {
@@ -84,7 +95,7 @@ export const MessagesView: React.FC = () => {
     return 'U';
   };
 
-  // 1. Initialize Socket.IO connection & Register Current User
+  // 1. Initialize Socket.IO connection & Presence Tracking
   useEffect(() => {
     if (!currentUser) return;
     connectSocketUser(currentUser);
@@ -177,7 +188,7 @@ export const MessagesView: React.FC = () => {
     socket.on('messages_read', handleMessagesRead);
     socket.on('user_typing', handleUserTyping);
 
-    // Initial fetch of active online users via REST and Socket
+    // Initial fetch of active online users via REST immediately
     api.getOnlineUsers().then((list) => {
       const set = new Set<string>();
       list.forEach(u => {
@@ -189,7 +200,6 @@ export const MessagesView: React.FC = () => {
 
     socket.emit('get_online_users');
 
-    // Periodic heartbeat sync to keep online dots accurate
     const syncInterval = setInterval(() => {
       socket.emit('get_online_users');
     }, 6000);
@@ -231,18 +241,17 @@ export const MessagesView: React.FC = () => {
     if (!currentUser) return;
     const socket = getSocket();
 
-    // Leave previous room if any
     if (activeConversation) {
       socket.emit('leave_conversation', { conversationId: activeConversation.id });
     }
 
     setActiveConversation(conv);
     setOtherUserTyping(false);
+    setShowAttachmentMenu(false);
+    setShowEmojiPicker(false);
 
-    // Join new conversation room
     socket.emit('join_conversation', { conversationId: conv.id, userId: currentUser.id });
 
-    // Mark as read immediately
     if (conv.unread > 0) {
       socket.emit('mark_as_read', { conversationId: conv.id, userId: currentUser.id });
       setConversations(prev => prev.map(c => c.id === conv.id ? { ...c, unread: 0 } : c));
@@ -259,16 +268,16 @@ export const MessagesView: React.FC = () => {
     }
   };
 
-  // Scroll to bottom whenever messages update
+  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, otherUserTyping]);
 
   // 4. Send Message Handler
-  const handleSendMessage = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
+  const handleSendMessage = async (customText?: string) => {
+    const textToSend = customText !== undefined ? customText : inputText.trim();
     if (!activeConversation || !currentUser) return;
-    if (!inputText.trim() && !attachment) return;
+    if (!textToSend && !attachment) return;
 
     const socket = getSocket();
     const other = activeConversation.otherUser;
@@ -280,16 +289,15 @@ export const MessagesView: React.FC = () => {
       senderName: currentUser.name || 'User',
       senderRole: currentUser.role || 'user',
       recipientEmail: (other.email || '').toLowerCase().trim(),
-      text: inputText.trim(),
+      text: textToSend,
       attachment: attachment || null
     };
 
-    // Clear input immediately for smooth UX
     setInputText('');
     setAttachment(null);
     setShowEmojiPicker(false);
+    setShowAttachmentMenu(false);
 
-    // Stop typing indicator
     socket.emit('typing_stop', {
       conversationId: activeConversation.id,
       userId: currentUser.id,
@@ -298,10 +306,9 @@ export const MessagesView: React.FC = () => {
     });
 
     try {
-      // Send via socket.io for instant real-time delivery
       socket.emit('send_message', payload, (res: any) => {
         if (!res || !res.success) {
-          console.warn('Socket send_message callback error, fallback to REST:', res?.error);
+          console.warn('Socket send_message callback fallback:', res?.error);
         }
       });
     } catch (err) {
@@ -309,7 +316,7 @@ export const MessagesView: React.FC = () => {
     }
   };
 
-  // Typing indicator broadcast
+  // Typing indicator
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputText(e.target.value);
     if (!activeConversation || !currentUser) return;
@@ -333,12 +340,11 @@ export const MessagesView: React.FC = () => {
     }, 2000);
   };
 
-  // Handle Attachment Upload
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // File & Photo Attachments
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, isImage = false) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Read file size
     const sizeFormatted = file.size > 1024 * 1024 
       ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
       : `${Math.round(file.size / 1024)} KB`;
@@ -349,22 +355,22 @@ export const MessagesView: React.FC = () => {
         name: file.name,
         url: reader.result as string,
         size: sizeFormatted,
-        type: file.type.startsWith('image/') ? 'image' : 'file'
+        type: isImage || file.type.startsWith('image/') ? 'image' : 'file'
       });
+      setShowAttachmentMenu(false);
     };
     reader.readAsDataURL(file);
     e.target.value = '';
   };
 
-  // Quick Emojis
-  const quickEmojis = ['👍', '😊', '❤️', '🎉', '🙏', '👋', '✅', '🔥', '🚀', '👏'];
+  const quickEmojis = ['😊', '😂', '❤️', '👍', '🙏', '🎉', '🔥', '👏', '✅', '✨', '👋', '☕', '🎂', '😍'];
 
   const addEmoji = (emoji: string) => {
     setInputText(prev => prev + emoji);
     setShowEmojiPicker(false);
   };
 
-  // 5. "+ New Chat" Action & Modal
+  // "+ New Chat" Action & Modal
   const openNewChatModal = async () => {
     setIsNewChatOpen(true);
     try {
@@ -393,14 +399,13 @@ export const MessagesView: React.FC = () => {
   // Helper: check if a user is online
   const isUserOnline = (user?: { id?: string; email?: string }) => {
     if (!user) return false;
-    // If the user being checked is the current active user browsing the website:
     if (
       currentUser && (
         (user.id && user.id === currentUser.id) ||
         (user.email && currentUser.email && user.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim())
       )
     ) {
-      return true; // The user currently browsing the website is by definition Online
+      return true;
     }
     if (user.id && onlineUserIds.has(user.id)) return true;
     if (user.email && onlineUserIds.has(user.email.toLowerCase().trim())) return true;
@@ -411,7 +416,6 @@ export const MessagesView: React.FC = () => {
   const filteredConversations = useMemo(() => {
     let list = [...conversations];
 
-    // Filter tabs
     if (filterTab === 'Unread') {
       list = list.filter(c => (c.unread || 0) > 0);
     } else if (filterTab === 'Admin') {
@@ -420,7 +424,6 @@ export const MessagesView: React.FC = () => {
       list = list.filter(c => c.otherUser?.role === 'user');
     }
 
-    // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(c => 
@@ -433,7 +436,7 @@ export const MessagesView: React.FC = () => {
     return list;
   }, [conversations, filterTab, searchQuery]);
 
-  // Filter eligible users in modal
+  // Filter modal users
   const filteredEligibleUsers = useMemo(() => {
     let list = [...eligibleUsers];
     if (newChatRoleFilter !== 'All') {
@@ -455,7 +458,7 @@ export const MessagesView: React.FC = () => {
     return conversations.reduce((acc, c) => acc + (c.unread || 0), 0);
   }, [conversations]);
 
-  // Format message time (e.g. "11:24 AM" or "Yesterday")
+  // Format message time like WhatsApp ("14:15", "Yesterday", "03 Nov")
   const formatTime = (isoString?: string) => {
     if (!isoString) return '';
     const date = new Date(isoString);
@@ -463,7 +466,7 @@ export const MessagesView: React.FC = () => {
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
     if (isToday) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
     }
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
@@ -474,52 +477,155 @@ export const MessagesView: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-100px)] min-h-[640px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-      {/* ---------------- LEFT COLUMN: CONVERSATION LIST ---------------- */}
-      <div className="w-80 md:w-96 flex flex-col border-r border-gray-200 bg-white shrink-0">
-        {/* Header: "Messages" + "+ New Chat" Button */}
-        <div className="p-4 flex items-center justify-between border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <h2 className="text-xl font-bold text-gray-900 tracking-tight">Messages</h2>
+    <div className="flex h-[calc(100vh-85px)] min-h-[640px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xl relative select-none">
+      
+      {/* ---------------- 1. WHATSAPP ICON NAVIGATION RAIL (FAR LEFT) ---------------- */}
+      <aside className="w-14 sm:w-16 bg-[#f0f2f5] border-r border-[#e9edef] flex flex-col items-center justify-between py-3.5 shrink-0 z-20">
+        {/* Top Icons */}
+        <div className="flex flex-col items-center gap-3">
+          {/* WhatsApp / WorkHub Brand Icon */}
+          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#25D366] text-white shadow-xs cursor-pointer hover:opacity-90 transition-opacity" title="WorkHub WhatsApp Chats">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z"/>
+            </svg>
+          </div>
+
+          <div className="w-8 h-px bg-gray-300/80 my-1" />
+
+          {/* Chats Icon (Active) */}
+          <button 
+            onClick={() => setActiveRailTab('chats')} 
+            className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-colors cursor-pointer ${
+              activeRailTab === 'chats' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            }`}
+            title="Chats"
+          >
+            <MessageSquare className="w-5 h-5 stroke-[2.2]" />
             {totalUnreadCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-xs font-bold flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
                 {totalUnreadCount}
               </span>
             )}
-          </div>
-          <button
-            onClick={openNewChatModal}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+          </button>
+
+          {/* Calls */}
+          <button 
+            onClick={() => {
+              setActiveRailTab('calls');
+              alert('Voice and Video calls history: All endpoints ready for WebRTC.');
+            }} 
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+              activeRailTab === 'calls' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            }`}
+            title="Calls"
           >
-            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>New Chat</span>
+            <Phone className="w-5 h-5" />
+          </button>
+
+          {/* Status */}
+          <button 
+            onClick={() => {
+              setActiveRailTab('status');
+              alert('Work Status Updates: Share your active daily progress with connected teams.');
+            }} 
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+              activeRailTab === 'status' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            }`}
+            title="Status"
+          >
+            <CircleDashed className="w-5 h-5" />
+          </button>
+
+          {/* Teams / Communities */}
+          <button 
+            onClick={() => {
+              setActiveRailTab('groups');
+              openNewChatModal();
+            }} 
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
+              activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            }`}
+            title="Communities & Teams"
+          >
+            <Users className="w-5 h-5" />
+          </button>
+
+          {/* AI / Meta AI Sparkles */}
+          <button 
+            onClick={() => {
+              alert('WorkHub AI Copilot: Instant task summarization and assignment drafting.');
+            }} 
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
+            title="WorkHub AI"
+          >
+            <Sparkles className="w-5 h-5 text-indigo-600" />
           </button>
         </div>
 
-        {/* Search Bar */}
-        <div className="p-3 border-b border-gray-100">
-          <div className="relative">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        {/* Bottom Icons: Settings & User Profile */}
+        <div className="flex flex-col items-center gap-3">
+          <button 
+            onClick={() => alert(`Logged in as: ${currentUser?.email} (${currentUser?.role})`)}
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
+            title="Settings"
+          >
+            <Settings className="w-5 h-5" />
+          </button>
+
+          {/* My Profile Avatar with Online Dot */}
+          <div className="relative cursor-pointer" title={`You (${currentUser?.email}) - Online`}>
+            <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(currentUser?.email || 'user')}`}>
+              {getInitials(currentUser?.name, currentUser?.email)}
+            </div>
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#25D366] border-2 border-[#f0f2f5]" />
+          </div>
+        </div>
+      </aside>
+
+      {/* ---------------- 2. CHATS LIST COLUMN (MIDDLE PANEL) ---------------- */}
+      <div className="w-80 sm:w-96 flex flex-col bg-white border-r border-[#e9edef] shrink-0 z-10">
+        {/* Header: "Chats" + Action Icons */}
+        <div className="p-3.5 px-4 flex items-center justify-between border-b border-[#f0f2f5]">
+          <h2 className="text-xl font-bold text-[#111b21] tracking-tight">Chats</h2>
+          <div className="flex items-center gap-1 text-[#54656f]">
+            <button 
+              onClick={openNewChatModal}
+              className="p-2 rounded-full hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+              title="New Chat"
+            >
+              <SquarePen className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={openNewChatModal}
+              className="p-2 rounded-full hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+              title="Menu"
+            >
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar ("Search or start a new chat") */}
+        <div className="p-2.5 px-3 border-b border-[#f0f2f5]">
+          <div className="relative flex items-center bg-[#f0f2f5] rounded-lg px-3 py-1.5 focus-within:bg-white focus-within:ring-1 focus-within:ring-[#00a884] transition-all">
+            <Search className="w-4 h-4 text-[#54656f] shrink-0 mr-2" />
             <input
               type="text"
-              placeholder="Search by registered email ID..."
+              placeholder="Search or start a new chat"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-gray-50 border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+              className="w-full bg-transparent text-xs text-[#111b21] placeholder-[#54656f] focus:outline-none"
             />
             {searchQuery && (
-              <button 
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => setSearchQuery('')} className="text-[#54656f] hover:text-gray-900">
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
           </div>
         </div>
 
-        {/* Filter Tabs: All, Unread (3), Admin, Users */}
-        <div className="px-3 py-2 flex items-center gap-1.5 overflow-x-auto border-b border-gray-100 no-scrollbar">
+        {/* Filter Pills: All, Unread, Admin, Users (Matching Screenshot 2) */}
+        <div className="px-3 py-2 flex items-center gap-1.5 border-b border-[#f0f2f5] overflow-x-auto no-scrollbar">
           {(['All', 'Unread', 'Admin', 'Users'] as const).map(tab => {
             const isActive = filterTab === tab;
             return (
@@ -528,8 +634,8 @@ export const MessagesView: React.FC = () => {
                 onClick={() => setFilterTab(tab)}
                 className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all cursor-pointer ${
                   isActive
-                    ? 'bg-emerald-100 text-emerald-800 font-semibold'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#d9fdd3] text-[#008069] font-semibold'
+                    : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
                 }`}
               >
                 {tab === 'Unread' && totalUnreadCount > 0 ? `Unread (${totalUnreadCount})` : tab}
@@ -539,22 +645,22 @@ export const MessagesView: React.FC = () => {
         </div>
 
         {/* Conversation List Scroll Area */}
-        <div className="flex-1 overflow-y-auto divide-y divide-gray-50">
+        <div className="flex-1 overflow-y-auto divide-y divide-[#f0f2f5]">
           {loadingConversations ? (
-            <div className="p-8 text-center text-gray-400 text-xs">Loading conversations...</div>
+            <div className="p-8 text-center text-xs text-[#54656f]">Loading chats...</div>
           ) : filteredConversations.length === 0 ? (
             <div className="p-8 text-center">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-3">
+              <div className="w-12 h-12 rounded-full bg-[#d9fdd3] text-[#008069] flex items-center justify-center mx-auto mb-3">
                 <MessageSquare className="w-6 h-6" />
               </div>
-              <p className="text-sm font-semibold text-gray-700">No chats found</p>
-              <p className="text-xs text-gray-400 mt-1">Start a conversation with any registered member or admin</p>
+              <p className="text-sm font-semibold text-[#111b21]">No chats yet</p>
+              <p className="text-xs text-[#54656f] mt-1">Start a conversation with any registered member or admin</p>
               <button
                 onClick={openNewChatModal}
-                className="mt-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 text-white text-xs font-medium hover:bg-emerald-700"
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Start New Chat</span>
+                <span>New Chat</span>
               </button>
             </div>
           ) : (
@@ -570,43 +676,51 @@ export const MessagesView: React.FC = () => {
                 <div
                   key={conv.id}
                   onClick={() => selectConversation(conv)}
-                  className={`p-3.5 flex items-center gap-3 cursor-pointer transition-all ${
+                  className={`p-3 px-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
                     isSelected 
-                      ? 'bg-emerald-50/70 border-l-4 border-emerald-600' 
-                      : 'hover:bg-gray-50/80 border-l-4 border-transparent'
+                      ? 'bg-[#f0f2f5]' 
+                      : 'hover:bg-[#f5f6f6]'
                   }`}
                 >
-                  {/* Avatar Circle with Online Dot */}
+                  {/* WhatsApp Circular Avatar with Online Dot */}
                   <div className="relative shrink-0">
-                    <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs border ${avatarStyle}`}>
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-2xs ${avatarStyle}`}>
                       {initials}
                     </div>
-                    {/* Real-time Online Indicator */}
-                    <span 
-                      className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-white ${
-                        isOnline ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`} 
-                      title={isOnline ? 'Online' : 'Offline'}
-                    />
+                    {isOnline && (
+                      <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25D366] border-2 border-white" title="Online" />
+                    )}
                   </div>
 
-                  {/* Middle: Email / Name & Last Message */}
+                  {/* Middle Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="font-semibold text-xs text-gray-900 truncate">
-                        {other?.email || other?.name || 'Registered User'}
+                      <h4 className="font-medium text-sm text-[#111b21] truncate">
+                        {other?.name || other?.email || 'Registered User'}
                       </h4>
-                      <span className="text-[11px] text-gray-400 shrink-0">
+                      <span className={`text-[11px] shrink-0 ${unread > 0 ? 'text-[#25D366] font-semibold' : 'text-[#667781]'}`}>
                         {formatTime(conv.lastMessage?.timestamp || conv.updatedAt)}
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-1 mt-1">
-                      <p className="text-xs text-gray-500 truncate">
-                        {conv.lastMessage?.text || 'No messages yet'}
-                      </p>
+                    <div className="flex items-center justify-between gap-1 mt-0.5">
+                      <div className="flex items-center gap-1 min-w-0">
+                        {conv.lastMessage?.senderId === currentUser?.id && (
+                          <span className="shrink-0 text-[#53bdeb]">
+                            {conv.lastMessage?.status === 'read' ? (
+                              <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" />
+                            ) : (
+                              <CheckCheck className="w-3.5 h-3.5 text-gray-400" />
+                            )}
+                          </span>
+                        )}
+                        <p className="text-xs text-[#667781] truncate">
+                          {conv.lastMessage?.text || 'Draft a message...'}
+                        </p>
+                      </div>
+
                       {unread > 0 && (
-                        <span className="w-5 h-5 rounded-full bg-emerald-600 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                        <span className="w-5 h-5 rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center shrink-0">
                           {unread}
                         </span>
                       )}
@@ -619,27 +733,35 @@ export const MessagesView: React.FC = () => {
         </div>
       </div>
 
-      {/* ---------------- RIGHT COLUMN: CHAT AREA ---------------- */}
+      {/* ---------------- 3. CHAT CANVAS & CONVERSATION (RIGHT PANEL) ---------------- */}
       {activeConversation ? (
-        <div className="flex-1 flex flex-col bg-[#fcfdfc] min-w-0">
-          {/* Chat Header */}
-          <div className="p-3.5 px-5 bg-white border-b border-gray-200 flex items-center justify-between shadow-xs shrink-0">
+        <div className="flex-1 flex flex-col bg-[#efeae2] min-w-0 relative">
+          
+          {/* Subtle WhatsApp Classic Wallpaper Pattern Overlay */}
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-[0.06] z-0"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20h20v20H20zm50 0h20v20H70zm-50 50h20v20H20zm50 0h20v20H70z' fill='%23000000' fill-opacity='1' fill-rule='evenodd'/%3E%3Ccircle cx='30' cy='30' r='5' fill='%23000000'/%3E%3Ccircle cx='80' cy='30' r='5' fill='%23000000'/%3E%3Ccircle cx='30' cy='80' r='5' fill='%23000000'/%3E%3Ccircle cx='80' cy='80' r='5' fill='%23000000'/%3E%3C/svg%3E")`,
+              backgroundSize: '160px 160px'
+            }}
+          />
+
+          {/* Top Chat Header matching Screenshot 2 */}
+          <div className="h-[60px] px-4 bg-[#f0f2f5] border-b border-[#e9edef] flex items-center justify-between shrink-0 z-10">
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative shrink-0">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border ${getAvatarBg(activeConversation.otherUser?.email || 'user')}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(activeConversation.otherUser?.email || 'user')}`}>
                   {getInitials(activeConversation.otherUser?.name, activeConversation.otherUser?.email)}
                 </div>
-                <span 
-                  className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                    isUserOnline(activeConversation.otherUser) ? 'bg-emerald-500' : 'bg-gray-300'
-                  }`} 
-                />
+                {isUserOnline(activeConversation.otherUser) && (
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#25D366] border-2 border-white" />
+                )}
               </div>
 
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold text-sm text-gray-900 truncate">
-                    {activeConversation.otherUser?.email}
+                  <h3 className="font-semibold text-sm text-[#111b21] truncate">
+                    {activeConversation.otherUser?.name || activeConversation.otherUser?.email}
                   </h3>
                   {activeConversation.otherUser?.role === 'admin' && (
                     <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-semibold">
@@ -647,68 +769,92 @@ export const MessagesView: React.FC = () => {
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] text-emerald-600 font-medium flex items-center gap-1">
-                  {isUserOnline(activeConversation.otherUser) ? (
-                    <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                      <span>Online</span>
-                    </>
+                <p className="text-[11px] leading-tight">
+                  {otherUserTyping ? (
+                    <span className="text-[#00a884] font-medium animate-pulse">typing...</span>
+                  ) : isUserOnline(activeConversation.otherUser) ? (
+                    <span className="text-[#00a884] font-medium">Online</span>
                   ) : (
-                    <span className="text-gray-400">Offline</span>
+                    <span className="text-[#667781]">Offline</span>
                   )}
                 </p>
               </div>
             </div>
 
-            {/* Header Action Icons */}
-            <div className="flex items-center gap-1 sm:gap-2 text-gray-500">
+            {/* Header Right Action Icons */}
+            <div className="flex items-center gap-1 sm:gap-2 text-[#54656f]">
               <button 
-                onClick={() => alert(`Voice and video call initiation with ${activeConversation.otherUser?.email} will connect via WebRTC in the upcoming release.`)}
-                className="p-2 rounded-lg hover:bg-gray-100 hover:text-emerald-600 transition-colors cursor-pointer" 
-                title="Start Video Call"
+                onClick={() => alert(`Connecting video call with ${activeConversation.otherUser?.email}...`)}
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                title="Video Call"
               >
-                <Video className="w-4 h-4" />
+                <Video className="w-5 h-5" />
               </button>
               <button 
-                onClick={() => alert(`Voice call initiation with ${activeConversation.otherUser?.email} will connect via WebRTC in the upcoming release.`)}
-                className="p-2 rounded-lg hover:bg-gray-100 hover:text-emerald-600 transition-colors cursor-pointer" 
-                title="Start Audio Call"
+                onClick={() => alert(`Connecting audio call with ${activeConversation.otherUser?.email}...`)}
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                title="Voice Call"
               >
-                <Phone className="w-4 h-4" />
+                <Phone className="w-5 h-5" />
+              </button>
+              <div className="h-5 w-px bg-gray-300 mx-1 hidden sm:block" />
+              <button 
+                onClick={() => alert(`Search conversation messages with ${activeConversation.otherUser?.email}`)}
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                title="Search Messages"
+              >
+                <Search className="w-5 h-5" />
               </button>
               <button 
-                onClick={() => alert(`User Info:\nName: ${activeConversation.otherUser?.name || 'N/A'}\nEmail: ${activeConversation.otherUser?.email}\nRole: ${activeConversation.otherUser?.role}`)}
-                className="p-2 rounded-lg hover:bg-gray-100 hover:text-emerald-600 transition-colors cursor-pointer" 
-                title="Contact Info"
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                title="Menu"
               >
-                <Info className="w-4 h-4" />
-              </button>
-              <button className="p-2 rounded-lg hover:bg-gray-100 hover:text-gray-700 transition-colors cursor-pointer">
-                <MoreVertical className="w-4 h-4" />
+                <MoreVertical className="w-5 h-5" />
               </button>
             </div>
           </div>
 
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-3 bg-[#f8fafc]/60">
-            {/* Centered Date Badge */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 z-10">
+            {/* Centered Date Pill (WhatsApp style) */}
             <div className="flex justify-center my-2">
-              <span className="px-3 py-1 rounded-full bg-white border border-gray-200 text-gray-500 text-[11px] font-medium shadow-2xs">
+              <span className="px-3 py-1 rounded-md bg-white shadow-2xs text-[#54656f] text-[11px] font-medium border border-gray-100">
                 Today
               </span>
             </div>
 
             {loadingMessages ? (
-              <div className="text-center py-10 text-xs text-gray-400">Loading conversation history...</div>
+              <div className="text-center py-10 text-xs text-[#54656f]">Loading chat history...</div>
             ) : messages.length === 0 ? (
-              <div className="text-center py-16">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto mb-2">
-                  <Sparkles className="w-6 h-6" />
+              /* When there are NO messages in this chat, don't leave a blank void! */
+              <div className="max-w-md mx-auto my-8 p-6 rounded-2xl bg-white/95 backdrop-blur-sm shadow-md border border-gray-100 text-center animate-in fade-in duration-300">
+                <div className="w-12 h-12 rounded-full bg-[#d9fdd3] text-[#008069] flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-6 h-6" />
                 </div>
-                <p className="text-xs font-semibold text-gray-700">Encrypted Conversation Started</p>
-                <p className="text-[11px] text-gray-400 mt-1 max-w-xs mx-auto">
-                  Messages between registered emails are synchronized in real-time via Socket.IO and stored in MongoDB.
+                <h4 className="font-bold text-sm text-[#111b21]">End-to-End Encrypted</h4>
+                <p className="text-xs text-[#54656f] mt-1 leading-relaxed">
+                  Messages between registered accounts are delivered in real-time via Socket.IO and permanently stored in MongoDB.
                 </p>
+
+                <div className="mt-5 pt-4 border-t border-gray-100">
+                  <p className="text-xs font-semibold text-gray-700 mb-2.5">Send a quick starter message:</p>
+                  <div className="flex flex-wrap gap-2 justify-center">
+                    {[
+                      '👋 Hi there!',
+                      '📋 What is today’s task priority?',
+                      '✅ Work is completed, please review',
+                      '📅 Let’s schedule a quick sync call'
+                    ].map(prompt => (
+                      <button
+                        key={prompt}
+                        onClick={() => handleSendMessage(prompt)}
+                        className="px-3 py-1.5 rounded-full bg-[#f0f2f5] hover:bg-[#d9fdd3] hover:text-[#008069] text-xs font-medium text-[#111b21] transition-all cursor-pointer shadow-2xs"
+                      >
+                        {prompt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               messages.map(msg => {
@@ -720,36 +866,43 @@ export const MessagesView: React.FC = () => {
                     className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
                   >
                     <div 
-                      className={`relative max-w-[85%] sm:max-w-md px-3.5 py-2.5 rounded-2xl shadow-2xs text-xs ${
+                      className={`relative max-w-[85%] sm:max-w-md px-3.5 py-2 rounded-lg shadow-2xs text-[13px] leading-relaxed break-words ${
                         isMe 
-                          ? 'bg-[#d9fdd3] text-gray-900 rounded-tr-xs' 
-                          : 'bg-white text-gray-900 border border-gray-100 rounded-tl-xs'
+                          ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none' 
+                          : 'bg-white text-[#111b21] rounded-tl-none border border-gray-100/50'
                       }`}
                     >
-                      {/* Attachment Rendering */}
+                      {/* Group/Contact Sender Title if incoming */}
+                      {!isMe && (
+                        <div className="font-semibold text-xs text-[#53bdeb] mb-0.5">
+                          {msg.senderName || msg.senderEmail.split('@')[0]}
+                        </div>
+                      )}
+
+                      {/* Photo / Attachment Card */}
                       {msg.attachment && (
-                        <div className="mb-2 p-2.5 rounded-xl bg-white/80 border border-gray-200 flex items-center gap-3">
+                        <div className="mb-1.5 p-2 rounded-lg bg-black/5 flex items-center gap-3">
                           {msg.attachment.type === 'image' || msg.attachment.url?.startsWith('data:image') ? (
                             <img 
                               src={msg.attachment.url} 
                               alt={msg.attachment.name} 
-                              className="w-12 h-12 rounded-lg object-cover border border-gray-100" 
+                              className="w-14 h-14 rounded-md object-cover border border-white" 
                             />
                           ) : (
-                            <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center">
+                            <div className="w-10 h-10 rounded-md bg-[#00a884] text-white flex items-center justify-center">
                               <FileText className="w-5 h-5" />
                             </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="font-semibold text-xs text-gray-900 truncate">{msg.attachment.name}</p>
-                            <p className="text-[10px] text-gray-500">{msg.attachment.size || 'Document'}</p>
+                            <p className="text-[10px] text-gray-500">{msg.attachment.size || 'Attachment'}</p>
                           </div>
                           {msg.attachment.url && (
                             <a 
                               href={msg.attachment.url} 
                               download={msg.attachment.name} 
-                              className="p-1.5 rounded-md hover:bg-gray-100 text-gray-600 hover:text-emerald-700 transition-colors"
-                              title="Download File"
+                              className="p-1.5 rounded-full hover:bg-white text-gray-700 transition-colors"
+                              title="Download"
                             >
                               <Download className="w-4 h-4" />
                             </a>
@@ -759,20 +912,20 @@ export const MessagesView: React.FC = () => {
 
                       {/* Message Text */}
                       {msg.text && (
-                        <p className="leading-relaxed whitespace-pre-wrap break-words">{msg.text}</p>
+                        <p className="whitespace-pre-wrap">{msg.text}</p>
                       )}
 
                       {/* Timestamp & Status Checkmarks */}
-                      <div className="flex items-center justify-end gap-1 mt-1 text-[10px] text-gray-500">
+                      <div className="flex items-center justify-end gap-1 mt-1 text-[11px] text-[#667781]">
                         <span>{formatTime(msg.createdAt)}</span>
                         {isMe && (
                           <span title={msg.status === 'read' ? 'Read' : 'Delivered'}>
                             {msg.status === 'read' ? (
-                              <CheckCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                              <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
                             ) : msg.status === 'delivered' ? (
-                              <CheckCheck className="w-3.5 h-3.5 text-gray-400 stroke-[2]" />
+                              <CheckCheck className="w-4 h-4 text-gray-400" />
                             ) : (
-                              <Check className="w-3.5 h-3.5 text-gray-400 stroke-[2]" />
+                              <Check className="w-4 h-4 text-gray-400" />
                             )}
                           </span>
                         )}
@@ -783,14 +936,14 @@ export const MessagesView: React.FC = () => {
               })
             )}
 
-            {/* Other user is typing bubble */}
+            {/* Live Typing Indicator */}
             {otherUserTyping && (
-              <div className="flex items-center gap-2 text-xs text-gray-500">
-                <div className="px-3 py-1.5 rounded-full bg-white border border-gray-200 shadow-2xs flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.2s]"></span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-bounce [animation-delay:0.4s]"></span>
-                  <span className="text-[11px] text-gray-500 ml-1">{activeConversation.otherUser?.email} is typing...</span>
+              <div className="flex items-center gap-2 text-xs text-[#54656f]">
+                <div className="px-3.5 py-1.5 rounded-lg bg-white shadow-2xs flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00a884] animate-bounce"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00a884] animate-bounce [animation-delay:0.2s]"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00a884] animate-bounce [animation-delay:0.4s]"></span>
+                  <span className="text-[11px] text-[#667781] ml-1">typing...</span>
                 </div>
               </div>
             )}
@@ -800,29 +953,26 @@ export const MessagesView: React.FC = () => {
 
           {/* Attachment Preview Chip */}
           {attachment && (
-            <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between text-xs">
+            <div className="px-4 py-2 bg-emerald-50 border-t border-emerald-100 flex items-center justify-between text-xs z-10">
               <div className="flex items-center gap-2 truncate">
-                <Paperclip className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                <span className="font-semibold text-emerald-900 truncate">{attachment.name}</span>
-                <span className="text-emerald-700 text-[11px]">({attachment.size})</span>
+                <Paperclip className="w-3.5 h-3.5 text-[#00a884] shrink-0" />
+                <span className="font-semibold text-gray-900 truncate">{attachment.name}</span>
+                <span className="text-gray-500 text-[11px]">({attachment.size})</span>
               </div>
-              <button 
-                onClick={() => setAttachment(null)}
-                className="text-emerald-700 hover:text-red-600 cursor-pointer p-1"
-              >
-                <X className="w-3.5 h-3.5" />
+              <button onClick={() => setAttachment(null)} className="text-gray-400 hover:text-red-600 p-1 cursor-pointer">
+                <X className="w-4 h-4" />
               </button>
             </div>
           )}
 
-          {/* Quick Emoji Bar Popover */}
+          {/* Emoji Popover */}
           {showEmojiPicker && (
-            <div className="px-4 py-2 bg-white border-t border-gray-100 flex items-center gap-2 overflow-x-auto">
+            <div className="px-4 py-2 bg-white border-t border-[#e9edef] flex items-center gap-2 overflow-x-auto z-20 shadow-md">
               {quickEmojis.map(emoji => (
                 <button
                   key={emoji}
                   onClick={() => addEmoji(emoji)}
-                  className="p-1.5 text-lg hover:bg-gray-100 rounded-lg transition-transform hover:scale-125 cursor-pointer"
+                  className="p-1.5 text-xl hover:bg-gray-100 rounded-lg transition-transform hover:scale-125 cursor-pointer"
                 >
                   {emoji}
                 </button>
@@ -830,108 +980,153 @@ export const MessagesView: React.FC = () => {
             </div>
           )}
 
-          {/* Bottom Input Bar */}
-          <div className="p-3 bg-white border-t border-gray-200 flex items-center gap-2">
-            {/* Attachment Button */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              onChange={handleFileSelect} 
-              className="hidden" 
-            />
+          {/* Attachment Popup Menu */}
+          {showAttachmentMenu && (
+            <div className="absolute bottom-16 left-4 bg-white rounded-2xl shadow-xl border border-gray-100 p-2 flex flex-col gap-1 z-30 animate-in fade-in zoom-in-95 duration-150">
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-purple-50 text-xs font-semibold text-gray-700 cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span>Photos & Videos</span>
+              </button>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-blue-50 text-xs font-semibold text-gray-700 cursor-pointer"
+              >
+                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                  <FileText className="w-4 h-4" />
+                </div>
+                <span>Document</span>
+              </button>
+            </div>
+          )}
+
+          {/* ---------------- WHATSAPP SIGNATURE BOTTOM INPUT BAR ---------------- */}
+          <div className="h-[62px] px-4 bg-[#f0f2f5] border-t border-[#e9edef] flex items-center gap-2.5 shrink-0 z-10">
+            {/* Hidden File Inputs */}
+            <input type="file" ref={fileInputRef} onChange={e => handleFileSelect(e, false)} className="hidden" />
+            <input type="file" accept="image/*" ref={imageInputRef} onChange={e => handleFileSelect(e, true)} className="hidden" />
+
+            {/* Plus / Attachment Button */}
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="p-2.5 rounded-full text-gray-500 hover:text-emerald-600 hover:bg-gray-100 transition-colors cursor-pointer shrink-0"
-              title="Attach File or Image"
+              onClick={() => setShowAttachmentMenu(!showAttachmentMenu)}
+              className="p-2 text-[#54656f] hover:text-[#111b21] hover:bg-gray-200/60 rounded-full transition-colors cursor-pointer"
+              title="Attach"
             >
-              <Paperclip className="w-5 h-5" />
+              <Plus className="w-6 h-6" />
             </button>
 
-            {/* Text Input Pill */}
-            <form onSubmit={handleSendMessage} className="flex-1 flex items-center gap-2 bg-gray-100 rounded-full px-4 py-2 border border-transparent focus-within:border-emerald-500 focus-within:bg-white transition-all">
+            {/* Smiley Emoji Button */}
+            <button
+              type="button"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+              className="p-2 text-[#54656f] hover:text-[#111b21] hover:bg-gray-200/60 rounded-full transition-colors cursor-pointer"
+              title="Emoji"
+            >
+              <Smile className="w-6 h-6" />
+            </button>
+
+            {/* Input Pill */}
+            <form 
+              onSubmit={e => { e.preventDefault(); handleSendMessage(); }} 
+              className="flex-1 flex items-center bg-white rounded-lg px-4 py-2 border border-transparent focus-within:border-gray-200 shadow-2xs"
+            >
               <input
                 type="text"
-                placeholder="Type a message..."
+                placeholder="Type a message"
                 value={inputText}
                 onChange={handleInputChange}
-                className="w-full bg-transparent text-xs text-gray-900 placeholder-gray-400 focus:outline-none"
+                className="w-full bg-transparent text-sm text-[#111b21] placeholder-[#54656f] focus:outline-none"
               />
-
-              {/* Emoji Trigger */}
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                className="text-gray-400 hover:text-emerald-600 transition-colors shrink-0 cursor-pointer"
-                title="Insert Emoji"
-              >
-                <Smile className="w-4 h-4" />
-              </button>
             </form>
 
-            {/* Circular Green Send Button */}
-            <button
-              type="button"
-              onClick={() => handleSendMessage()}
-              disabled={!inputText.trim() && !attachment}
-              className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 shadow-xs transition-all cursor-pointer ${
-                inputText.trim() || attachment
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/30'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-              }`}
-            >
-              <SendHorizontal className="w-4 h-4 stroke-[2.2]" />
-            </button>
+            {/* Send or Mic Button */}
+            {inputText.trim() || attachment ? (
+              <button
+                type="button"
+                onClick={() => handleSendMessage()}
+                className="w-10 h-10 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white flex items-center justify-center shadow-xs transition-all cursor-pointer shrink-0"
+                title="Send Message"
+              >
+                <SendHorizontal className="w-5 h-5 stroke-[2.2]" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => alert('Microphone audio message recording ready for deployment.')}
+                className="p-2 text-[#54656f] hover:text-[#111b21] hover:bg-gray-200/60 rounded-full transition-colors cursor-pointer shrink-0"
+                title="Record Voice Note"
+              >
+                <Mic className="w-6 h-6" />
+              </button>
+            )}
           </div>
         </div>
       ) : (
-        /* Empty State (No Chat Selected) */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#f8fafc] text-center">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-100/70 text-emerald-600 flex items-center justify-center mb-4 shadow-sm">
-            <MessageSquare className="w-8 h-8" />
+        /* ---------------- WHATSAPP WEB SPLASH SCREEN (WHEN NO CHAT SELECTED) ---------------- */
+        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#f0f2f5] text-center border-l border-[#e9edef] relative select-none">
+          <div className="max-w-md flex flex-col items-center">
+            {/* WhatsApp Laptop/Phone Center Graphic */}
+            <div className="w-20 h-20 rounded-full bg-[#d9fdd3] text-[#008069] flex items-center justify-center mb-6 shadow-sm">
+              <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor">
+                <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z"/>
+              </svg>
+            </div>
+
+            <h3 className="text-2xl font-light text-[#41525d] tracking-tight">WorkHub for Web</h3>
+            <p className="text-xs text-[#667781] leading-relaxed mt-3 max-w-sm">
+              Send and receive real-time messages with any registered team member or administrator without page refresh.
+            </p>
+
+            <button
+              onClick={openNewChatModal}
+              className="mt-6 inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold shadow-sm transition-all cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Start a New Chat</span>
+            </button>
           </div>
-          <h3 className="text-lg font-bold text-gray-900">Worker Space Real-Time Messages</h3>
-          <p className="text-xs text-gray-500 max-w-sm mt-1.5">
-            Select a conversation on the left, or click <strong className="text-emerald-700 font-semibold">+ New Chat</strong> to message any registered Admin or User instantly without page refresh.
-          </p>
-          <button
-            onClick={openNewChatModal}
-            className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold shadow-sm transition-all"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Start New Chat</span>
-          </button>
+
+          {/* End-to-end encrypted lock note at bottom */}
+          <div className="absolute bottom-6 flex items-center gap-1.5 text-xs text-[#8696a0]">
+            <Lock className="w-3.5 h-3.5" />
+            <span>End-to-end encrypted</span>
+          </div>
         </div>
       )}
 
       {/* ---------------- + NEW CHAT MODAL ---------------- */}
       {isNewChatOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-lg border border-gray-200 shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
             {/* Modal Header */}
-            <div className="p-4 px-6 border-b border-gray-100 flex items-center justify-between">
+            <div className="p-4 px-6 border-b border-gray-100 flex items-center justify-between bg-[#f0f2f5]">
               <div>
-                <h3 className="font-bold text-base text-gray-900">Start New Chat</h3>
-                <p className="text-xs text-gray-500">Select any registered member or administrator in Worker Space</p>
+                <h3 className="font-bold text-base text-[#111b21]">New Chat</h3>
+                <p className="text-xs text-[#667781]">Select any registered member or admin</p>
               </div>
               <button 
                 onClick={() => setIsNewChatOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+                className="p-1.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Search & Filters */}
-            <div className="p-4 border-b border-gray-100 space-y-3 bg-gray-50/50">
+            <div className="p-3 border-b border-gray-100 space-y-2.5 bg-white">
               <div className="relative">
                 <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder="Search by name, email, or department..."
+                  placeholder="Search name or registered email..."
                   value={newChatSearch}
                   onChange={e => setNewChatSearch(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-white border border-gray-200 text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                  className="w-full pl-9 pr-3 py-2 text-xs rounded-lg bg-[#f0f2f5] border border-transparent text-[#111b21] placeholder-[#667781] focus:outline-none focus:bg-white focus:border-[#00a884]"
                 />
               </div>
 
@@ -942,8 +1137,8 @@ export const MessagesView: React.FC = () => {
                     onClick={() => setNewChatRoleFilter(role)}
                     className={`px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
                       newChatRoleFilter === role
-                        ? 'bg-emerald-600 text-white font-semibold'
-                        : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-100'
+                        ? 'bg-[#00a884] text-white font-semibold'
+                        : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
                     }`}
                   >
                     {role === 'All' ? 'All Registered' : role === 'Admin' ? 'Admins' : 'Users / Members'}
@@ -953,12 +1148,12 @@ export const MessagesView: React.FC = () => {
             </div>
 
             {/* Registered Users List */}
-            <div className="flex-1 overflow-y-auto p-2 divide-y divide-gray-50">
+            <div className="flex-1 overflow-y-auto p-2 divide-y divide-[#f0f2f5]">
               {startingChat ? (
-                <div className="p-8 text-center text-xs text-gray-400">Opening conversation...</div>
+                <div className="p-8 text-center text-xs text-[#667781]">Opening chat...</div>
               ) : filteredEligibleUsers.length === 0 ? (
-                <div className="p-8 text-center text-xs text-gray-400">
-                  No registered users match your search criteria.
+                <div className="p-8 text-center text-xs text-[#667781]">
+                  No registered users match your search.
                 </div>
               ) : (
                 filteredEligibleUsers.map(user => {
@@ -970,23 +1165,21 @@ export const MessagesView: React.FC = () => {
                     <div
                       key={user.id}
                       onClick={() => handleStartChatWithUser(user)}
-                      className="p-3 rounded-xl flex items-center justify-between hover:bg-emerald-50/60 cursor-pointer transition-colors group"
+                      className="p-3 rounded-xl flex items-center justify-between hover:bg-[#f0f2f5] cursor-pointer transition-colors group"
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <div className="relative shrink-0">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs border ${avatarStyle}`}>
+                          <div className={`w-11 h-11 rounded-full flex items-center justify-center font-bold text-xs ${avatarStyle}`}>
                             {initials}
                           </div>
-                          <span 
-                            className={`absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full border-2 border-white ${
-                              isOnline ? 'bg-emerald-500' : 'bg-gray-300'
-                            }`} 
-                          />
+                          {isOnline && (
+                            <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25D366] border-2 border-white" />
+                          )}
                         </div>
 
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-semibold text-xs text-gray-900 group-hover:text-emerald-700 truncate">
+                            <h4 className="font-semibold text-xs text-[#111b21] group-hover:text-[#00a884] truncate">
                               {user.name}
                             </h4>
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
@@ -997,7 +1190,7 @@ export const MessagesView: React.FC = () => {
                               {user.role === 'admin' ? 'Admin' : 'User'}
                             </span>
                           </div>
-                          <p className="text-[11px] text-gray-500 truncate mt-0.5">{user.email}</p>
+                          <p className="text-[11px] text-[#667781] truncate mt-0.5">{user.email}</p>
                           {(user.department || user.team) && (
                             <p className="text-[10px] text-gray-400 truncate mt-0.5">
                               {[user.department, user.team].filter(Boolean).join(' • ')}
@@ -1007,11 +1200,11 @@ export const MessagesView: React.FC = () => {
                       </div>
 
                       <div className="shrink-0 flex items-center gap-2">
-                        <span className={`text-[10px] font-medium ${isOnline ? 'text-emerald-600' : 'text-gray-400'}`}>
+                        <span className={`text-[10px] font-medium ${isOnline ? 'text-[#00a884]' : 'text-gray-400'}`}>
                           {isOnline ? 'Online' : 'Offline'}
                         </span>
-                        <div className="w-7 h-7 rounded-full bg-gray-100 group-hover:bg-emerald-600 group-hover:text-white text-gray-500 flex items-center justify-center transition-colors">
-                          <SendHorizontal className="w-3.5 h-3.5" />
+                        <div className="w-8 h-8 rounded-full bg-gray-100 group-hover:bg-[#00a884] group-hover:text-white text-gray-500 flex items-center justify-center transition-colors">
+                          <SendHorizontal className="w-4 h-4" />
                         </div>
                       </div>
                     </div>

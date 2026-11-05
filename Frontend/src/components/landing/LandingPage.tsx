@@ -464,3 +464,4 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
     </div>
   );
 };
+
