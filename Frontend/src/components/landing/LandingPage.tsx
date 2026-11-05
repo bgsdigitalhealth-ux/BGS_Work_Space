@@ -50,9 +50,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#faf7fd] via-[#f4edfd] to-[#ede3fb] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between overflow-x-hidden">
+    <div 
+      className="min-h-screen bg-[#ede6f9] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-no-repeat bg-right lg:bg-center"
+      style={{
+        backgroundImage: `url('/landing-bg.jpg')`
+      }}
+    >
+      {/* Mobile subtle light wash so typography is crystal clear across small screens */}
+      <div className="absolute inset-0 bg-white/50 sm:bg-white/20 lg:bg-transparent pointer-events-none z-0" />
+
       {/* ---------------- TOP NAVIGATION BAR ---------------- */}
-      <header className="w-full bg-white/90 backdrop-blur-md border-b border-gray-100/80 sticky top-0 z-50 transition-all">
+      <header className="w-full bg-white/85 backdrop-blur-md border-b border-purple-100/60 sticky top-0 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           
           {/* Left Brand Logo & Title */}
@@ -256,11 +264,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
       </header>
 
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
           
           {/* Left Hero Details */}
-          <div className="lg:col-span-7 flex flex-col justify-center">
+          <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
             {/* Pill Tag */}
             <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#714fe0] mb-3 inline-block">
               TEAM COLLABORATION PLATFORM
@@ -297,7 +305,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               {/* Feature 1: Team Management */}
               <div 
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-purple-100/60 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
@@ -310,7 +318,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               {/* Feature 2: Work Assignment */}
               <div 
                 onClick={onAssignWork}
-                className="p-3.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-purple-100/60 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <ClipboardCheck className="w-5 h-5" />
@@ -323,7 +331,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               {/* Feature 3: Appointment Scheduling */}
               <div 
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-purple-100/60 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <Calendar className="w-5 h-5" />
@@ -336,7 +344,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               {/* Feature 4: Real-time Messaging */}
               <div 
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-purple-100/60 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <MessageSquare className="w-5 h-5" />
@@ -348,17 +356,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
             </div>
           </div>
 
-          {/* Right Hero Graphic: Modern Workspace Living Interior */}
-          <div className="lg:col-span-5 relative flex items-center justify-center lg:justify-end">
-            <div className="relative w-full max-w-lg lg:max-w-none h-[380px] sm:h-[480px] lg:h-[560px] rounded-3xl overflow-hidden shadow-xl border border-white/70 bg-[#ede4fa]/30 flex items-center justify-end">
-              <img 
-                src="/hero-interior.jpg" 
-                alt="WorkHub Modern Team Workspace" 
-                className="w-full h-full object-cover object-right"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-purple-950/5 via-transparent to-transparent pointer-events-none" />
-            </div>
-          </div>
+          {/* Right side is intentionally open space for the natural room background (lamp, table, sofa) */}
+          <div className="hidden lg:block lg:col-span-5 xl:col-span-4 min-h-[360px] pointer-events-none" aria-hidden="true" />
         </div>
       </main>
 
