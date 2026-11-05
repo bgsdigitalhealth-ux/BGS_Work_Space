@@ -388,10 +388,42 @@ const createAssignment = async (data) => {
   memoryStore.assignments.unshift(newAssign);
 
   // Update member assignedWork
-  const member = memoryStore.members.find(m => m.id === data.memberId);
+  const member = memoryStore.members.find(m => m.id === data.memberId || m.id === (data.memberId && data.memberId.toString()));
   if (member) {
     member.assignedWork = data.workTitle;
   }
+
+  // Look up DB member / team if connected
+  let dbMember = null;
+  let dbTeam = null;
+  if (getStatus()) {
+    try {
+      dbMember = await Member.findById(data.memberId).lean();
+      dbTeam = await Team.findById(data.teamId).lean();
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const memberName = dbMember ? dbMember.name : (member ? member.name : '');
+  const team = memoryStore.teams.find(t => t.id === data.teamId || t.id === (data.teamId && data.teamId.toString()));
+  const dept = team ? memoryStore.departments.find(d => d.id === team.departmentId) : null;
+  const teamName = dbTeam ? dbTeam.name : (team ? team.name : 'Team');
+
+  // --- AUTOMATICALLY CREATE TASK IN "TODAY'S TASKS" ---
+  const todayDate = new Date().toISOString().split('T')[0];
+  const newTask = {
+    id: generateId('task'),
+    teamId: data.teamId,
+    assignmentId: newAssign.id,
+    memberId: data.memberId,
+    memberName: memberName,
+    title: data.workTitle,
+    priority: data.priority || 'Medium',
+    completed: false,
+    date: todayDate
+  };
+  memoryStore.tasks.unshift(newTask);
 
   // Synchronize into User Workspace
   if (!memoryStore.userWorkspace) {
@@ -402,15 +434,13 @@ const createAssignment = async (data) => {
       recentActivities: []
     };
   }
-  const team = memoryStore.teams.find(t => t.id === data.teamId);
-  const dept = team ? memoryStore.departments.find(d => d.id === team.departmentId) : null;
 
   const userTask = {
     id: generateId('user-task'),
     taskId: `TSK-${Date.now().toString().slice(-4)}`,
     title: data.workTitle,
-    department: (dept && dept.name) || 'General',
-    team: (team && team.name) || 'Team',
+    department: (dept && dept.name) || (dbTeam && dbTeam.departmentId) || 'General',
+    team: teamName,
     priority: data.priority || 'High',
     dueDate: data.dueDate || 'Today',
     status: data.status || 'In Progress',
@@ -419,14 +449,14 @@ const createAssignment = async (data) => {
     description: data.workDescription || '',
     progress: 0,
     comments: [],
-    userId: member ? member.id : 'usr-user'
+    userId: dbMember ? (dbMember.userId || dbMember._id.toString()) : (member ? member.id : 'usr-user')
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
 
   // Create Notification for User
   createNotification({
     recipientRole: 'user',
-    recipientUserId: member ? member.id : null,
+    recipientUserId: userTask.userId,
     title: 'New Work Assigned',
     message: `Admin assigned: "${data.workTitle}" to you.`,
     link: 'assigned-work'
@@ -436,6 +466,18 @@ const createAssignment = async (data) => {
   if (getStatus()) {
     try {
       const createdAssign = await Assignment.create(data);
+      const createdTask = await Task.create({
+        teamId: data.teamId,
+        assignmentId: createdAssign._id.toString(),
+        memberId: data.memberId,
+        memberName: memberName,
+        title: data.workTitle,
+        priority: data.priority || 'Medium',
+        completed: false,
+        date: todayDate
+      });
+      newTask.id = createdTask._id.toString();
+
       await UserTask.create({
         customId: userTask.id,
         taskId: userTask.taskId,
@@ -450,7 +492,7 @@ const createAssignment = async (data) => {
         description: userTask.description,
         progress: 0,
         comments: [],
-        userId: member ? member.id : 'usr-user'
+        userId: userTask.userId
       });
       return { ...createdAssign.toObject(), id: createdAssign._id.toString() };
     } catch (e) {
@@ -725,6 +767,39 @@ const submitUserWork = async (data) => {
     link: 'work-management'
   });
 
+  // Auto-check and complete corresponding Task in "Today's Tasks"
+  const taskTitle = task ? task.title : '';
+  const matchingTasks = (memoryStore.tasks || []).filter(t => 
+    (taskTitle && t.title && t.title.trim().toLowerCase() === taskTitle.trim().toLowerCase()) ||
+    (t.assignmentId && (t.assignmentId === taskId || (task && t.assignmentId === task.id)))
+  );
+  matchingTasks.forEach(t => {
+    t.completed = true;
+    t.completedAt = new Date();
+    t.completedBy = (task && task.userName) || 'Team Member';
+  });
+
+  // Auto-log into "Today's Work Done"
+  const teamObj = (memoryStore.teams || []).find(tm => task && tm.name === task.team);
+  const completedTeamId = teamObj ? teamObj.id : (matchingTasks[0] ? matchingTasks[0].teamId : null);
+  
+  if (completedTeamId) {
+    const alreadyLogged = (memoryStore.workDone || []).some(w => w.taskId === taskId || (taskTitle && w.title === taskTitle));
+    if (!alreadyLogged) {
+      const newWorkDone = {
+        id: generateId('wd'),
+        teamId: completedTeamId,
+        taskId: task ? task.taskId : taskId,
+        title: task ? task.title : 'Work Completed',
+        details: comment || 'Work deliverables submitted and verified.',
+        completedBy: (task && task.userName) || 'Team Member',
+        date: new Date().toISOString().split('T')[0]
+      };
+      if (!memoryStore.workDone) memoryStore.workDone = [];
+      memoryStore.workDone.unshift(newWorkDone);
+    }
+  }
+
   // Persist into MongoDB Atlas if connected
   if (getStatus()) {
     try {
@@ -733,6 +808,22 @@ const submitUserWork = async (data) => {
           { $or: [{ customId: taskId }, { taskId: taskId }] },
           { status: task.status, progress: 100 }
         );
+      }
+      if (taskTitle) {
+        await Task.updateMany(
+          { $or: [{ title: taskTitle }, { assignmentId: taskId }] },
+          { completed: true, completedAt: new Date(), completedBy: 'Team Member' }
+        );
+      }
+      if (completedTeamId) {
+        await WorkDone.create({
+          teamId: completedTeamId,
+          taskId: task ? task.taskId : taskId,
+          title: task ? task.title : 'Work Completed',
+          details: comment || 'Work deliverables submitted and verified.',
+          completedBy: (task && task.userName) || 'Team Member',
+          date: new Date().toISOString().split('T')[0]
+        });
       }
       await WorkHistory.create({
         customId: newHistoryItem.id,
@@ -796,6 +887,37 @@ const approveWork = async (taskId, comment) => {
     link: 'work-history'
   });
 
+  // Ensure matching task in Today's Tasks is marked completed
+  const taskTitle = task ? task.title : '';
+  const matchingTasks = (memoryStore.tasks || []).filter(t => 
+    (taskTitle && t.title && t.title.trim().toLowerCase() === taskTitle.trim().toLowerCase()) ||
+    (t.assignmentId && (t.assignmentId === taskId || (task && t.assignmentId === task.id)))
+  );
+  matchingTasks.forEach(t => {
+    t.completed = true;
+    t.completedAt = new Date();
+  });
+
+  // Ensure logged into Today's Work Done
+  const teamObj = (memoryStore.teams || []).find(tm => task && tm.name === task.team);
+  const completedTeamId = teamObj ? teamObj.id : (matchingTasks[0] ? matchingTasks[0].teamId : null);
+  if (completedTeamId) {
+    const alreadyLogged = (memoryStore.workDone || []).some(w => w.taskId === taskId || (taskTitle && w.title === taskTitle));
+    if (!alreadyLogged) {
+      const newWorkDone = {
+        id: generateId('wd'),
+        teamId: completedTeamId,
+        taskId: task ? task.taskId : taskId,
+        title: task ? task.title : 'Work Completed',
+        details: comment || 'Work approved and verified as Completed.',
+        completedBy: (task && task.userName) || 'Team Member',
+        date: new Date().toISOString().split('T')[0]
+      };
+      if (!memoryStore.workDone) memoryStore.workDone = [];
+      memoryStore.workDone.unshift(newWorkDone);
+    }
+  }
+
   // Persist into MongoDB Atlas if connected
   if (getStatus()) {
     try {
@@ -803,6 +925,22 @@ const approveWork = async (taskId, comment) => {
         { $or: [{ customId: taskId }, { taskId: taskId }] },
         { status: 'Completed', progress: 100 }
       );
+      if (taskTitle) {
+        await Task.updateMany(
+          { $or: [{ title: taskTitle }, { assignmentId: taskId }] },
+          { completed: true, completedAt: new Date() }
+        );
+      }
+      if (completedTeamId) {
+        await WorkDone.create({
+          teamId: completedTeamId,
+          taskId: task ? task.taskId : taskId,
+          title: task ? task.title : 'Work Completed',
+          details: comment || 'Work approved and verified as Completed.',
+          completedBy: (task && task.userName) || 'Team Member',
+          date: new Date().toISOString().split('T')[0]
+        });
+      }
       await WorkHistory.findOneAndUpdate(
         { $or: [{ customId: taskId }, { taskId: taskId }] },
         { 

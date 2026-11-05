@@ -514,13 +514,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refreshAll = async () => {
     setLoading(true);
-    await Promise.all([
+    const promises: Promise<any>[] = [
       fetchStats(),
       fetchDepartments(),
       refreshUserWorkspace(),
       refreshAppointments(),
       refreshNotifications()
-    ]);
+    ];
+    if (selectedTeam) {
+      promises.push(fetchMembers(selectedTeam.id));
+      promises.push(fetchAssignments(selectedTeam.id));
+      promises.push(fetchTasks(selectedTeam.id));
+      promises.push(fetchWorkDone(selectedTeam.id));
+    }
+    await Promise.all(promises);
     setLoading(false);
   };
 

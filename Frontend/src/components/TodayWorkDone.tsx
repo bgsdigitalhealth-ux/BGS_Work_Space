@@ -1,9 +1,9 @@
 import React from 'react';
-import { CheckCircle2, Plus, Check, Trash2 } from 'lucide-react';
+import { CheckCircle2, Check, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const TodayWorkDone: React.FC = () => {
-  const { selectedTeam, workDone, handleDeleteWorkDone, setIsAddWorkDoneOpen } = useApp();
+  const { selectedTeam, workDone, handleDeleteWorkDone } = useApp();
 
   return (
     <div id="todays-workdone-section" className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col">
@@ -14,23 +14,15 @@ export const TodayWorkDone: React.FC = () => {
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-sm">Today's Work Done</h3>
-            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Selected Team'})</p>
+            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Selected Team'} · Auto-updated)</p>
           </div>
         </div>
-
-        <button
-          onClick={() => setIsAddWorkDoneOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Work Done</span>
-        </button>
       </div>
 
       <div className="space-y-2.5 flex-1 overflow-y-auto max-h-56">
         {workDone.length === 0 ? (
           <div className="py-6 text-center text-slate-400 text-xs">
-            No work logs completed today yet. Click "+ Add Work Done" to log accomplishments!
+            No work logs completed today yet. Automatically populated when team members finish and submit work.
           </div>
         ) : (
           workDone.map((item) => (

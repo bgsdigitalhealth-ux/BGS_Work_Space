@@ -1,9 +1,9 @@
 import React from 'react';
-import { ClipboardList, Plus, Check, Trash2 } from 'lucide-react';
+import { ClipboardList, Check, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const TodayTasks: React.FC = () => {
-  const { selectedTeam, tasks, handleToggleTask, handleDeleteTask, setIsAddTaskOpen } = useApp();
+  const { selectedTeam, tasks, handleDeleteTask } = useApp();
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
@@ -38,23 +38,15 @@ export const TodayTasks: React.FC = () => {
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-sm">Today's Tasks</h3>
-            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Selected Team'})</p>
+            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Selected Team'} · Auto-assigned)</p>
           </div>
         </div>
-
-        <button
-          onClick={() => setIsAddTaskOpen(true)}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Add Task</span>
-        </button>
       </div>
 
       <div className="space-y-2.5 flex-1 overflow-y-auto max-h-56">
         {tasks.length === 0 ? (
           <div className="py-6 text-center text-slate-400 text-xs">
-            No tasks scheduled for today. Click "+ Add Task" to create one!
+            No tasks assigned for today yet. Work assigned to members appears here automatically.
           </div>
         ) : (
           tasks.map((task) => (
@@ -63,23 +55,35 @@ export const TodayTasks: React.FC = () => {
               className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all group"
             >
               <div
-                onClick={() => handleToggleTask(task.id)}
-                className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
+                className="flex items-center gap-3 select-none flex-1 min-w-0 cursor-default"
+                title={task.completed ? "Status: Completed by Team Member" : "Status: In Progress (Awaiting user update/completion)"}
               >
                 <div
                   className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${task.completed
-                    ? 'bg-indigo-600 border-indigo-600 text-white'
-                    : 'border-slate-300 group-hover:border-indigo-400 bg-white'
+                    ? 'bg-emerald-600 border-emerald-600 text-white'
+                    : 'border-slate-300 bg-slate-50 text-slate-400'
                     }`}
+                  title={task.completed ? "Completed by Team Member" : "Read-only: Auto-checks when member updates work"}
                 >
                   {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
-                <span
-                  className={`text-xs font-medium truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
-                    }`}
-                >
-                  {task.title}
-                </span>
+                <div className="flex flex-col min-w-0">
+                  <span
+                    className={`text-xs font-semibold truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                      }`}
+                  >
+                    {task.title}
+                  </span>
+                  {task.completed ? (
+                    <span className="text-[10px] text-emerald-600 font-bold">
+                      ✓ Done (Updated by Member)
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-medium">
+                      In Progress · Auto-checks when member updates work
+                    </span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-2">
                 {getPriorityBadge(task.priority)}
