@@ -1,11 +1,15 @@
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables from Backend/.env (or root .env as fallback)
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 const express = require('express');
 const cors = require('cors');
-const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
 const { initMongoSeed } = require('./seed/dataService');
 const apiRoutes = require('./routes/api');
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -46,4 +50,3 @@ const startServer = async () => {
 };
 
 startServer();
-

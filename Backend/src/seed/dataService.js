@@ -5,21 +5,27 @@ const Member = require('../models/Member');
 const Assignment = require('../models/Assignment');
 const Task = require('../models/Task');
 const WorkDone = require('../models/WorkDone');
+const User = require('../models/User');
+const Appointment = require('../models/Appointment');
+const Notification = require('../models/Notification');
+const UserTask = require('../models/UserTask');
+const WorkHistory = require('../models/WorkHistory');
 const initialData = require('./seedData');
 
 // In-Memory store initialized with deep copy of clean seed data
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
-// Helper for generating unique ID for in-memory operations
+// Helper for generating unique ID for operations
 const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
 // Seed MongoDB if connected and empty
 const initMongoSeed = async () => {
   if (!getStatus()) return;
   try {
+    // 1. Departments & Teams & Members
     const deptCount = await Department.countDocuments();
     if (deptCount === 0) {
-      console.log('[Seed] Seeding initial departments and teams into MongoDB...');
+      console.log('[Seed] Seeding initial departments, teams, and members into MongoDB Atlas...');
       const deptMap = {};
       for (const d of initialData.departments) {
         const created = await Department.create({
@@ -52,28 +58,51 @@ const initMongoSeed = async () => {
           avatar: m.avatar
         });
       }
-
-      console.log('[Seed] MongoDB initial seeding finished (clean state)!');
+      console.log('[Seed] Departments, teams, and members seeded into Atlas.');
     }
+
+    // 2. Users (Admin and User roles only)
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log('[Seed] Seeding authorized login accounts into MongoDB Atlas...');
+      for (const u of initialData.users) {
+        await User.create({
+          customId: u.id,
+          name: u.name,
+          email: u.email,
+          password: u.password,
+          role: u.role,
+          memberId: u.memberId || '',
+          department: u.department || '',
+          team: u.team || '',
+          teamRole: u.teamRole || '',
+          avatar: u.avatar || '',
+          title: u.title || ''
+        });
+      }
+      console.log('[Seed] Authorized login users seeded into Atlas.');
+    }
+
+    console.log('[Seed] MongoDB Atlas database ready and synchronized!');
   } catch (err) {
-    console.error('[Seed Error] Failed to seed MongoDB:', err);
+    console.error('[Seed Error] Failed to seed MongoDB Atlas:', err);
   }
 };
 
 // --- Departments ---
 const getDepartments = async () => {
   if (getStatus()) {
-    const list = await Department.find().lean();
-    return list.map(d => ({ ...d, id: d._id.toString() }));
+    try {
+      const list = await Department.find().lean();
+      return list.map(d => ({ ...d, id: d._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error, falling back to in-memory:', e.message);
+    }
   }
   return memoryStore.departments;
 };
 
 const createDepartment = async (data) => {
-  if (getStatus()) {
-    const created = await Department.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newDept = {
     id: generateId('dept'),
     name: data.name,
@@ -81,37 +110,60 @@ const createDepartment = async (data) => {
     description: data.description || 'Manage teams, members, roles and work.'
   };
   memoryStore.departments.push(newDept);
+
+  if (getStatus()) {
+    try {
+      const created = await Department.create(data);
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo create error:', e.message);
+    }
+  }
   return newDept;
 };
 
 const updateDepartment = async (id, data) => {
-  if (getStatus()) {
-    const updated = await Department.findByIdAndUpdate(id, data, { new: true }).lean();
-    return updated ? { ...updated, id: updated._id.toString() } : null;
-  }
   const index = memoryStore.departments.findIndex(d => d.id === id);
-  if (index === -1) return null;
-  memoryStore.departments[index] = { ...memoryStore.departments[index], ...data };
-  return memoryStore.departments[index];
+  if (index !== -1) {
+    memoryStore.departments[index] = { ...memoryStore.departments[index], ...data };
+  }
+
+  if (getStatus()) {
+    try {
+      const updated = await Department.findByIdAndUpdate(id, data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated._id.toString() };
+    } catch (e) {
+      console.warn('Mongo update error:', e.message);
+    }
+  }
+  return index !== -1 ? memoryStore.departments[index] : null;
 };
 
 const deleteDepartment = async (id) => {
-  if (getStatus()) {
-    await Department.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
   memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
+
+  if (getStatus()) {
+    try {
+      await Department.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- Teams ---
 const getTeams = async (departmentId = null) => {
   if (getStatus()) {
-    const filter = departmentId ? { departmentId } : {};
-    const list = await Team.find(filter).lean();
-    return list.map(t => ({ ...t, id: t._id.toString(), departmentId: t.departmentId.toString() }));
+    try {
+      const filter = departmentId ? { departmentId } : {};
+      const list = await Team.find(filter).lean();
+      return list.map(t => ({ ...t, id: t._id.toString(), departmentId: t.departmentId.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
   }
   if (departmentId) {
     return memoryStore.teams.filter(t => t.departmentId === departmentId);
@@ -120,10 +172,6 @@ const getTeams = async (departmentId = null) => {
 };
 
 const createTeam = async (data) => {
-  if (getStatus()) {
-    const created = await Team.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newTeam = {
     id: generateId('team'),
     name: data.name,
@@ -131,38 +179,61 @@ const createTeam = async (data) => {
     description: data.description || 'Team responsible for department objectives.'
   };
   memoryStore.teams.push(newTeam);
+
+  if (getStatus()) {
+    try {
+      const created = await Team.create(data);
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo create error:', e.message);
+    }
+  }
   return newTeam;
 };
 
 const updateTeam = async (id, data) => {
-  if (getStatus()) {
-    const updated = await Team.findByIdAndUpdate(id, data, { new: true }).lean();
-    return updated ? { ...updated, id: updated._id.toString() } : null;
-  }
   const index = memoryStore.teams.findIndex(t => t.id === id);
-  if (index === -1) return null;
-  memoryStore.teams[index] = { ...memoryStore.teams[index], ...data };
-  return memoryStore.teams[index];
+  if (index !== -1) {
+    memoryStore.teams[index] = { ...memoryStore.teams[index], ...data };
+  }
+
+  if (getStatus()) {
+    try {
+      const updated = await Team.findByIdAndUpdate(id, data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated._id.toString() };
+    } catch (e) {
+      console.warn('Mongo update error:', e.message);
+    }
+  }
+  return index !== -1 ? memoryStore.teams[index] : null;
 };
 
 const deleteTeam = async (id) => {
-  if (getStatus()) {
-    await Team.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.teams = memoryStore.teams.filter(t => t.id !== id);
   memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
+
+  if (getStatus()) {
+    try {
+      await Team.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- Members ---
 const getMembers = async (teamId = null, departmentId = null) => {
   if (getStatus()) {
-    const filter = {};
-    if (teamId) filter.teamId = teamId;
-    if (departmentId) filter.departmentId = departmentId;
-    const list = await Member.find(filter).lean();
-    return list.map(m => ({ ...m, id: m._id.toString() }));
+    try {
+      const filter = {};
+      if (teamId) filter.teamId = teamId;
+      if (departmentId) filter.departmentId = departmentId;
+      const list = await Member.find(filter).lean();
+      return list.map(m => ({ ...m, id: m._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
   }
   let res = memoryStore.members;
   if (teamId) res = res.filter(m => m.teamId === teamId);
@@ -171,10 +242,6 @@ const getMembers = async (teamId = null, departmentId = null) => {
 };
 
 const createMember = async (data) => {
-  if (getStatus()) {
-    const created = await Member.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newMember = {
     id: generateId('mem'),
     name: data.name,
@@ -187,36 +254,59 @@ const createMember = async (data) => {
     avatar: (data.name || 'U').charAt(0).toUpperCase()
   };
   memoryStore.members.push(newMember);
+
+  if (getStatus()) {
+    try {
+      const created = await Member.create(data);
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo create error:', e.message);
+    }
+  }
   return newMember;
 };
 
 const updateMember = async (id, data) => {
-  if (getStatus()) {
-    const updated = await Member.findByIdAndUpdate(id, data, { new: true }).lean();
-    return updated ? { ...updated, id: updated._id.toString() } : null;
-  }
   const index = memoryStore.members.findIndex(m => m.id === id);
-  if (index === -1) return null;
-  memoryStore.members[index] = { ...memoryStore.members[index], ...data };
-  return memoryStore.members[index];
+  if (index !== -1) {
+    memoryStore.members[index] = { ...memoryStore.members[index], ...data };
+  }
+
+  if (getStatus()) {
+    try {
+      const updated = await Member.findByIdAndUpdate(id, data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated._id.toString() };
+    } catch (e) {
+      console.warn('Mongo update error:', e.message);
+    }
+  }
+  return index !== -1 ? memoryStore.members[index] : null;
 };
 
 const deleteMember = async (id) => {
-  if (getStatus()) {
-    await Member.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.members = memoryStore.members.filter(m => m.id !== id);
   memoryStore.assignments = memoryStore.assignments.filter(a => a.memberId !== id);
+
+  if (getStatus()) {
+    try {
+      await Member.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- Assignments ---
 const getAssignments = async (teamId = null) => {
   if (getStatus()) {
-    const filter = teamId ? { teamId } : {};
-    const list = await Assignment.find(filter).lean();
-    return list.map(a => ({ ...a, id: a._id.toString() }));
+    try {
+      const filter = teamId ? { teamId } : {};
+      const list = await Assignment.find(filter).lean();
+      return list.map(a => ({ ...a, id: a._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
   }
   if (teamId) {
     return memoryStore.assignments.filter(a => a.teamId === teamId);
@@ -225,10 +315,6 @@ const getAssignments = async (teamId = null) => {
 };
 
 const createAssignment = async (data) => {
-  if (getStatus()) {
-    const created = await Assignment.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newAssign = {
     id: generateId('assign'),
     memberId: data.memberId,
@@ -242,13 +328,13 @@ const createAssignment = async (data) => {
   };
   memoryStore.assignments.unshift(newAssign);
 
-  // Update member assignedWork attribute
+  // Update member assignedWork
   const member = memoryStore.members.find(m => m.id === data.memberId);
   if (member) {
     member.assignedWork = data.workTitle;
   }
 
-  // Synchronize directly into User Workspace
+  // Synchronize into User Workspace
   if (!memoryStore.userWorkspace) {
     memoryStore.userWorkspace = {
       stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionRate: 0, completedCount: 0, totalCount: 0 },
@@ -273,37 +359,71 @@ const createAssignment = async (data) => {
     assignedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     description: data.workDescription || '',
     progress: 0,
-    comments: []
+    comments: [],
+    userId: 'usr-rahul'
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
 
-  // Generate User Notification
+  // Create Notification for User
   createNotification({
     recipientRole: 'user',
-    recipientUserId: (member && member.email === 'rahul@company.com') ? 'usr-rahul' : 'usr-rahul',
+    recipientUserId: 'usr-rahul',
     title: 'New Work Assigned',
     message: `Admin assigned: "${data.workTitle}" to you.`,
     link: 'assigned-work'
   });
 
+  // Persist into MongoDB Atlas if connected
+  if (getStatus()) {
+    try {
+      const createdAssign = await Assignment.create(data);
+      await UserTask.create({
+        customId: userTask.id,
+        taskId: userTask.taskId,
+        title: userTask.title,
+        department: userTask.department,
+        team: userTask.team,
+        priority: userTask.priority,
+        dueDate: userTask.dueDate,
+        status: userTask.status,
+        assignedBy: userTask.assignedBy,
+        assignedOn: userTask.assignedOn,
+        description: userTask.description,
+        progress: 0,
+        comments: [],
+        userId: 'usr-rahul'
+      });
+      return { ...createdAssign.toObject(), id: createdAssign._id.toString() };
+    } catch (e) {
+      console.warn('Mongo assignment error:', e.message);
+    }
+  }
+
   return newAssign;
 };
 
 const deleteAssignment = async (id) => {
-  if (getStatus()) {
-    await Assignment.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.assignments = memoryStore.assignments.filter(a => a.id !== id);
+  if (getStatus()) {
+    try {
+      await Assignment.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- Tasks ---
 const getTasks = async (teamId = null) => {
   if (getStatus()) {
-    const filter = teamId ? { teamId } : {};
-    const list = await Task.find(filter).lean();
-    return list.map(t => ({ ...t, id: t._id.toString() }));
+    try {
+      const filter = teamId ? { teamId } : {};
+      const list = await Task.find(filter).lean();
+      return list.map(t => ({ ...t, id: t._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
   }
   if (teamId) {
     return memoryStore.tasks.filter(t => t.teamId === teamId);
@@ -312,10 +432,6 @@ const getTasks = async (teamId = null) => {
 };
 
 const createTask = async (data) => {
-  if (getStatus()) {
-    const created = await Task.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newTask = {
     id: generateId('task'),
     teamId: data.teamId,
@@ -325,49 +441,78 @@ const createTask = async (data) => {
     date: data.date || new Date().toISOString().split('T')[0]
   };
   memoryStore.tasks.push(newTask);
+
+  if (getStatus()) {
+    try {
+      const created = await Task.create(data);
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo create error:', e.message);
+    }
+  }
   return newTask;
 };
 
 const updateTask = async (id, data) => {
-  if (getStatus()) {
-    const updated = await Task.findByIdAndUpdate(id, data, { new: true }).lean();
-    return updated ? { ...updated, id: updated._id.toString() } : null;
-  }
   const index = memoryStore.tasks.findIndex(t => t.id === id);
-  if (index === -1) return null;
-  memoryStore.tasks[index] = { ...memoryStore.tasks[index], ...data };
-  return memoryStore.tasks[index];
+  if (index !== -1) {
+    memoryStore.tasks[index] = { ...memoryStore.tasks[index], ...data };
+  }
+
+  if (getStatus()) {
+    try {
+      const updated = await Task.findByIdAndUpdate(id, data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated._id.toString() };
+    } catch (e) {
+      console.warn('Mongo update error:', e.message);
+    }
+  }
+  return index !== -1 ? memoryStore.tasks[index] : null;
 };
 
 const toggleTask = async (id) => {
-  if (getStatus()) {
-    const task = await Task.findById(id);
-    if (!task) return null;
-    task.completed = !task.completed;
-    await task.save();
-    return { ...task.toObject(), id: task._id.toString() };
-  }
   const index = memoryStore.tasks.findIndex(t => t.id === id);
-  if (index === -1) return null;
-  memoryStore.tasks[index].completed = !memoryStore.tasks[index].completed;
-  return memoryStore.tasks[index];
+  if (index !== -1) {
+    memoryStore.tasks[index].completed = !memoryStore.tasks[index].completed;
+  }
+
+  if (getStatus()) {
+    try {
+      const task = await Task.findById(id);
+      if (task) {
+        task.completed = !task.completed;
+        await task.save();
+        return { ...task.toObject(), id: task._id.toString() };
+      }
+    } catch (e) {
+      console.warn('Mongo toggle error:', e.message);
+    }
+  }
+  return index !== -1 ? memoryStore.tasks[index] : null;
 };
 
 const deleteTask = async (id) => {
-  if (getStatus()) {
-    await Task.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.tasks = memoryStore.tasks.filter(t => t.id !== id);
+  if (getStatus()) {
+    try {
+      await Task.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- Work Done ---
 const getWorkDone = async (teamId = null) => {
   if (getStatus()) {
-    const filter = teamId ? { teamId } : {};
-    const list = await WorkDone.find(filter).lean();
-    return list.map(w => ({ ...w, id: w._id.toString() }));
+    try {
+      const filter = teamId ? { teamId } : {};
+      const list = await WorkDone.find(filter).lean();
+      return list.map(w => ({ ...w, id: w._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
   }
   if (teamId) {
     return memoryStore.workDone.filter(w => w.teamId === teamId);
@@ -376,10 +521,6 @@ const getWorkDone = async (teamId = null) => {
 };
 
 const createWorkDone = async (data) => {
-  if (getStatus()) {
-    const created = await WorkDone.create(data);
-    return { ...created.toObject(), id: created._id.toString() };
-  }
   const newWork = {
     id: generateId('wd'),
     teamId: data.teamId,
@@ -388,39 +529,63 @@ const createWorkDone = async (data) => {
     date: data.date || new Date().toISOString().split('T')[0]
   };
   memoryStore.workDone.unshift(newWork);
+
+  if (getStatus()) {
+    try {
+      const created = await WorkDone.create(data);
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo create error:', e.message);
+    }
+  }
   return newWork;
 };
 
 const deleteWorkDone = async (id) => {
-  if (getStatus()) {
-    await WorkDone.findByIdAndDelete(id);
-    return true;
-  }
   memoryStore.workDone = memoryStore.workDone.filter(w => w.id !== id);
+  if (getStatus()) {
+    try {
+      await WorkDone.findByIdAndDelete(id);
+    } catch (e) {
+      console.warn('Mongo delete error:', e.message);
+    }
+  }
   return true;
 };
 
 // --- User Portal Workspace ---
 const getUserWorkspace = async () => {
-  if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = {
-      stats: {
-        totalAssigned: 0,
-        inProgress: 0,
-        upcomingWork: 0,
-        completedWork: 0,
-        completionPercentage: 0,
-        completedFractionText: '0 of 0 Tasks'
-      },
-      assignedWork: [],
-      history: [],
-      recentActivities: []
-    };
+  let assigned = [];
+  let history = [];
+  let recentActivities = [];
+
+  if (getStatus()) {
+    try {
+      const dbTasks = await UserTask.find({ userId: 'usr-rahul' }).lean();
+      const dbHistory = await WorkHistory.find({ userId: 'usr-rahul' }).sort({ createdAt: -1 }).lean();
+      if (dbTasks.length > 0 || dbHistory.length > 0) {
+        assigned = dbTasks.map(t => ({ ...t, id: t.customId || t._id.toString() }));
+        history = dbHistory.map(h => ({ ...h, id: h.customId || h._id.toString() }));
+      }
+    } catch (e) {
+      console.warn('Mongo user workspace read error:', e.message);
+    }
   }
 
-  const ws = memoryStore.userWorkspace;
-  const assigned = ws.assignedWork || [];
-  const history = ws.history || [];
+  // Fallback to memoryStore if Mongo is empty or not yet seeded
+  if (assigned.length === 0 && history.length === 0) {
+    if (!memoryStore.userWorkspace) {
+      memoryStore.userWorkspace = {
+        stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+        assignedWork: [],
+        history: [],
+        recentActivities: []
+      };
+    }
+    assigned = memoryStore.userWorkspace.assignedWork || [];
+    history = memoryStore.userWorkspace.history || [];
+    recentActivities = memoryStore.userWorkspace.recentActivities || [];
+  }
 
   const inProgressCount = assigned.filter(a => a.status === 'In Progress').length;
   const upcomingCount = assigned.filter(a => a.status === 'Not Started' || a.status === 'Upcoming' || a.status === 'To Do').length;
@@ -434,7 +599,6 @@ const getUserWorkspace = async () => {
     : 0;
 
   return {
-    ...ws,
     stats: {
       totalAssigned: totalAssigned,
       inProgress: inProgressCount,
@@ -442,7 +606,10 @@ const getUserWorkspace = async () => {
       completedWork: completedCount,
       completionPercentage: completionPercentage,
       completedFractionText: `${completedCount} of ${totalTasks} Tasks`
-    }
+    },
+    assignedWork: assigned,
+    history: history,
+    recentActivities: recentActivities
   };
 };
 
@@ -458,7 +625,6 @@ const submitUserWork = async (data) => {
   const ws = memoryStore.userWorkspace;
   const { taskId, workStatus, comment } = data;
 
-  // Find task if exists
   const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
   let task = taskIndex >= 0 ? ws.assignedWork[taskIndex] : null;
 
@@ -479,12 +645,12 @@ const submitUserWork = async (data) => {
     assignedBy: task ? task.assignedBy : 'Admin',
     dueDate: task ? task.dueDate : 'Today',
     submittedComment: comment || 'Work completed and submitted for review.',
-    reviewerComments: []
+    reviewerComments: [],
+    userId: 'usr-rahul'
   };
 
   ws.history.unshift(newHistoryItem);
 
-  // Add recent activity
   ws.recentActivities.unshift({
     id: generateId('act'),
     type: 'submitted',
@@ -499,6 +665,35 @@ const submitUserWork = async (data) => {
     message: `User submitted "${task ? task.title : 'Work'}" for approval.`,
     link: 'work-management'
   });
+
+  // Persist into MongoDB Atlas if connected
+  if (getStatus()) {
+    try {
+      if (task) {
+        await UserTask.findOneAndUpdate(
+          { $or: [{ customId: taskId }, { taskId: taskId }] },
+          { status: task.status, progress: 100 }
+        );
+      }
+      await WorkHistory.create({
+        customId: newHistoryItem.id,
+        title: newHistoryItem.title,
+        taskId: newHistoryItem.taskId,
+        department: newHistoryItem.department,
+        team: newHistoryItem.team,
+        submittedDate: newHistoryItem.submittedDate,
+        status: newHistoryItem.status,
+        reviewerFeedback: newHistoryItem.reviewerFeedback,
+        assignedBy: newHistoryItem.assignedBy,
+        dueDate: newHistoryItem.dueDate,
+        submittedComment: newHistoryItem.submittedComment,
+        reviewerComments: [],
+        userId: 'usr-rahul'
+      });
+    } catch (e) {
+      console.warn('Mongo submit error:', e.message);
+    }
+  }
 
   return { success: true, historyItem: newHistoryItem, task };
 };
@@ -542,6 +737,34 @@ const approveWork = async (taskId, comment) => {
     link: 'work-history'
   });
 
+  // Persist into MongoDB Atlas if connected
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { status: 'Completed', progress: 100 }
+      );
+      await WorkHistory.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { 
+          status: 'Approved',
+          reviewerFeedback: comment || 'Approved by Admin. Work completed successfully.',
+          $push: {
+            reviewerComments: {
+              id: generateId('c'),
+              author: 'Admin',
+              role: 'Admin',
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              text: comment || 'Work approved and verified as Completed.'
+            }
+          }
+        }
+      );
+    } catch (e) {
+      console.warn('Mongo approve error:', e.message);
+    }
+  }
+
   return { success: true, task, historyItem };
 };
 
@@ -584,15 +807,64 @@ const requestRework = async (taskId, feedback) => {
     link: 'my-work'
   });
 
+  // Persist into MongoDB Atlas if connected
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { status: 'In Progress', progress: 50 }
+      );
+      await WorkHistory.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        {
+          status: 'Rework Requested',
+          reviewerFeedback: feedback || 'Please review notes and resubmit.',
+          $push: {
+            reviewerComments: {
+              id: generateId('c'),
+              author: 'Admin',
+              role: 'Admin',
+              date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+              text: feedback || 'Please review notes and resubmit.'
+            }
+          }
+        }
+      );
+    } catch (e) {
+      console.warn('Mongo rework error:', e.message);
+    }
+  }
+
   return { success: true, task, historyItem };
 };
 
 // --- Authentication & User Accounts (ONLY TWO ROLES: admin, user) ---
 const loginUser = async (email, password) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+
+  // Check MongoDB Atlas first if connected
+  if (getStatus()) {
+    try {
+      const dbUser = await User.findOne({ email: cleanEmail }).lean();
+      if (dbUser) {
+        if (dbUser.password !== password) {
+          return { success: false, error: 'Invalid email or password' };
+        }
+        const { password: _, ...safeUser } = dbUser;
+        return {
+          success: true,
+          user: { ...safeUser, id: dbUser.customId || dbUser._id.toString() },
+          token: `token-${dbUser.role}-${Date.now()}`
+        };
+      }
+    } catch (e) {
+      console.warn('Mongo login query error, checking in-memory store:', e.message);
+    }
+  }
+
   if (!memoryStore.users) {
     memoryStore.users = JSON.parse(JSON.stringify(initialData.users || []));
   }
-  const cleanEmail = (email || '').trim().toLowerCase();
   const user = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
 
   if (!user || user.password !== password) {
@@ -608,6 +880,17 @@ const loginUser = async (email, password) => {
 };
 
 const getUsers = async () => {
+  if (getStatus()) {
+    try {
+      const list = await User.find().select('-password').lean();
+      if (list.length > 0) {
+        return list.map(u => ({ ...u, id: u.customId || u._id.toString() }));
+      }
+    } catch (e) {
+      console.warn('Mongo read error:', e.message);
+    }
+  }
+
   if (!memoryStore.users) {
     memoryStore.users = JSON.parse(JSON.stringify(initialData.users || []));
   }
@@ -616,20 +899,33 @@ const getUsers = async () => {
 
 // --- Notifications Engine ---
 const getNotifications = async (role = 'all', userId = null) => {
+  if (getStatus()) {
+    try {
+      const filter = {};
+      if (role && role !== 'all') {
+        filter.$or = [{ recipientRole: role }, { recipientRole: 'all' }];
+        if (userId) {
+          filter.$or.push({ recipientUserId: userId });
+        }
+      }
+      const list = await Notification.find(filter).sort({ createdAt: -1 }).lean();
+      return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo notifications read error:', e.message);
+    }
+  }
+
   if (!memoryStore.notifications) {
     memoryStore.notifications = [];
   }
   let list = memoryStore.notifications;
   if (role && role !== 'all') {
-    list = list.filter(n => n.recipientRole === role || (userId && n.recipientUserId === userId));
+    list = list.filter(n => n.recipientRole === role || n.recipientRole === 'all' || (userId && n.recipientUserId === userId));
   }
   return list;
 };
 
 const createNotification = (data) => {
-  if (!memoryStore.notifications) {
-    memoryStore.notifications = [];
-  }
   const newNotif = {
     id: generateId('notif'),
     recipientRole: data.recipientRole || 'user',
@@ -640,7 +936,25 @@ const createNotification = (data) => {
     read: false,
     link: data.link || ''
   };
+
+  if (!memoryStore.notifications) {
+    memoryStore.notifications = [];
+  }
   memoryStore.notifications.unshift(newNotif);
+
+  if (getStatus()) {
+    Notification.create({
+      customId: newNotif.id,
+      recipientRole: newNotif.recipientRole,
+      recipientUserId: newNotif.recipientUserId,
+      title: newNotif.title,
+      message: newNotif.message,
+      timestamp: newNotif.timestamp,
+      read: false,
+      link: newNotif.link
+    }).catch(e => console.warn('Mongo notification error:', e.message));
+  }
+
   return newNotif;
 };
 
@@ -650,6 +964,18 @@ const markNotificationRead = async (id) => {
   }
   const notif = memoryStore.notifications.find(n => n.id === id);
   if (notif) notif.read = true;
+
+  if (getStatus()) {
+    try {
+      await Notification.findOneAndUpdate(
+        { $or: [{ customId: id }, { _id: id }] },
+        { read: true }
+      );
+    } catch (e) {
+      console.warn('Mongo mark read error:', e.message);
+    }
+  }
+
   return notif;
 };
 
@@ -662,6 +988,16 @@ const markAllNotificationsRead = async (role) => {
       n.read = true;
     }
   });
+
+  if (getStatus()) {
+    try {
+      const filter = role ? { recipientRole: role } : {};
+      await Notification.updateMany(filter, { read: true });
+    } catch (e) {
+      console.warn('Mongo mark all read error:', e.message);
+    }
+  }
+
   return true;
 };
 
@@ -691,11 +1027,25 @@ const addUserComment = async (taskId, data) => {
     task.comments.push(newComment);
   }
 
-  // Also check history items
   const historyItem = ws.history.find(h => h.id === taskId || h.taskId === taskId);
   if (historyItem) {
     if (!historyItem.reviewerComments) historyItem.reviewerComments = [];
     historyItem.reviewerComments.push(newComment);
+  }
+
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { $push: { comments: newComment } }
+      );
+      await WorkHistory.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { $push: { reviewerComments: newComment } }
+      );
+    } catch (e) {
+      console.warn('Mongo comment error:', e.message);
+    }
   }
 
   return newComment;
@@ -726,11 +1076,50 @@ const updateUserWorkStatus = async (taskId, status) => {
     date: 'Just now'
   });
 
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId: taskId }] },
+        { status: status, progress: task.progress }
+      );
+    } catch (e) {
+      console.warn('Mongo update status error:', e.message);
+    }
+  }
+
   return task;
 };
 
 // --- Appointment Services ---
 const getAppointments = async (filter = {}) => {
+  if (getStatus()) {
+    try {
+      const q = {};
+      if (filter.status && filter.status !== 'All') {
+        q.status = filter.status;
+      }
+      if (filter.userId) {
+        q.$or = [{ userId: filter.userId }, { requestedBy: 'Rahul Sharma' }];
+      }
+      if (filter.date) {
+        q.date = filter.date;
+      }
+      if (filter.search) {
+        const regex = new RegExp(filter.search, 'i');
+        q.$or = [
+          { title: regex },
+          { requestedBy: regex },
+          { department: regex },
+          { team: regex }
+        ];
+      }
+      const list = await Appointment.find(q).sort({ createdAt: -1 }).lean();
+      return list.map(a => ({ ...a, id: a.customId || a._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo read error, falling back to in-memory appointments:', e.message);
+    }
+  }
+
   if (!memoryStore.appointments) {
     memoryStore.appointments = [];
   }
@@ -760,9 +1149,6 @@ const getAppointments = async (filter = {}) => {
 };
 
 const createAppointment = async (data) => {
-  if (!memoryStore.appointments) {
-    memoryStore.appointments = [];
-  }
   const dateObj = data.date ? new Date(data.date) : new Date();
   const dateFormatted = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeFormatted = data.time || '11:00 AM';
@@ -785,7 +1171,35 @@ const createAppointment = async (data) => {
     isToday: data.date === todayStr
   };
 
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = [];
+  }
   memoryStore.appointments.unshift(newApt);
+
+  if (getStatus()) {
+    try {
+      const created = await Appointment.create({
+        customId: newApt.id,
+        title: newApt.title,
+        requestedBy: newApt.requestedBy,
+        userId: newApt.userId,
+        department: newApt.department,
+        team: newApt.team,
+        date: newApt.date,
+        time: newApt.time,
+        endTime: newApt.endTime,
+        dateTimeDisplay: newApt.dateTimeDisplay,
+        location: newApt.location,
+        purpose: newApt.purpose,
+        status: newApt.status,
+        isToday: newApt.isToday
+      });
+      return { ...created.toObject(), id: created._id.toString() };
+    } catch (e) {
+      console.warn('Mongo appointment create error:', e.message);
+    }
+  }
+
   return newApt;
 };
 
@@ -794,13 +1208,27 @@ const updateAppointment = async (id, data) => {
     memoryStore.appointments = [];
   }
   const index = memoryStore.appointments.findIndex(a => a.id === id);
-  if (index === -1) return null;
+  if (index !== -1) {
+    memoryStore.appointments[index] = {
+      ...memoryStore.appointments[index],
+      ...data
+    };
+  }
 
-  memoryStore.appointments[index] = {
-    ...memoryStore.appointments[index],
-    ...data
-  };
-  return memoryStore.appointments[index];
+  if (getStatus()) {
+    try {
+      const updated = await Appointment.findOneAndUpdate(
+        { $or: [{ customId: id }, { _id: id }] },
+        data,
+        { new: true }
+      ).lean();
+      if (updated) return { ...updated, id: updated._id.toString() };
+    } catch (e) {
+      console.warn('Mongo appointment update error:', e.message);
+    }
+  }
+
+  return index !== -1 ? memoryStore.appointments[index] : null;
 };
 
 const deleteAppointment = async (id) => {
@@ -808,14 +1236,19 @@ const deleteAppointment = async (id) => {
     memoryStore.appointments = [];
   }
   memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
+
+  if (getStatus()) {
+    try {
+      await Appointment.findOneAndDelete({ $or: [{ customId: id }, { _id: id }] });
+    } catch (e) {
+      console.warn('Mongo appointment delete error:', e.message);
+    }
+  }
   return true;
 };
 
 const getAppointmentStats = async () => {
-  if (!memoryStore.appointments) {
-    memoryStore.appointments = [];
-  }
-  const all = memoryStore.appointments;
+  const all = await getAppointments();
   const todayStr = new Date().toISOString().split('T')[0];
 
   const adminTotal = all.length;
@@ -863,7 +1296,7 @@ const getStats = async () => {
     membersCount: mems.length,
     todaysTasksCount: tsks.length,
     workDoneTodayCount: wd.length,
-    databaseMode: getStatus() ? 'MongoDB' : 'In-Memory Store (Ready for MongoDB)'
+    databaseMode: getStatus() ? 'MongoDB Atlas' : 'Synchronized Store (Ready for Atlas)'
   };
 };
 
