@@ -264,4 +264,46 @@ router.delete('/work-done/:id', async (req, res) => {
   }
 });
 
+// --- User Workspace Routes ---
+router.get('/user/workspace', async (req, res) => {
+  try {
+    const workspace = await dataService.getUserWorkspace();
+    res.json(workspace);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/user/submit-work', async (req, res) => {
+  try {
+    const result = await dataService.submitUserWork(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/user/comment', async (req, res) => {
+  try {
+    const { taskId, ...data } = req.body;
+    if (!taskId) return res.status(400).json({ error: 'taskId is required' });
+    const comment = await dataService.addUserComment(taskId, data);
+    res.json(comment);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/user/status/:id', async (req, res) => {
+  try {
+    const { status } = req.body;
+    if (!status) return res.status(400).json({ error: 'status is required' });
+    const updated = await dataService.updateUserWorkStatus(req.params.id, status);
+    if (!updated) return res.status(404).json({ error: 'Task not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

@@ -176,5 +176,39 @@ export const api = {
   deleteWorkDone: async (id: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/work-done/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete work done');
+  },
+
+  // User Workspace (WorkHub)
+  getUserWorkspace: async (): Promise<import('../types').UserWorkspaceData> => {
+    const res = await fetch(`${API_BASE}/user/workspace`);
+    if (!res.ok) throw new Error('Failed to fetch user workspace');
+    return res.json();
+  },
+  submitUserWork: async (payload: { taskId: string; workStatus: string; comment: string; attachments?: any[] }) => {
+    const res = await fetch(`${API_BASE}/user/submit-work`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Failed to submit work');
+    return res.json();
+  },
+  addUserComment: async (taskId: string, payload: { author?: string; role?: string; text: string; badge?: string }) => {
+    const res = await fetch(`${API_BASE}/user/comment`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ taskId, ...payload })
+    });
+    if (!res.ok) throw new Error('Failed to add comment');
+    return res.json();
+  },
+  updateUserTaskStatus: async (taskId: string, status: string) => {
+    const res = await fetch(`${API_BASE}/user/status/${taskId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) throw new Error('Failed to update task status');
+    return res.json();
   }
 };

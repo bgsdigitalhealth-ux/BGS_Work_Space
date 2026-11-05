@@ -404,6 +404,133 @@ const deleteWorkDone = async (id) => {
   return true;
 };
 
+// --- User Portal Workspace ---
+const getUserWorkspace = async () => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+
+  const ws = memoryStore.userWorkspace;
+  const assigned = ws.assignedWork || [];
+  const inProgressCount = assigned.filter(a => a.status === 'In Progress').length;
+  const upcomingCount = assigned.filter(a => a.status === 'Not Started' || a.status === 'Upcoming').length;
+  const completedCount = (ws.history || []).length;
+  const totalAssigned = assigned.length;
+  const completionPercentage = totalAssigned + completedCount > 0 
+    ? Math.round((completedCount / (totalAssigned + completedCount)) * 100) 
+    : 82;
+
+  return {
+    ...ws,
+    stats: {
+      totalAssigned: 12,
+      inProgress: inProgressCount,
+      upcomingWork: upcomingCount,
+      completedWork: completedCount || 18,
+      completionPercentage: completionPercentage || 82,
+      completedFractionText: `${completedCount || 18} of ${12 + (completedCount || 18)} Tasks`
+    }
+  };
+};
+
+const submitUserWork = async (data) => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const ws = memoryStore.userWorkspace;
+  const { taskId, workStatus, comment, attachments } = data;
+
+  // Find task if exists
+  const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
+  let task = taskIndex >= 0 ? ws.assignedWork[taskIndex] : null;
+
+  if (task) {
+    task.status = workStatus === 'Completed' ? 'Completed' : 'Under Review';
+    task.progress = 100;
+  }
+
+  const newHistoryItem = {
+    id: generateId('h'),
+    title: task ? task.title : 'Submitted Work',
+    taskId: task && task.taskId ? task.taskId : `TSK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    department: task ? task.department : 'Marketing',
+    team: task ? task.team : 'Digital Media',
+    submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    status: workStatus === 'Completed' ? 'Under Review' : 'Under Review',
+    reviewerFeedback: 'Submitted. Pending review by Team Lead.',
+    assignedBy: task ? task.assignedBy : 'Priya Verma',
+    dueDate: task ? task.dueDate : 'Today',
+    submittedComment: comment || 'Work completed and submitted with attachments.',
+    reviewerComments: []
+  };
+
+  ws.history.unshift(newHistoryItem);
+
+  // Add recent activity
+  ws.recentActivities.unshift({
+    id: generateId('act'),
+    type: 'submitted',
+    title: `Submitted: ${task ? task.title : 'Work Item'}`,
+    date: 'Just now'
+  });
+
+  return { success: true, historyItem: newHistoryItem, task };
+};
+
+const addUserComment = async (taskId, data) => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const ws = memoryStore.userWorkspace;
+  const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
+
+  const newComment = {
+    id: generateId('c'),
+    author: data.author || 'Rahul Sharma',
+    role: data.role || 'Team Member',
+    date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    badge: data.badge || 'Update',
+    text: data.text || ''
+  };
+
+  if (task) {
+    if (!task.comments) task.comments = [];
+    task.comments.push(newComment);
+  }
+
+  // Also check history items
+  const historyItem = ws.history.find(h => h.id === taskId || h.taskId === taskId);
+  if (historyItem) {
+    if (!historyItem.reviewerComments) historyItem.reviewerComments = [];
+    historyItem.reviewerComments.push(newComment);
+  }
+
+  return newComment;
+};
+
+const updateUserWorkStatus = async (taskId, status) => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const ws = memoryStore.userWorkspace;
+  const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
+  if (!task) return null;
+
+  task.status = status;
+  if (status === 'In Progress' && task.progress === 0) {
+    task.progress = 30;
+  }
+
+  ws.recentActivities.unshift({
+    id: generateId('act'),
+    type: 'started',
+    title: `Work Started: ${task.title}`,
+    date: 'Just now'
+  });
+
+  return task;
+};
+
 // --- Top KPI Stats ---
 const getStats = async () => {
   const depts = await getDepartments();
@@ -447,5 +574,9 @@ module.exports = {
   getWorkDone,
   createWorkDone,
   deleteWorkDone,
-  getStats
+  getStats,
+  getUserWorkspace,
+  submitUserWork,
+  addUserComment,
+  updateUserWorkStatus
 };

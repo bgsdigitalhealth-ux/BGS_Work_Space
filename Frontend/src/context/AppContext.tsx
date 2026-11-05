@@ -1,8 +1,13 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats } from '../types';
+import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, UserWorkspaceData, UserAssignedWork, UserWorkHistory } from '../types';
 import { api } from '../services/api';
 
 interface AppContextType {
+  // Portal Toggle
+  portalMode: 'admin' | 'user';
+  setPortalMode: (mode: 'admin' | 'user') => void;
+
+  // Admin Dashboard State
   departments: Department[];
   selectedDepartment: Department | null;
   setSelectedDepartment: (dept: Department) => void;
@@ -20,7 +25,7 @@ interface AppContextType {
   setTeamSubTab: (tab: string) => void;
   loading: boolean;
   refreshAll: () => Promise<void>;
-  
+
   // Modals & Editing
   isAddDeptOpen: boolean;
   setIsAddDeptOpen: (open: boolean) => void;
@@ -54,6 +59,27 @@ interface AppContextType {
   handleDeleteDepartment: (id: string) => Promise<void>;
   handleDeleteTeam: (id: string) => Promise<void>;
 
+  // User Portal (WorkHub) State
+  userNav: string;
+  setUserNav: (nav: string) => void;
+  selectedUserTask: UserAssignedWork | null;
+  setSelectedUserTask: (task: UserAssignedWork | null) => void;
+  selectedHistoryItem: UserWorkHistory | null;
+  setSelectedHistoryItem: (item: UserWorkHistory | null) => void;
+  userWorkspace: UserWorkspaceData | null;
+  refreshUserWorkspace: () => Promise<void>;
+  isSubmitWorkDrawerOpen: boolean;
+  setIsSubmitWorkDrawerOpen: (open: boolean) => void;
+  drawerSelectedTask: UserAssignedWork | null;
+  openSubmitWorkDrawer: (task?: UserAssignedWork) => void;
+  userFilterTab: string;
+  setUserFilterTab: (tab: string) => void;
+  userSearchQuery: string;
+  setUserSearchQuery: (q: string) => void;
+  handleSubmitWork: (payload: { taskId: string; workStatus: string; comment: string }) => Promise<void>;
+  handleAddUserComment: (taskId: string, commentText: string, badge?: string) => Promise<void>;
+  handleStartUserWork: (taskId: string) => Promise<void>;
+
   // Redirect / Scroll helper
   scrollToSection: (sectionId: string) => void;
 }
@@ -61,6 +87,10 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  // Portal mode: toggle between 'admin' and 'user' (WorkHub)
+  const [portalMode, setPortalMode] = useState<'admin' | 'user'>('user');
+
+  // Admin states
   const [departments, setDepartments] = useState<Department[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
@@ -73,6 +103,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [activeTab, setActiveTab] = useState<string>('Teams');
   const [teamSubTab, setTeamSubTab] = useState<string>('Members');
   const [loading, setLoading] = useState<boolean>(true);
+
+  // User Portal states
+  const [userNav, setUserNav] = useState<string>('dashboard');
+  const [selectedUserTask, setSelectedUserTask] = useState<UserAssignedWork | null>(null);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<UserWorkHistory | null>(null);
+  const [userWorkspace, setUserWorkspace] = useState<UserWorkspaceData | null>(null);
+  const [isSubmitWorkDrawerOpen, setIsSubmitWorkDrawerOpen] = useState(false);
+  const [drawerSelectedTask, setDrawerSelectedTask] = useState<UserAssignedWork | null>(null);
+  const [userFilterTab, setUserFilterTab] = useState<string>('In Progress');
+  const [userSearchQuery, setUserSearchQuery] = useState<string>('');
 
   // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
@@ -121,7 +161,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const data = await api.getTeams(deptId);
       setTeams(data);
       if (data.length > 0) {
-        // Keep existing selectedTeam if it belongs to this department, otherwise pick first
         setSelectedTeam(prev => (prev && data.some(t => t.id === prev.id) ? prev : data[0]));
       } else {
         setSelectedTeam(null);
@@ -131,62 +170,134 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const fetchTeamDetails = async (teamId: string) => {
+  const fetchMembers = async (teamId: string) => {
     try {
-      const [mems, assigns, tsks, wds] = await Promise.all([
-        api.getMembers(teamId),
-        api.getAssignments(teamId),
-        api.getTasks(teamId),
-        api.getWorkDone(teamId)
-      ]);
-      setMembers(mems);
-      setAssignments(assigns);
-      setTasks(tsks);
-      setWorkDone(wds);
+      const data = await api.getMembers(teamId);
+      setMembers(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchAssignments = async (teamId: string) => {
+    try {
+      const data = await api.getAssignments(teamId);
+      setAssignments(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchTasks = async (teamId: string) => {
+    try {
+      const data = await api.getTasks(teamId);
+      setTasks(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const fetchWorkDone = async (teamId: string) => {
+    try {
+      const data = await api.getWorkDone(teamId);
+      setWorkDone(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const refreshUserWorkspace = async () => {
+    try {
+      const data = await api.getUserWorkspace();
+      setUserWorkspace(data);
+      if (data.assignedWork && data.assignedWork.length > 0 && !selectedUserTask) {
+        // Set default selected task (TSK-2026-0487 CME poster)
+        const cmeTask = data.assignedWork.find(t => t.taskId === 'TSK-2026-0487') || data.assignedWork[0];
+        setSelectedUserTask(cmeTask);
+      }
+      if (data.history && data.history.length > 0 && !selectedHistoryItem) {
+        setSelectedHistoryItem(data.history[0]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const openSubmitWorkDrawer = (task?: UserAssignedWork) => {
+    if (task) {
+      setDrawerSelectedTask(task);
+    } else if (userWorkspace?.assignedWork?.length) {
+      setDrawerSelectedTask(userWorkspace.assignedWork[0]);
+    }
+    setIsSubmitWorkDrawerOpen(true);
+  };
+
+  const handleSubmitWork = async (payload: { taskId: string; workStatus: string; comment: string }) => {
+    try {
+      await api.submitUserWork(payload);
+      await refreshUserWorkspace();
+      setIsSubmitWorkDrawerOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleAddUserComment = async (taskId: string, commentText: string, badge: string = 'Update') => {
+    try {
+      await api.addUserComment(taskId, {
+        author: 'Rahul Sharma',
+        role: 'Team Member',
+        text: commentText,
+        badge
+      });
+      await refreshUserWorkspace();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleStartUserWork = async (taskId: string) => {
+    try {
+      await api.updateUserTaskStatus(taskId, 'In Progress');
+      await refreshUserWorkspace();
     } catch (e) {
       console.error(e);
     }
   };
 
   const refreshAll = async () => {
-    await fetchStats();
-    await fetchDepartments();
-    if (selectedDepartment) {
-      await fetchTeams(selectedDepartment.id);
-    }
-    if (selectedTeam) {
-      await fetchTeamDetails(selectedTeam.id);
-    }
+    setLoading(true);
+    await Promise.all([
+      fetchStats(),
+      fetchDepartments(),
+      refreshUserWorkspace()
+    ]);
+    setLoading(false);
   };
 
+  // Initial load
   useEffect(() => {
-    const init = async () => {
-      setLoading(true);
-      await fetchStats();
-      await fetchDepartments();
-      setLoading(false);
-    };
-    init();
+    refreshAll();
   }, []);
 
+  // When selected department changes, load its teams
   useEffect(() => {
     if (selectedDepartment) {
       fetchTeams(selectedDepartment.id);
     }
   }, [selectedDepartment]);
 
+  // When selected team changes, load members, assignments, tasks, work done
   useEffect(() => {
     if (selectedTeam) {
-      fetchTeamDetails(selectedTeam.id);
-    } else {
-      setMembers([]);
-      setAssignments([]);
-      setTasks([]);
-      setWorkDone([]);
+      fetchMembers(selectedTeam.id);
+      fetchAssignments(selectedTeam.id);
+      fetchTasks(selectedTeam.id);
+      fetchWorkDone(selectedTeam.id);
     }
   }, [selectedTeam]);
 
-  // Edit triggers
+  // Open Edit Modals
   const openEditDepartment = (dept: Department) => {
     setEditingDept(dept);
     setIsAddDeptOpen(true);
@@ -206,112 +317,83 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const handleToggleTask = async (id: string) => {
     try {
       await api.toggleTask(id);
-      if (selectedTeam) {
-        const updated = await api.getTasks(selectedTeam.id);
-        setTasks(updated);
-      }
+      if (selectedTeam) fetchTasks(selectedTeam.id);
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   const handleDeleteTask = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this task?')) return;
     try {
       await api.deleteTask(id);
-      if (selectedTeam) {
-        const updated = await api.getTasks(selectedTeam.id);
-        setTasks(updated);
-      }
+      if (selectedTeam) fetchTasks(selectedTeam.id);
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // WorkDone actions
   const handleDeleteWorkDone = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this work log?')) return;
     try {
       await api.deleteWorkDone(id);
-      if (selectedTeam) {
-        const updated = await api.getWorkDone(selectedTeam.id);
-        setWorkDone(updated);
-      }
+      if (selectedTeam) fetchWorkDone(selectedTeam.id);
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Assignment actions
   const handleDeleteAssignment = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this assignment?')) return;
     try {
       await api.deleteAssignment(id);
-      if (selectedTeam) {
-        const updated = await api.getAssignments(selectedTeam.id);
-        setAssignments(updated);
-      }
-    } catch (err) {
-      console.error(err);
+      if (selectedTeam) fetchAssignments(selectedTeam.id);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Member actions
   const handleDeleteMember = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this team member?')) return;
     try {
       await api.deleteMember(id);
-      if (selectedTeam) {
-        const updated = await api.getMembers(selectedTeam.id);
-        setMembers(updated);
-      }
+      if (selectedTeam) fetchMembers(selectedTeam.id);
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Department actions
   const handleDeleteDepartment = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this department and its teams?')) return;
+    if (!window.confirm('Are you sure you want to delete this department? All its teams and members will also be affected.')) return;
     try {
       await api.deleteDepartment(id);
-      const remaining = departments.filter(d => d.id !== id);
-      setDepartments(remaining);
-      if (remaining.length > 0) {
-        setSelectedDepartment(remaining[0]);
-      } else {
-        setSelectedDepartment(null);
-      }
+      await fetchDepartments();
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  // Team actions
   const handleDeleteTeam = async (id: string) => {
     if (!window.confirm('Are you sure you want to delete this team?')) return;
     try {
       await api.deleteTeam(id);
-      if (selectedDepartment) {
-        const remaining = teams.filter(t => t.id !== id);
-        setTeams(remaining);
-        if (remaining.length > 0) {
-          setSelectedTeam(remaining[0]);
-        } else {
-          setSelectedTeam(null);
-        }
-      }
+      if (selectedDepartment) fetchTeams(selectedDepartment.id);
       fetchStats();
-    } catch (err) {
-      console.error(err);
+    } catch (e) {
+      console.error(e);
     }
   };
 
   return (
     <AppContext.Provider
       value={{
+        portalMode,
+        setPortalMode,
         departments,
         selectedDepartment,
         setSelectedDepartment,
@@ -355,6 +437,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleDeleteMember,
         handleDeleteDepartment,
         handleDeleteTeam,
+        userNav,
+        setUserNav,
+        selectedUserTask,
+        setSelectedUserTask,
+        selectedHistoryItem,
+        setSelectedHistoryItem,
+        userWorkspace,
+        refreshUserWorkspace,
+        isSubmitWorkDrawerOpen,
+        setIsSubmitWorkDrawerOpen,
+        drawerSelectedTask,
+        openSubmitWorkDrawer,
+        userFilterTab,
+        setUserFilterTab,
+        userSearchQuery,
+        setUserSearchQuery,
+        handleSubmitWork,
+        handleAddUserComment,
+        handleStartUserWork,
         scrollToSection
       }}
     >

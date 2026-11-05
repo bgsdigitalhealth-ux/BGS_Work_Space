@@ -688,7 +688,242 @@ const initialData = {
       details: 'Enrolled in BitLocker and automated compliance monitoring.',
       date: '2026-11-05'
     }
-  ]
+  ],
+
+  userWorkspace: {
+    stats: {
+      totalAssigned: 12,
+      inProgress: 5,
+      upcomingWork: 4,
+      completedWork: 18,
+      completionRate: 82,
+      completedCount: 18,
+      totalCount: 22
+    },
+    assignedWork: [
+      {
+        id: 'user-task-1',
+        title: 'Update departmental website content',
+        department: 'Marketing',
+        team: 'Digital Media',
+        priority: 'High',
+        dueDate: 'Today, 05 Nov',
+        status: 'In Progress',
+        assignedBy: 'Priya Verma',
+        assignedOn: '04 Nov 2026, 09:30 AM',
+        description: 'Update the department homepage, added CME details and new banner images.',
+        progress: 75,
+        comments: [
+          {
+            id: 'c-1',
+            author: 'Rahul Sharma',
+            role: 'Team Member',
+            date: '04 Nov 2026, 11:10 AM',
+            badge: 'Work Started',
+            text: 'Started updating copy and banner sections.'
+          }
+        ]
+      },
+      {
+        id: 'TSK-2026-0487',
+        title: 'Prepare event poster for CME',
+        department: 'Events',
+        team: 'Design',
+        priority: 'Medium',
+        dueDate: 'Tomorrow, 06 Nov',
+        status: 'In Progress',
+        assignedBy: 'Priya Verma',
+        assignedOn: '03 Nov 2026, 10:30 AM',
+        timeLeft: '2 Days',
+        description: 'Design an event poster for the upcoming CME on "Anaesthesia Awareness Programme" with institutional branding, date, venue and resource faculty details.',
+        progress: 60,
+        timeline: {
+          assigned: '03 Nov, 10:30 AM',
+          workStarted: '03 Nov, 11:10 AM',
+          current: 'In Progress',
+          submitted: null,
+          completed: null
+        },
+        comments: [
+          {
+            id: 'c-2',
+            author: 'Rahul Sharma',
+            role: 'Team Member',
+            date: '04 Nov 2026, 11:10 AM',
+            badge: 'Work Started',
+            text: 'Started working on the poster. Concept and layout are under progress.'
+          },
+          {
+            id: 'c-3',
+            author: 'Rahul Sharma',
+            role: 'Team Member',
+            date: '05 Nov 2026, 04:20 PM',
+            badge: 'Update',
+            text: 'Draft version completed. Attached for review and feedback.'
+          },
+          {
+            id: 'c-4',
+            author: 'Priya Verma',
+            role: 'Team Lead',
+            date: '05 Nov 2026, 05:00 PM',
+            badge: 'Feedback',
+            text: 'Looks good. Please add the venue and contact details, then submit the final version.'
+          }
+        ],
+        attachments: [
+          { name: 'CME_Brief.pdf', size: '1.2 MB', date: '03 Nov 2026' },
+          { name: 'Branding_Assets.zip', size: '4.8 MB', date: '03 Nov 2026' }
+        ]
+      },
+      {
+        id: 'user-task-3',
+        title: 'Upload photos for "Anaesthesia Awareness"',
+        department: 'Events',
+        team: 'Content',
+        priority: 'Medium',
+        dueDate: '07 Nov 2026',
+        status: 'In Progress',
+        assignedBy: 'Priya Verma',
+        assignedOn: '04 Nov 2026, 02:00 PM',
+        description: 'Upload high-resolution event photographs to the media drive.',
+        progress: 40,
+        comments: []
+      },
+      {
+        id: 'user-task-4',
+        title: 'Social media post - Deepavali Wishes',
+        department: 'Branding',
+        team: 'Social Media',
+        priority: 'Low',
+        dueDate: '08 Nov 2026',
+        status: 'Not Started',
+        assignedBy: 'Aditya Rao',
+        assignedOn: '05 Nov 2026, 10:00 AM',
+        description: 'Draft bilingual festive greeting copy and graphics.',
+        progress: 0,
+        comments: []
+      },
+      {
+        id: 'user-task-5',
+        title: 'Update team progress report (October)',
+        department: 'Administration',
+        team: 'Reporting',
+        priority: 'High',
+        dueDate: '08 Nov 2026',
+        status: 'Not Started',
+        assignedBy: 'Sunita Mehra',
+        assignedOn: '05 Nov 2026, 11:30 AM',
+        description: 'Consolidate monthly sprint velocity and team metrics.',
+        progress: 0,
+        comments: []
+      }
+    ],
+    history: [
+      {
+        id: 'h-1',
+        title: 'Prepare event poster for CME',
+        taskId: 'TSK-2026-0487',
+        department: 'Events',
+        team: 'Design',
+        submittedDate: '03 Nov 2026, 11:10 AM',
+        status: 'Under Review',
+        reviewerFeedback: 'Looks good. Minor changes suggested.',
+        assignedBy: 'Priya Verma',
+        dueDate: '06 Nov 2026',
+        submittedComment: 'Completed the event poster design, updated branding elements, and shared final files for review.',
+        reviewerComments: [
+          {
+            author: 'Priya Verma',
+            role: 'Team Lead',
+            date: '03 Nov 2026, 03:40 PM',
+            text: 'Looks good overall. Please make a minor adjustment to the event date size and share the updated version.'
+          },
+          {
+            author: 'Rahul Sharma',
+            role: 'You',
+            date: '03 Nov 2026, 04:05 PM',
+            text: 'Updated the event date size as suggested and re-uploaded the final file.'
+          }
+        ]
+      },
+      {
+        id: 'h-2',
+        title: 'Update CME landing page',
+        taskId: 'TSK-2026-0412',
+        department: 'Events',
+        team: 'Web',
+        submittedDate: '31 Oct 2026, 05:40 PM',
+        status: 'Approved',
+        reviewerFeedback: 'Approved. Ready to publish.',
+        assignedBy: 'Vikram Joshi',
+        dueDate: '31 Oct 2026',
+        submittedComment: 'Landing page responsive layout and registration CTA deployed.',
+        reviewerComments: []
+      },
+      {
+        id: 'h-3',
+        title: 'Create presentation deck',
+        taskId: 'TSK-2026-0390',
+        department: 'Design',
+        team: 'Design',
+        submittedDate: '29 Oct 2026, 02:15 PM',
+        status: 'Completed',
+        reviewerFeedback: 'Well structured and on brand.',
+        assignedBy: 'Tanvi Desai',
+        dueDate: '29 Oct 2026',
+        submittedComment: 'Slide deck formatted with standard enterprise typography.',
+        reviewerComments: []
+      },
+      {
+        id: 'h-4',
+        title: 'Branding assets - Phase 2',
+        taskId: 'TSK-2026-0341',
+        department: 'Design',
+        team: 'Design',
+        submittedDate: '27 Oct 2026, 04:20 PM',
+        status: 'Rework Requested',
+        reviewerFeedback: 'Please update the icon set and resubmit.',
+        assignedBy: 'Kavita Menon',
+        dueDate: '27 Oct 2026',
+        submittedComment: 'SVG vector icons exported for web and mobile.',
+        reviewerComments: []
+      },
+      {
+        id: 'h-5',
+        title: 'CME venue & logistics plan',
+        taskId: 'TSK-2026-0310',
+        department: 'Events',
+        team: 'Events',
+        submittedDate: '24 Oct 2026, 01:05 PM',
+        status: 'Approved',
+        reviewerFeedback: 'Plan is good. Proceed as discussed.',
+        assignedBy: 'Ashok Chauhan',
+        dueDate: '24 Oct 2026',
+        submittedComment: 'Audio-visual equipment booked and seating capacity verified.',
+        reviewerComments: []
+      }
+    ],
+    recentActivities: [
+      {
+        id: 'act-1',
+        type: 'submitted',
+        title: 'Submitted: Social media post - World Suicide Prevention Day',
+        date: '04 Nov, 05:20 PM'
+      },
+      {
+        id: 'act-2',
+        type: 'started',
+        title: 'Work Started: Update departmental brochure',
+        date: '04 Nov, 11:10 AM'
+      },
+      {
+        id: 'act-3',
+        type: 'assigned',
+        title: 'Assigned: Prepare event poster for CME',
+        date: '03 Nov, 04:45 PM'
+      }
+    ]
+  }
 };
 
 module.exports = initialData;

@@ -62,3 +62,73 @@ export interface DashboardStats {
   databaseMode?: string;
 }
 
+// User Portal (WorkHub) Types
+export interface UserTaskComment {
+  id: string;
+  author: string;
+  role: string;
+  date: string;
+  badge?: string;
+  text: string;
+}
+
+export interface UserTaskAttachment {
+  name: string;
+  size: string;
+  date: string;
+}
+
+export interface UserAssignedWork {
+  id: string;
+  taskId?: string;
+  title: string;
+  department: string;
+  team: string;
+  priority: 'High' | 'Medium' | 'Low';
+  dueDate: string;
+  status: 'In Progress' | 'Not Started' | 'Completed' | 'Under Review';
+  assignedBy?: string;
+  assignedOn?: string;
+  description?: string;
+  progress?: number;
+  comments?: UserTaskComment[];
+  attachments?: UserTaskAttachment[];
+}
+
+export interface UserWorkHistory {
+  id: string;
+  title: string;
+  taskId: string;
+  department: string;
+  team: string;
+  submittedDate: string;
+  status: 'Under Review' | 'Approved' | 'Completed' | 'Rework Requested';
+  reviewerFeedback: string;
+  assignedBy: string;
+  dueDate: string;
+  submittedComment?: string;
+  reviewerComments?: UserTaskComment[];
+}
+
+export interface UserActivity {
+  id: string;
+  type: 'submitted' | 'started' | 'assigned';
+  title: string;
+  date: string;
+}
+
+export interface UserWorkspaceData {
+  stats: {
+    totalAssigned: number;
+    inProgress: number;
+    upcomingWork: number;
+    completedWork: number;
+    completionPercentage: number;
+    completedFractionText: string;
+  };
+  assignedWork: UserAssignedWork[];
+  history: UserWorkHistory[];
+  recentActivities: UserActivity[];
+}
+
+

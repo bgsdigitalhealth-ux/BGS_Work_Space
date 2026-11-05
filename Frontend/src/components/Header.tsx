@@ -1,12 +1,12 @@
 import React from 'react';
-import { Bell, ChevronDown, RefreshCw } from 'lucide-react';
+import { Bell, ChevronDown, RefreshCw, ArrowRightLeft } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const Header: React.FC = () => {
-  const { refreshAll } = useApp();
+  const { refreshAll, setPortalMode } = useApp();
 
   return (
-    <header className="flex items-center justify-between pb-6 pt-2">
+    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 pt-2">
       <div>
         <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           Welcome, Admin <span className="inline-block animate-pulse">👋</span>
@@ -16,7 +16,17 @@ export const Header: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Switch to User Portal (Rahul Sharma) */}
+        <button
+          onClick={() => setPortalMode('user')}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#5a36e6] border border-purple-200 text-xs font-bold transition shadow-sm"
+          title="Switch to User Portal (Rahul Sharma)"
+        >
+          <ArrowRightLeft className="w-3.5 h-3.5" />
+          <span>Switch to User Portal (WorkHub)</span>
+        </button>
+
         {/* Refresh button */}
         <button
           onClick={() => refreshAll()}
