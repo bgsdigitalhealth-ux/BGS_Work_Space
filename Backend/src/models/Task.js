@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const taskSchema = new mongoose.Schema({
   teamId: {
     type: mongoose.Schema.Types.Mixed,
-    required: true
+    default: 'general'
   },
   assignmentId: {
     type: String,
@@ -36,6 +36,18 @@ const taskSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  assignedBy: {
+    type: String,
+    default: 'Admin'
+  },
+  assignerRole: {
+    type: String,
+    default: 'admin'
+  },
+  assignmentType: {
+    type: String,
+    default: 'admin_to_user'
+  },
   date: {
     type: String,
     default: () => new Date().toISOString().split('T')[0]
@@ -43,4 +55,3 @@ const taskSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Task', taskSchema);
-

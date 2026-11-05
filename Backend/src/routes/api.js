@@ -328,11 +328,11 @@ router.delete('/members/:id', async (req, res) => {
   }
 });
 
-// --- Assignments ---
+// --- Assignments (Any-to-Any: user_to_user, admin_to_admin, user_to_admin, admin_to_user) ---
 router.get('/assignments', async (req, res) => {
   try {
-    const { teamId } = req.query;
-    const assignments = await dataService.getAssignments(teamId);
+    const { teamId, userId, assignerId, assigneeId, type } = req.query;
+    const assignments = await dataService.getAssignments({ teamId, userId, assignerId, assigneeId, type });
     res.json(assignments);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -341,18 +341,9 @@ router.get('/assignments', async (req, res) => {
 
 router.post('/assignments', async (req, res) => {
   try {
-    const { memberId, teamId, workTitle, workDescription, role, priority, dueDate, status } = req.body;
+    const { workTitle } = req.body;
     if (!workTitle) return res.status(400).json({ error: 'Work title is required' });
-    const created = await dataService.createAssignment({
-      memberId,
-      teamId,
-      workTitle,
-      workDescription,
-      role,
-      priority,
-      dueDate,
-      status
-    });
+    const created = await dataService.createAssignment(req.body);
     broadcast('WORK_ASSIGNED', created);
     res.status(201).json(created);
   } catch (err) {
@@ -583,6 +574,122 @@ router.post(['/reset-data', '/purge-all-data'], async (req, res) => {
     const result = await dataService.clearAllData();
     broadcast('DATA_RESET', { message: 'All dummy data purged completely' });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Real-Time Messaging Endpoints ---
+const { getIO } = require('../socket');
+
+router.get('/messages/eligible-users', async (req, res) => {
+  try {
+    const { currentUserId } = req.query;
+    const users = await dataService.getEligibleUsers(currentUserId);
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/messages/conversations', async (req, res) => {
+  try {
+    const { userId, email } = req.query;
+    if (!userId && !email) {
+      return res.status(400).json({ error: 'userId or email is required' });
+    }
+    const conversations = await dataService.getConversationsForUser(userId, email);
+    res.json(conversations);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/messages/conversations/start', async (req, res) => {
+  try {
+    const { currentUserId, recipientEmail } = req.body;
+    if (!currentUserId || !recipientEmail) {
+      return res.status(400).json({ error: 'currentUserId and recipientEmail are required' });
+    }
+    const conversation = await dataService.findOrCreateConversation(currentUserId, recipientEmail);
+    res.status(200).json(conversation);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/messages/history/:conversationId', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userId } = req.query;
+    const messages = await dataService.getMessagesForConversation(conversationId, userId);
+    res.json(messages);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/messages/send', async (req, res) => {
+  try {
+    const msg = await dataService.createMessage(req.body);
+    const io = getIO();
+    if (io) {
+      io.to(`conv_${msg.conversationId}`).emit('new_message', msg);
+      io.to(`user_${msg.recipientId}`).emit('conversation_updated', {
+        conversationId: msg.conversationId,
+        lastMessage: msg,
+        recipientId: msg.recipientId
+      });
+      io.to(`user_${msg.recipientEmail}`).emit('conversation_updated', {
+        conversationId: msg.conversationId,
+        lastMessage: msg,
+        recipientId: msg.recipientId
+      });
+      io.to(`user_${msg.senderId}`).emit('conversation_updated', {
+        conversationId: msg.conversationId,
+        lastMessage: msg,
+        senderId: msg.senderId
+      });
+      io.to(`user_${msg.senderEmail}`).emit('conversation_updated', {
+        conversationId: msg.conversationId,
+        lastMessage: msg,
+        senderId: msg.senderId
+      });
+    }
+    broadcast('MESSAGES_UPDATED', { conversationId: msg.conversationId });
+    res.status(201).json(msg);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/messages/read/:conversationId', async (req, res) => {
+  try {
+    const { conversationId } = req.params;
+    const { userId } = req.body;
+    await dataService.markConversationAsRead(conversationId, userId);
+    const io = getIO();
+    if (io) {
+      io.to(`conv_${conversationId}`).emit('messages_read', {
+        conversationId,
+        readerId: userId,
+        readAt: new Date().toISOString()
+      });
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/messages/unread-count', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: 'userId is required' });
+    }
+    const count = await dataService.getTotalUnreadMessagesCount(userId);
+    res.json({ count });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -68,12 +68,32 @@ export const TodayTasks: React.FC = () => {
                   {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
                 <div className="flex flex-col min-w-0">
-                  <span
-                    className={`text-xs font-semibold truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
-                      }`}
-                  >
-                    {task.title}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`text-xs font-semibold truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                        }`}
+                    >
+                      {task.title}
+                    </span>
+                    {task.assignmentType && (
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${
+                        task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                        task.assignmentType === 'admin_to_admin' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                        task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                        'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      }`}>
+                        {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
+                         task.assignmentType === 'admin_to_admin' ? 'Admin → Admin' :
+                         task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'User → User'}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 text-[10px]">
+                    <span className="text-slate-500 font-medium">To: {task.memberName || 'Member'}</span>
+                    {task.assignedBy && (
+                      <span className="text-slate-400">· By: {task.assignedBy}</span>
+                    )}
+                  </div>
                   {task.completed ? (
                     <span className="text-[10px] text-emerald-600 font-bold">
                       ✓ Done (Updated by Member)

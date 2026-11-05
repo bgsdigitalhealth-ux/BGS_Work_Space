@@ -12,7 +12,8 @@ import {
   ChevronDown, 
   ChevronRight,
   Database,
-  Settings
+  Settings,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -25,7 +26,8 @@ export const Sidebar: React.FC = () => {
     setTeamSubTab, 
     scrollToSection, 
     adminNav, 
-    setAdminNav
+    setAdminNav,
+    unreadMessagesCount
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
@@ -179,7 +181,40 @@ export const Sidebar: React.FC = () => {
           )}
         </div>
 
-        {/* Roles & Assignments */}
+        {/* Appointments Direct Nav Item */}
+        <button 
+          onClick={() => {
+            setAdminNav('appointments');
+          }}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
+            adminNav === 'appointments' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <CalendarIcon className="w-4 h-4 text-slate-400" />
+          <span>Appointments</span>
+        </button>
+
+        {/* Messages Link Matching Screenshot */}
+        <button 
+          onClick={() => setAdminNav('messages')}
+          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all text-left cursor-pointer ${
+            adminNav === 'messages' 
+              ? 'text-white bg-[#15803d] shadow-md shadow-emerald-900/30' 
+              : 'text-slate-300 hover:text-white hover:bg-white/5'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <MessageSquare className={`w-4 h-4 ${adminNav === 'messages' ? 'text-white' : 'text-slate-400'}`} />
+            <span>Messages</span>
+          </div>
+          {unreadMessagesCount > 0 && (
+            <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+              {unreadMessagesCount}
+            </span>
+          )}
+        </button>
+
+        {/* Reports */}
         <button 
           onClick={() => {
             setAdminNav('dashboard');

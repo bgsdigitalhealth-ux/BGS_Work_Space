@@ -1,4 +1,4 @@
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats } from '../types';
+import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage } from '../types';
 
 // Support production backend on Render via VITE_API_URL or fallback to local proxy /api
 const rawBase = (import.meta.env.VITE_API_URL || '').trim();
@@ -104,8 +104,18 @@ export const api = {
   },
 
   // Assignments
-  getAssignments: async (teamId?: string): Promise<Assignment[]> => {
-    const url = teamId ? `${API_BASE}/assignments?teamId=${teamId}` : `${API_BASE}/assignments`;
+  getAssignments: async (filter?: string | { teamId?: string; assignerId?: string; assigneeId?: string; type?: string }): Promise<Assignment[]> => {
+    let url = `${API_BASE}/assignments`;
+    if (typeof filter === 'string') {
+      url += `?teamId=${filter}`;
+    } else if (filter) {
+      const params = new URLSearchParams();
+      if (filter.teamId) params.append('teamId', filter.teamId);
+      if (filter.assignerId) params.append('assignerId', filter.assignerId);
+      if (filter.assigneeId) params.append('assigneeId', filter.assigneeId);
+      if (filter.type) params.append('type', filter.type);
+      url += `?${params.toString()}`;
+    }
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to fetch assignments');
     return res.json();
@@ -367,6 +377,81 @@ export const api = {
       body: JSON.stringify({ feedback })
     });
     if (!res.ok) throw new Error('Failed to request rework');
+    return res.json();
+  },
+
+  // Real-Time Messaging API
+  getEligibleUsers: async (currentUserId?: string): Promise<EligibleUser[]> => {
+    const url = currentUserId ? `${API_BASE}/messages/eligible-users?currentUserId=${encodeURIComponent(currentUserId)}` : `${API_BASE}/messages/eligible-users`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch eligible users');
+    return res.json();
+  },
+
+  getConversations: async (userId?: string, email?: string): Promise<Conversation[]> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (email) params.append('email', email);
+    const res = await fetch(`${API_BASE}/messages/conversations?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch conversations');
+    return res.json();
+  },
+
+  startConversation: async (currentUserId: string, recipientEmail: string): Promise<Conversation> => {
+    const res = await fetch(`${API_BASE}/messages/conversations/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentUserId, recipientEmail })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to start conversation' }));
+      throw new Error(err.error || 'Failed to start conversation');
+    }
+    return res.json();
+  },
+
+  getMessageHistory: async (conversationId: string, userId?: string): Promise<ChatMessage[]> => {
+    const url = userId ? `${API_BASE}/messages/history/${conversationId}?userId=${encodeURIComponent(userId)}` : `${API_BASE}/messages/history/${conversationId}`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch message history');
+    return res.json();
+  },
+
+  sendMessage: async (data: {
+    conversationId: string;
+    senderId: string;
+    senderEmail: string;
+    senderName: string;
+    senderRole?: string;
+    recipientEmail: string;
+    text: string;
+    attachment?: any;
+  }): Promise<ChatMessage> => {
+    const res = await fetch(`${API_BASE}/messages/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to send message' }));
+      throw new Error(err.error || 'Failed to send message');
+    }
+    return res.json();
+  },
+
+  markMessagesRead: async (conversationId: string, userId: string): Promise<{ success: boolean }> => {
+    const res = await fetch(`${API_BASE}/messages/read/${conversationId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    if (!res.ok) throw new Error('Failed to mark messages as read');
+    return res.json();
+  },
+
+  getUnreadMessagesCount: async (userId: string): Promise<{ count: number }> => {
+    const res = await fetch(`${API_BASE}/messages/unread-count?userId=${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('Failed to fetch unread messages count');
     return res.json();
   }
 };

@@ -24,16 +24,30 @@ export interface Member {
   avatar: string;
 }
 
+export type AssignmentType = 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user';
+
 export interface Assignment {
   id: string;
-  memberId: string;
-  teamId: string;
+  memberId?: string;
+  teamId?: string;
+  departmentId?: string;
   workTitle: string;
   workDescription: string;
   role: string;
   priority: 'High' | 'Medium' | 'Low';
   dueDate: string;
   status: 'In Progress' | 'To Do' | 'In Review' | 'Completed';
+  // Any-to-Any Metadata
+  assignerId?: string;
+  assignerName?: string;
+  assignerRole?: 'admin' | 'user';
+  assignerEmail?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  assigneeRole?: 'admin' | 'user';
+  assigneeEmail?: string;
+  assignmentType?: AssignmentType;
+  createdAt?: string;
 }
 
 export interface Task {
@@ -43,6 +57,12 @@ export interface Task {
   priority: 'High' | 'Medium' | 'Low';
   completed: boolean;
   date: string;
+  assignmentId?: string;
+  memberId?: string;
+  memberName?: string;
+  assignedBy?: string;
+  assignerRole?: string;
+  assignmentType?: AssignmentType;
 }
 
 export interface WorkDone {
@@ -88,6 +108,8 @@ export interface UserAssignedWork {
   dueDate: string;
   status: 'In Progress' | 'Not Started' | 'Completed' | 'Under Review';
   assignedBy?: string;
+  assignerRole?: string;
+  assignmentType?: AssignmentType;
   assignedOn?: string;
   description?: string;
   progress?: number;
@@ -200,6 +222,76 @@ export interface Notification {
   read: boolean;
   link?: string;
 }
+
+// Messaging System Types
+export interface MessageAttachment {
+  name: string;
+  url: string;
+  size?: number | string;
+  type?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  customId?: string;
+  conversationId: string;
+  senderId: string;
+  senderEmail: string;
+  senderName: string;
+  senderRole?: 'admin' | 'user';
+  recipientId: string;
+  recipientEmail: string;
+  recipientName: string;
+  text: string;
+  attachment?: MessageAttachment | null;
+  status: 'sent' | 'delivered' | 'read';
+  readAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ConversationParticipant {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  avatar?: string;
+  phone?: string;
+  department?: string;
+  team?: string;
+}
+
+export interface Conversation {
+  id: string;
+  customId?: string;
+  participants: string[];
+  participantEmails: string[];
+  otherUser: ConversationParticipant;
+  lastMessage?: {
+    text: string;
+    senderId: string;
+    senderEmail: string;
+    senderName: string;
+    timestamp: string;
+    status: 'sent' | 'delivered' | 'read';
+  };
+  unread: number;
+  unreadCounts?: Record<string, number>;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface EligibleUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'user';
+  avatar?: string;
+  phone?: string;
+  department?: string;
+  team?: string;
+}
+
 
 
 

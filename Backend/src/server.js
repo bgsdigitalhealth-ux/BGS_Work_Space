@@ -1,5 +1,6 @@
 const path = require('path');
 const dotenv = require('dotenv');
+const http = require('http');
 
 // Load environment variables from Backend/.env (or root .env as fallback)
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -10,8 +11,10 @@ const cors = require('cors');
 const { connectDB } = require('./config/db');
 const { initMongoSeed } = require('./seed/dataService');
 const apiRoutes = require('./routes/api');
+const { initSocket } = require('./socket');
 
 const app = express();
+const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
@@ -67,8 +70,11 @@ const startServer = async () => {
     await initMongoSeed();
   }
 
-  app.listen(PORT, HOST, () => {
-    console.log(`[Server] Worker Space Backend running on http://${HOST}:${PORT}`);
+  // Initialize Socket.IO Real-Time Engine
+  initSocket(server);
+
+  server.listen(PORT, HOST, () => {
+    console.log(`[Server] Worker Space Backend with Socket.IO running on http://${HOST}:${PORT}`);
   });
 };
 

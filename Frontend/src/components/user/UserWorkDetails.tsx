@@ -91,7 +91,19 @@ export const UserWorkDetails: React.FC = () => {
           </div>
 
           {/* Badges on Top Right */}
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+            {task.assignmentType && (
+              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                task.assignmentType === 'user_to_user' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                'bg-purple-50 text-purple-700 border border-purple-200'
+              }`}>
+                {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
+                 task.assignmentType === 'user_to_user' ? 'User → User' :
+                 task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Admin → Admin'}
+              </span>
+            )}
             <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-600 border border-amber-200">
               {task.priority} Priority
             </span>

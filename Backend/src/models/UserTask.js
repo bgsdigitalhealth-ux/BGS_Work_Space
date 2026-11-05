@@ -25,11 +25,11 @@ const userTaskSchema = new mongoose.Schema({
   },
   department: {
     type: String,
-    default: 'Engineering'
+    default: 'General'
   },
   team: {
     type: String,
-    default: 'Backend Team'
+    default: 'Team'
   },
   priority: {
     type: String,
@@ -46,6 +46,18 @@ const userTaskSchema = new mongoose.Schema({
   assignedBy: {
     type: String,
     default: 'Admin'
+  },
+  assignerRole: {
+    type: String,
+    default: 'admin'
+  },
+  assignerId: {
+    type: String,
+    default: ''
+  },
+  assignmentType: {
+    type: String,
+    default: 'admin_to_user'
   },
   assignedOn: {
     type: String,
@@ -67,4 +79,3 @@ const userTaskSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('UserTask', userTaskSchema);
-

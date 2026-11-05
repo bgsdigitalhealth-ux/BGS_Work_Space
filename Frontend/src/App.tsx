@@ -9,6 +9,7 @@ import { Modals } from './components/Modals';
 // Admin Views
 import { AdminAppointments } from './components/admin/AdminAppointments';
 import { AdminSettings } from './components/admin/AdminSettings';
+import { MessagesView } from './components/messages/MessagesView';
 
 // User Portal Components
 import { UserSidebar } from './components/user/UserSidebar';
@@ -17,6 +18,7 @@ import { UserDashboard } from './components/user/UserDashboard';
 import { UserWorkDetails } from './components/user/UserWorkDetails';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
+import { UserAssignWork } from './components/user/UserAssignWork';
 import { LoginPage } from './components/auth/LoginPage';
 import { useApp } from './context/AppContext';
 
@@ -40,8 +42,10 @@ export const App: React.FC = () => {
 
           {/* Conditional View by userNav */}
           {userNav === 'dashboard' && <UserDashboard />}
+          {userNav === 'messages' && <MessagesView />}
           {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserWorkDetails />}
+          {userNav === 'assign-work' && <UserAssignWork />}
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'team' && (
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
@@ -88,6 +92,9 @@ export const App: React.FC = () => {
         {adminNav === 'appointments' ? (
           /* Admin Side - Appointment Management */
           <AdminAppointments />
+        ) : adminNav === 'messages' ? (
+          /* Admin Side - Real-Time WhatsApp Style Messaging */
+          <MessagesView />
         ) : adminNav === 'settings' ? (
           /* Admin Side - Settings & Personnel Management */
           <AdminSettings />

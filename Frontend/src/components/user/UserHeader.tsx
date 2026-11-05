@@ -74,6 +74,26 @@ export const UserHeader: React.FC = () => {
           </div>
         )}
 
+        {userNav === 'assign-work' && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setUserNav('dashboard')}
+              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm cursor-pointer"
+              title="Back to Dashboard"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">
+                Assign & Delegate Work
+              </h1>
+              <p className="text-xs text-[#6b7280] font-medium mt-0.5">
+                Assign tasks to teammates (User → User) or request work from Admins (User → Admin)
+              </p>
+            </div>
+          </div>
+        )}
+
         {userNav === 'team' && (
           <div>
             <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">

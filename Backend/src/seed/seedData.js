@@ -8,6 +8,8 @@ const initialData = {
   workDone: [],
   appointments: [],
   notifications: [],
+  conversations: [],
+  messages: [],
 
   // Dynamic user workspace
   userWorkspace: {

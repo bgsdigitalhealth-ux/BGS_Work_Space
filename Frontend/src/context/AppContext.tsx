@@ -16,6 +16,7 @@ import {
   Notification
 } from '../types';
 import { api, API_BASE } from '../services/api';
+import { getSocket, connectSocketUser } from '../services/socket';
 
 interface AppContextType {
   // Authentication & Session
@@ -44,6 +45,8 @@ interface AppContextType {
   tasks: Task[];
   workDone: WorkDone[];
   stats: DashboardStats | null;
+  allUsers: User[];
+  fetchAllUsers: () => Promise<void>;
   activeTab: string;
   setActiveTab: (tab: string) => void;
   teamSubTab: string;
@@ -134,6 +137,10 @@ interface AppContextType {
   handleMarkAllNotificationsRead: () => Promise<void>;
   refreshNotifications: () => Promise<void>;
 
+  // Real-Time Messages
+  unreadMessagesCount: number;
+  refreshUnreadMessagesCount: () => Promise<void>;
+
   // Redirect / Scroll helper
   scrollToSection: (sectionId: string) => void;
 }
@@ -168,6 +175,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workDone, setWorkDone] = useState<WorkDone[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
   const [activeTab, setActiveTab] = useState<string>('Teams');
   const [teamSubTab, setTeamSubTab] = useState<string>('Members');
   const [loading, setLoading] = useState<boolean>(true);
@@ -512,11 +520,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const fetchAllUsers = async () => {
+    try {
+      const u = await api.getUsers();
+      setAllUsers(u || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const refreshAll = async () => {
     setLoading(true);
     const promises: Promise<any>[] = [
       fetchStats(),
       fetchDepartments(),
+      fetchAllUsers(),
       refreshUserWorkspace(),
       refreshAppointments(),
       refreshNotifications()
@@ -680,6 +698,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const unreadNotificationCount = notifications.filter(n => !n.read).length;
 
+  // Real-Time Messaging Unread Count Tracking
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+
+  const refreshUnreadMessagesCount = async () => {
+    if (!currentUser) {
+      setUnreadMessagesCount(0);
+      return;
+    }
+    try {
+      const res = await api.getUnreadMessagesCount(currentUser.id);
+      setUnreadMessagesCount(res.count || 0);
+    } catch (err) {
+      console.warn('Failed to fetch unread messages count:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshUnreadMessagesCount();
+      connectSocketUser(currentUser);
+      const socket = getSocket();
+
+      const handleUpdate = () => {
+        refreshUnreadMessagesCount();
+      };
+
+      socket.on('conversation_updated', handleUpdate);
+      socket.on('new_message', handleUpdate);
+      socket.on('messages_read', handleUpdate);
+
+      return () => {
+        socket.off('conversation_updated', handleUpdate);
+        socket.off('new_message', handleUpdate);
+        socket.off('messages_read', handleUpdate);
+      };
+    } else {
+      setUnreadMessagesCount(0);
+    }
+  }, [currentUser]);
+
   return (
     <AppContext.Provider
       value={{
@@ -702,6 +760,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tasks,
         workDone,
         stats,
+        allUsers,
+        fetchAllUsers,
         activeTab,
         setActiveTab,
         teamSubTab,
@@ -776,6 +836,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleMarkNotificationRead,
         handleMarkAllNotificationsRead,
         refreshNotifications,
+        unreadMessagesCount,
+        refreshUnreadMessagesCount,
         scrollToSection
       }}
     >

@@ -212,7 +212,16 @@ export const UserDashboard: React.FC = () => {
         <div className={`${isSubmitWorkDrawerOpen ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-gray-100 shadow-sm p-6 transition-all duration-300`}>
           {/* Table Header Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-            <h2 className="text-lg font-bold text-gray-900 tracking-tight">My Assigned Work</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight">My Assigned Work</h2>
+              <button
+                onClick={() => setUserNav('assign-work')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-sm cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>+ Assign Work</span>
+              </button>
+            </div>
 
             <div className="flex items-center gap-3">
               {/* Dropdown Filter */}
@@ -320,9 +329,30 @@ export const UserDashboard: React.FC = () => {
                             <div className="w-8 h-8 rounded-lg bg-indigo-50 text-[#5a36e6] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition">
                               <IconComponent className="w-4 h-4" />
                             </div>
-                            <span className="font-bold text-gray-900 group-hover:text-[#5a36e6] transition line-clamp-1">
-                              {task.title}
-                            </span>
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-gray-900 group-hover:text-[#5a36e6] transition line-clamp-1">
+                                  {task.title}
+                                </span>
+                                {task.assignmentType && (
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
+                                    task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                                    task.assignmentType === 'user_to_user' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                    task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                    'bg-purple-50 text-purple-700 border border-purple-200'
+                                  }`}>
+                                    {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
+                                     task.assignmentType === 'user_to_user' ? 'User → User' :
+                                     task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Admin → Admin'}
+                                  </span>
+                                )}
+                              </div>
+                              {task.assignedBy && (
+                                <span className="text-[10px] text-gray-400 font-medium">
+                                  By: {task.assignedBy}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
                         <td className="py-4 text-gray-500 whitespace-nowrap">

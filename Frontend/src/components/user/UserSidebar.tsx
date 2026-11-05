@@ -10,21 +10,24 @@ import {
   History, 
   Users, 
   FileText,
-  LogOut
+  LogOut,
+  MessageSquare
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
-  const { userNav, setUserNav, logout, openSubmitWorkDrawer, userWorkspace, currentUser } = useApp();
+  const { userNav, setUserNav, logout, openSubmitWorkDrawer, userWorkspace, currentUser, unreadMessagesCount } = useApp();
 
   const assignedCount = userWorkspace?.assignedWork?.length || 0;
 
   const navItems = [
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
+    { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { id: 'appointments', label: 'Appointments', icon: CalendarIcon },
     { id: 'my-schedule', label: 'My Schedule', icon: CalendarCheck },
     { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: assignedCount > 0 ? assignedCount : undefined },
+    { id: 'assign-work', label: 'Assign Work', icon: Send },
     { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
     { id: 'work-history', label: 'Work History', icon: History },
     { id: 'team', label: 'Team', icon: Users },

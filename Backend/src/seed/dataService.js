@@ -10,6 +10,8 @@ const Appointment = require('../models/Appointment');
 const Notification = require('../models/Notification');
 const UserTask = require('../models/UserTask');
 const WorkHistory = require('../models/WorkHistory');
+const Conversation = require('../models/Conversation');
+const Message = require('../models/Message');
 const initialData = require('./seedData');
 
 const fs = require('fs');
@@ -74,6 +76,8 @@ const clearAllData = async () => {
   memoryStore.workDone = [];
   memoryStore.appointments = [];
   memoryStore.notifications = [];
+  memoryStore.conversations = [];
+  memoryStore.messages = [];
   memoryStore.userWorkspace = {
     stats: {
       totalAssigned: 0,
@@ -104,6 +108,8 @@ const clearAllData = async () => {
       await WorkDone.deleteMany({});
       await Appointment.deleteMany({});
       await Notification.deleteMany({});
+      await Conversation.deleteMany({});
+      await Message.deleteMany({});
       await UserTask.deleteMany({});
       await WorkHistory.deleteMany({});
       await User.deleteMany({ email: { $nin: ['dynamicsajjan@gamil.com', 'dynamicsajjan@gmail.com'] } });
@@ -573,76 +579,145 @@ const deleteMember = async (id) => {
   return true;
 };
 
-// --- Assignments ---
-const getAssignments = async (teamId = null) => {
+// --- Assignments (4 Formats: user_to_user, admin_to_admin, user_to_admin, admin_to_user) ---
+const getAssignments = async (filter = null) => {
+  let query = {};
+  if (filter && typeof filter === 'object') {
+    if (filter.teamId) query.teamId = filter.teamId;
+    if (filter.assignerId) query.assignerId = filter.assignerId;
+    if (filter.assigneeId) query.assigneeId = filter.assigneeId;
+    if (filter.type) query.assignmentType = filter.type;
+  } else if (typeof filter === 'string') {
+    query.teamId = filter;
+  }
+
   if (getStatus()) {
     try {
-      const filter = teamId ? { teamId } : {};
-      const list = await Assignment.find(filter).lean();
+      const list = await Assignment.find(query).sort({ createdAt: -1 }).lean();
       return list.map(a => ({ ...a, id: a._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
   }
-  if (teamId) {
-    return memoryStore.assignments.filter(a => a.teamId === teamId);
-  }
-  return memoryStore.assignments;
+
+  let res = memoryStore.assignments || [];
+  if (query.teamId) res = res.filter(a => a.teamId === query.teamId);
+  if (query.assignerId) res = res.filter(a => a.assignerId === query.assignerId);
+  if (query.assigneeId) res = res.filter(a => a.assigneeId === query.assigneeId);
+  if (query.assignmentType) res = res.filter(a => a.assignmentType === query.assignmentType);
+  return res;
 };
 
 const createAssignment = async (data) => {
-  const newAssign = {
-    id: generateId('assign'),
-    memberId: data.memberId,
-    teamId: data.teamId,
-    workTitle: data.workTitle,
-    workDescription: data.workDescription || '',
-    role: data.role || 'Developer',
-    priority: data.priority || 'Medium',
-    dueDate: data.dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-    status: data.status || 'In Progress'
-  };
-  memoryStore.assignments.unshift(newAssign);
+  // 1. Determine Assigner & Assignee Roles
+  const assignerRole = data.assignerRole || (data.assignerId?.includes('admin') ? 'admin' : 'admin');
+  const assigneeRole = data.assigneeRole || (data.role?.toLowerCase()?.includes('admin') ? 'admin' : 'user');
 
-  // Update member assignedWork
-  const member = memoryStore.members.find(m => m.id === data.memberId || m.id === (data.memberId && data.memberId.toString()));
-  if (member) {
-    member.assignedWork = data.workTitle;
+  // Format: 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user'
+  let assignmentType = data.assignmentType;
+  if (!assignmentType) {
+    assignmentType = `${assignerRole}_to_${assigneeRole}`;
   }
 
-  // Look up DB member / team if connected
+  // 2. Resolve Assigner info
+  let assignerName = data.assignerName || '';
+  if (!assignerName) {
+    const foundUser = (memoryStore.users || []).find(u => u.id === data.assignerId || (data.assignerEmail && u.email && u.email.toLowerCase() === data.assignerEmail.toLowerCase()));
+    assignerName = foundUser ? foundUser.name : (assignerRole === 'admin' ? 'Admin' : 'Team Member');
+  }
+
+  // 3. Resolve Assignee info
+  let assigneeName = data.assigneeName || '';
+  let assigneeEmail = data.assigneeEmail || '';
+  let targetUserId = data.assigneeId || data.memberId || '';
+  let member = null;
   let dbMember = null;
   let dbTeam = null;
+
+  if (data.memberId) {
+    member = (memoryStore.members || []).find(m => m.id === data.memberId || m.id === data.memberId?.toString());
+    if (member) {
+      if (!assigneeName) assigneeName = member.name;
+      if (!assigneeEmail) assigneeEmail = member.email;
+      member.assignedWork = data.workTitle;
+    }
+  }
+
+  if (data.assigneeId) {
+    const foundUser = (memoryStore.users || []).find(u => u.id === data.assigneeId || (data.assigneeEmail && u.email && u.email.toLowerCase() === data.assigneeEmail.toLowerCase()));
+    if (foundUser) {
+      if (!assigneeName) assigneeName = foundUser.name;
+      if (!assigneeEmail) assigneeEmail = foundUser.email;
+      targetUserId = foundUser.id;
+    }
+  }
+
   if (getStatus()) {
     try {
-      dbMember = await Member.findById(data.memberId).lean();
-      dbTeam = await Team.findById(data.teamId).lean();
+      if (data.memberId) dbMember = await Member.findById(data.memberId).lean();
+      if (data.teamId && data.teamId !== 'general') dbTeam = await Team.findById(data.teamId).lean();
     } catch (e) {
       // ignore
     }
   }
 
-  const memberName = dbMember ? dbMember.name : (member ? member.name : '');
-  const team = memoryStore.teams.find(t => t.id === data.teamId || t.id === (data.teamId && data.teamId.toString()));
-  const dept = team ? memoryStore.departments.find(d => d.id === team.departmentId) : null;
-  const teamName = dbTeam ? dbTeam.name : (team ? team.name : 'Team');
+  if (dbMember) {
+    if (!assigneeName) assigneeName = dbMember.name;
+    if (!assigneeEmail) assigneeEmail = dbMember.email;
+  }
 
-  // --- AUTOMATICALLY CREATE TASK IN "TODAY'S TASKS" ---
+  const team = (memoryStore.teams || []).find(t => t.id === data.teamId || t.id === data.teamId?.toString());
+  const dept = team ? (memoryStore.departments || []).find(d => d.id === team.departmentId) : null;
+  const deptName = data.departmentName || (dept && dept.name) || 'General';
+  const teamName = data.teamName || (dbTeam && dbTeam.name) || (team ? team.name : (assigneeRole === 'admin' ? 'Admin Team' : 'Team'));
+
+  const assignedByLabel = `${assignerRole === 'admin' ? 'Admin' : 'Team Member'} (${assignerName})`;
+
+  const newAssign = {
+    id: generateId('assign'),
+    memberId: data.memberId || targetUserId,
+    teamId: data.teamId || 'general',
+    departmentId: data.departmentId || '',
+    workTitle: data.workTitle,
+    workDescription: data.workDescription || '',
+    role: data.role || (assigneeRole === 'admin' ? 'Administrator' : 'Developer'),
+    priority: data.priority || 'Medium',
+    dueDate: data.dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    status: data.status || 'In Progress',
+    // 4 Formats metadata
+    assignerId: data.assignerId || '',
+    assignerName: assignerName,
+    assignerRole: assignerRole,
+    assignerEmail: data.assignerEmail || '',
+    assigneeId: targetUserId,
+    assigneeName: assigneeName || 'Assignee',
+    assigneeRole: assigneeRole,
+    assigneeEmail: assigneeEmail,
+    assignmentType: assignmentType,
+    createdAt: new Date().toISOString()
+  };
+
+  memoryStore.assignments.unshift(newAssign);
+
+  // 4. Automatically create Task in Today's Tasks
   const todayDate = new Date().toISOString().split('T')[0];
   const newTask = {
     id: generateId('task'),
-    teamId: data.teamId,
+    teamId: data.teamId || 'general',
     assignmentId: newAssign.id,
-    memberId: data.memberId,
-    memberName: memberName,
+    memberId: targetUserId,
+    memberName: assigneeName || (assigneeRole === 'admin' ? 'Admin' : 'Team Member'),
     title: data.workTitle,
     priority: data.priority || 'Medium',
     completed: false,
-    date: todayDate
+    date: todayDate,
+    assignedBy: assignedByLabel,
+    assignerRole: assignerRole,
+    assignmentType: assignmentType
   };
   memoryStore.tasks.unshift(newTask);
 
-  // Synchronize into User Workspace
+  // 5. Synchronize into User Workspace (available for both Users and Admins)
   if (!memoryStore.userWorkspace) {
     memoryStore.userWorkspace = {
       stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionRate: 0, completedCount: 0, totalCount: 0 },
@@ -656,43 +731,59 @@ const createAssignment = async (data) => {
     id: generateId('user-task'),
     taskId: `TSK-${Date.now().toString().slice(-4)}`,
     title: data.workTitle,
-    department: (dept && dept.name) || (dbTeam && dbTeam.departmentId) || 'General',
+    department: deptName,
     team: teamName,
     priority: data.priority || 'High',
     dueDate: data.dueDate || 'Today',
     status: data.status || 'In Progress',
-    assignedBy: 'Admin',
+    assignedBy: assignedByLabel,
+    assignerRole: assignerRole,
+    assignerId: data.assignerId || '',
+    assignmentType: assignmentType,
     assignedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     description: data.workDescription || '',
     progress: 0,
     comments: [],
-    userId: dbMember ? (dbMember.userId || dbMember._id.toString()) : (member ? member.id : 'usr-user')
+    userId: targetUserId || (dbMember ? dbMember._id.toString() : 'usr-user')
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
   saveStore();
 
-  // Create Notification for User
+  // 6. Send Notification to Recipient
+  const notifTitle = assignmentType === 'user_to_admin'
+    ? 'Work Request from Team Member'
+    : assignmentType === 'admin_to_admin'
+    ? 'Work Delegated by Admin'
+    : assignmentType === 'user_to_user'
+    ? 'Work Assigned by Teammate'
+    : 'New Work Assigned';
+
+  const notifMsg = `${assignerName} (${assignerRole === 'admin' ? 'Admin' : 'Team Member'}) assigned: "${data.workTitle}" to you.`;
+
   createNotification({
-    recipientRole: 'user',
-    recipientUserId: userTask.userId,
-    title: 'New Work Assigned',
-    message: `Admin assigned: "${data.workTitle}" to you.`,
-    link: 'assigned-work'
+    recipientRole: assigneeRole,
+    recipientUserId: targetUserId,
+    title: notifTitle,
+    message: notifMsg,
+    link: assigneeRole === 'admin' ? 'tasks' : 'assigned-work'
   });
 
-  // Persist into MongoDB Atlas if connected
+  // 7. Persist into MongoDB Atlas if connected
   if (getStatus()) {
     try {
-      const createdAssign = await Assignment.create(data);
+      const createdAssign = await Assignment.create(newAssign);
       const createdTask = await Task.create({
-        teamId: data.teamId,
+        teamId: data.teamId || 'general',
         assignmentId: createdAssign._id.toString(),
-        memberId: data.memberId,
-        memberName: memberName,
+        memberId: targetUserId,
+        memberName: assigneeName || (assigneeRole === 'admin' ? 'Admin' : 'Team Member'),
         title: data.workTitle,
         priority: data.priority || 'Medium',
         completed: false,
-        date: todayDate
+        date: todayDate,
+        assignedBy: assignedByLabel,
+        assignerRole: assignerRole,
+        assignmentType: assignmentType
       });
       newTask.id = createdTask._id.toString();
 
@@ -706,12 +797,16 @@ const createAssignment = async (data) => {
         dueDate: userTask.dueDate,
         status: userTask.status,
         assignedBy: userTask.assignedBy,
+        assignerRole: userTask.assignerRole,
+        assignerId: userTask.assignerId,
+        assignmentType: userTask.assignmentType,
         assignedOn: userTask.assignedOn,
         description: userTask.description,
         progress: 0,
         comments: [],
         userId: userTask.userId
       });
+
       return { ...createdAssign.toObject(), id: createdAssign._id.toString() };
     } catch (e) {
       console.warn('Mongo assignment error:', e.message);
@@ -2072,6 +2167,373 @@ const getStats = async () => {
   };
 };
 
+// --- Real-Time Messaging Services ---
+const getEligibleUsers = async (currentUserId = null) => {
+  let list = [];
+  if (getStatus()) {
+    try {
+      const dbUsers = await User.find({}).lean();
+      list = dbUsers.map(u => ({
+        id: u.customId || u._id.toString(),
+        name: u.name,
+        email: (u.email || '').toLowerCase().trim(),
+        role: u.role,
+        department: u.department || '',
+        team: u.team || '',
+        teamRole: u.teamRole || '',
+        avatar: u.avatar || (u.name || 'U').charAt(0).toUpperCase(),
+        title: u.title || (u.role === 'admin' ? 'Administrator' : 'Team Member')
+      }));
+    } catch (e) {
+      console.warn('Mongo eligible users read error:', e.message);
+    }
+  }
+
+  if (list.length === 0) {
+    list = (memoryStore.users || []).map(u => ({
+      id: u.id,
+      name: u.name,
+      email: (u.email || '').toLowerCase().trim(),
+      role: u.role,
+      department: u.department || '',
+      team: u.team || '',
+      teamRole: u.teamRole || '',
+      avatar: u.avatar || (u.name || 'U').charAt(0).toUpperCase(),
+      title: u.title || (u.role === 'admin' ? 'Administrator' : 'Team Member')
+    }));
+  }
+
+  // Deduplicate by lowercase email
+  const seen = new Set();
+  const deduped = [];
+  for (const u of list) {
+    if (u.email && !seen.has(u.email)) {
+      seen.add(u.email);
+      deduped.push(u);
+    }
+  }
+
+  if (currentUserId) {
+    return deduped.filter(u => u.id !== currentUserId);
+  }
+  return deduped;
+};
+
+const findOrCreateConversation = async (user1Id, user2Email) => {
+  const normEmail = (user2Email || '').toLowerCase().trim();
+  if (!normEmail) {
+    throw new Error('Recipient email is required');
+  }
+
+  // Verify recipient exists in registered user database
+  const allEligible = await getEligibleUsers();
+  const user1 = allEligible.find(u => u.id === user1Id || u.email === (user1Id || '').toLowerCase());
+  const user2 = allEligible.find(u => u.email === normEmail);
+
+  if (!user2) {
+    throw new Error(`Email "${user2Email}" is not registered in the system. Only registered users can receive messages.`);
+  }
+
+  if (!user1) {
+    throw new Error('Sender user identity could not be verified in the database.');
+  }
+
+  if (user1.id === user2.id || user1.email === user2.email) {
+    throw new Error('You cannot start a conversation with yourself.');
+  }
+
+  const pIds = [user1.id, user2.id].sort();
+  const pEmails = [user1.email, user2.email].sort();
+
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+
+  let conv = memoryStore.conversations.find(c => {
+    return (
+      (c.participants && c.participants.includes(user1.id) && c.participants.includes(user2.id)) ||
+      (c.participantEmails && c.participantEmails.includes(user1.email) && c.participantEmails.includes(user2.email))
+    );
+  });
+
+  if (getStatus()) {
+    try {
+      const dbConv = await Conversation.findOne({
+        participantEmails: { $all: [user1.email, user2.email] }
+      }).lean();
+      if (dbConv) {
+        conv = { ...dbConv, id: dbConv.customId || dbConv._id.toString() };
+      }
+    } catch (e) {
+      console.warn('Mongo find conversation error:', e.message);
+    }
+  }
+
+  if (!conv) {
+    conv = {
+      id: generateId('conv'),
+      customId: generateId('conv'),
+      participants: pIds,
+      participantEmails: pEmails,
+      lastMessage: {
+        text: '',
+        senderId: '',
+        senderEmail: '',
+        senderName: '',
+        timestamp: new Date().toISOString(),
+        status: 'sent'
+      },
+      unreadCounts: {
+        [user1.id]: 0,
+        [user2.id]: 0
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    memoryStore.conversations.unshift(conv);
+    saveStore();
+
+    if (getStatus()) {
+      try {
+        const created = await Conversation.create({
+          customId: conv.customId,
+          participants: conv.participants,
+          participantEmails: conv.participantEmails,
+          lastMessage: conv.lastMessage,
+          unreadCounts: conv.unreadCounts
+        });
+        conv.id = created.customId;
+      } catch (e) {
+        console.warn('Mongo create conversation error:', e.message);
+      }
+    }
+  }
+
+  return {
+    ...conv,
+    otherUser: user2
+  };
+};
+
+const getConversationsForUser = async (userId, userEmail = '') => {
+  const allEligible = await getEligibleUsers();
+  const currentUser = allEligible.find(u => u.id === userId || (userEmail && u.email === userEmail.toLowerCase().trim()));
+  const myId = currentUser ? currentUser.id : userId;
+  const myEmail = currentUser ? currentUser.email : (userEmail ? userEmail.toLowerCase().trim() : '');
+
+  let list = [];
+
+  if (getStatus()) {
+    try {
+      const dbConvs = await Conversation.find({
+        $or: [
+          { participants: myId },
+          ...(myEmail ? [{ participantEmails: myEmail }] : [])
+        ]
+      }).sort({ 'lastMessage.timestamp': -1, updatedAt: -1 }).lean();
+      list = dbConvs.map(c => ({
+        ...c,
+        id: c.customId || c._id.toString()
+      }));
+    } catch (e) {
+      console.warn('Mongo conversations read error:', e.message);
+    }
+  }
+
+  if (list.length === 0) {
+    list = (memoryStore.conversations || []).filter(c => {
+      return (
+        (c.participants && c.participants.includes(myId)) ||
+        (myEmail && c.participantEmails && c.participantEmails.includes(myEmail))
+      );
+    });
+  }
+
+  return list.map(c => {
+    const otherEmail = (c.participantEmails || []).find(e => e !== myEmail) || '';
+    const otherId = (c.participants || []).find(id => id !== myId) || '';
+    const otherUser = allEligible.find(u => (otherEmail && u.email === otherEmail) || (otherId && u.id === otherId)) || {
+      id: otherId,
+      name: otherEmail ? otherEmail.split('@')[0] : 'User',
+      email: otherEmail,
+      role: 'user',
+      avatar: (otherEmail || 'U').charAt(0).toUpperCase()
+    };
+
+    let unread = 0;
+    if (c.unreadCounts) {
+      if (typeof c.unreadCounts.get === 'function') {
+        unread = c.unreadCounts.get(myId) || 0;
+      } else {
+        unread = c.unreadCounts[myId] || (myEmail ? c.unreadCounts[myEmail] : 0) || 0;
+      }
+    }
+
+    return {
+      ...c,
+      id: c.customId || c.id || c._id?.toString(),
+      otherUser,
+      unread
+    };
+  }).sort((a, b) => {
+    const tA = new Date(a.lastMessage?.timestamp || a.updatedAt || 0).getTime();
+    const tB = new Date(b.lastMessage?.timestamp || b.updatedAt || 0).getTime();
+    return tB - tA;
+  });
+};
+
+const getMessagesForConversation = async (conversationId, userId) => {
+  let msgs = [];
+
+  if (getStatus()) {
+    try {
+      const dbMsgs = await Message.find({ conversationId }).sort({ createdAt: 1 }).lean();
+      msgs = dbMsgs.map(m => ({ ...m, id: m.customId || m._id.toString() }));
+    } catch (e) {
+      console.warn('Mongo messages read error:', e.message);
+    }
+  }
+
+  if (msgs.length === 0) {
+    msgs = (memoryStore.messages || []).filter(m => m.conversationId === conversationId);
+  }
+
+  return msgs;
+};
+
+const createMessage = async (data) => {
+  const {
+    conversationId,
+    senderId,
+    senderEmail,
+    senderName,
+    senderRole,
+    recipientEmail,
+    text,
+    attachment
+  } = data;
+
+  if (!conversationId) throw new Error('Conversation ID is required');
+  if (!senderId || !senderEmail) throw new Error('Sender identity is required');
+  if (!text && !attachment) throw new Error('Message content or attachment is required');
+
+  const allEligible = await getEligibleUsers();
+  const recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
+
+  if (!recipient) {
+    throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
+  }
+
+  const newMsg = {
+    id: generateId('msg'),
+    customId: generateId('msg'),
+    conversationId,
+    senderId,
+    senderEmail: senderEmail.toLowerCase().trim(),
+    senderName: senderName || 'User',
+    senderRole: senderRole || 'user',
+    recipientId: recipient.id,
+    recipientEmail: recipient.email.toLowerCase().trim(),
+    recipientName: recipient.name,
+    text: text || '',
+    attachment: attachment || null,
+    status: 'sent',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!memoryStore.messages) memoryStore.messages = [];
+  memoryStore.messages.push(newMsg);
+
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+  const convIndex = memoryStore.conversations.findIndex(c => c.id === conversationId || c.customId === conversationId);
+  if (convIndex !== -1) {
+    const conv = memoryStore.conversations[convIndex];
+    conv.lastMessage = {
+      text: text || (attachment ? `📎 Attachment: ${attachment.name}` : ''),
+      senderId,
+      senderEmail: newMsg.senderEmail,
+      senderName: newMsg.senderName,
+      timestamp: newMsg.createdAt,
+      status: 'sent'
+    };
+    if (!conv.unreadCounts) conv.unreadCounts = {};
+    const currentUnread = conv.unreadCounts[recipient.id] || 0;
+    conv.unreadCounts[recipient.id] = currentUnread + 1;
+    conv.updatedAt = newMsg.createdAt;
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      const created = await Message.create(newMsg);
+      await Conversation.findOneAndUpdate(
+        { $or: [{ customId: conversationId }, { _id: conversationId }] },
+        {
+          lastMessage: {
+            text: newMsg.text || (attachment ? `📎 Attachment: ${attachment.name}` : ''),
+            senderId: newMsg.senderId,
+            senderEmail: newMsg.senderEmail,
+            senderName: newMsg.senderName,
+            timestamp: new Date(),
+            status: 'sent'
+          },
+          $inc: { [`unreadCounts.${recipient.id}`]: 1 },
+          updatedAt: new Date()
+        }
+      );
+      newMsg.id = created.customId;
+    } catch (e) {
+      console.warn('Mongo create message error:', e.message);
+    }
+  }
+
+  return newMsg;
+};
+
+const markConversationAsRead = async (conversationId, userId) => {
+  if (!conversationId || !userId) return { success: true };
+
+  if (memoryStore.messages) {
+    memoryStore.messages.forEach(m => {
+      if (m.conversationId === conversationId && m.recipientId === userId) {
+        m.status = 'read';
+        m.readAt = new Date().toISOString();
+      }
+    });
+  }
+
+  if (memoryStore.conversations) {
+    const conv = memoryStore.conversations.find(c => c.id === conversationId || c.customId === conversationId);
+    if (conv && conv.unreadCounts) {
+      conv.unreadCounts[userId] = 0;
+    }
+  }
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Message.updateMany(
+        { conversationId, recipientId: userId, status: { $ne: 'read' } },
+        { $set: { status: 'read', readAt: new Date() } }
+      );
+      await Conversation.findOneAndUpdate(
+        { $or: [{ customId: conversationId }, { _id: conversationId }] },
+        { $set: { [`unreadCounts.${userId}`]: 0 } }
+      );
+    } catch (e) {
+      console.warn('Mongo mark messages read error:', e.message);
+    }
+  }
+
+  return { success: true };
+};
+
+const getTotalUnreadMessagesCount = async (userId) => {
+  const convs = await getConversationsForUser(userId);
+  return convs.reduce((acc, c) => acc + (c.unread || 0), 0);
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -2122,5 +2584,13 @@ module.exports = {
   createAppointment,
   updateAppointment,
   deleteAppointment,
-  getAppointmentStats
+  getAppointmentStats,
+  // Real-Time Messaging Exports
+  getEligibleUsers,
+  findOrCreateConversation,
+  getConversationsForUser,
+  getMessagesForConversation,
+  createMessage,
+  markConversationAsRead,
+  getTotalUnreadMessagesCount
 };

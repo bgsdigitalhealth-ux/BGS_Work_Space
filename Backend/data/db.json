@@ -33,6 +33,54 @@
   "workDone": [],
   "appointments": [],
   "notifications": [],
+  "conversations": [
+    {
+      "id": "conv-1793899506755-52",
+      "customId": "conv-1793899506755-946",
+      "participants": [
+        "usr-admin",
+        "usr-admin-alias"
+      ],
+      "participantEmails": [
+        "dynamicsajjan@gamil.com",
+        "dynamicsajjan@gmail.com"
+      ],
+      "lastMessage": {
+        "text": "Hello, this is a real-time message test!",
+        "senderId": "usr-admin",
+        "senderEmail": "dynamicsajjan@gamil.com",
+        "senderName": "Admin",
+        "timestamp": "2026-11-05T17:25:06.760Z",
+        "status": "sent"
+      },
+      "unreadCounts": {
+        "usr-admin": 0,
+        "usr-admin-alias": 0
+      },
+      "createdAt": "2026-11-05T17:25:06.755Z",
+      "updatedAt": "2026-11-05T17:25:06.760Z"
+    }
+  ],
+  "messages": [
+    {
+      "id": "msg-1793899506760-696",
+      "customId": "msg-1793899506760-879",
+      "conversationId": "conv-1793899506755-52",
+      "senderId": "usr-admin",
+      "senderEmail": "dynamicsajjan@gamil.com",
+      "senderName": "Admin",
+      "senderRole": "admin",
+      "recipientId": "usr-admin-alias",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "recipientName": "Admin",
+      "text": "Hello, this is a real-time message test!",
+      "attachment": null,
+      "status": "read",
+      "createdAt": "2026-11-05T17:25:06.760Z",
+      "updatedAt": "2026-11-05T17:25:06.760Z",
+      "readAt": "2026-11-05T17:25:06.794Z"
+    }
+  ],
   "userWorkspace": {
     "stats": {
       "totalAssigned": 0,
