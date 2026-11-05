@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, ArrowRightLeft, User } from 'lucide-react';
+import { Bell, ChevronDown, ArrowLeft, ArrowRightLeft, User, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
-  const { userNav, setUserNav, setPortalMode } = useApp();
+  const { userNav, setUserNav, setPortalMode, currentUser, logout, unreadNotificationCount } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
 
   return (
     <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -107,10 +109,18 @@ export const UserHeader: React.FC = () => {
         </button>
 
         {/* Notification Bell */}
-        <button className="relative p-2.5 rounded-xl bg-white border border-gray-200/80 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition shadow-sm">
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white animate-pulse" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowNotifs(!showNotifs)}
+            className="relative p-2.5 rounded-xl bg-white border border-gray-200/80 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition shadow-sm"
+          >
+            <Bell className="w-5 h-5" />
+            {unreadNotificationCount > 0 && (
+              <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white animate-pulse" />
+            )}
+          </button>
+          <NotificationDropdown isOpen={showNotifs} onClose={() => setShowNotifs(false)} />
+        </div>
 
         {/* User Pill */}
         <div className="relative">
@@ -119,10 +129,10 @@ export const UserHeader: React.FC = () => {
             className="flex items-center gap-3 bg-white border border-gray-200/80 px-3.5 py-2 rounded-xl shadow-sm hover:border-gray-300 transition"
           >
             <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm">
-              RS
+              {currentUser?.avatar || 'RS'}
             </div>
             <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold text-gray-900 leading-tight">Rahul Sharma</div>
+              <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Rahul Sharma'}</div>
               <div className="text-[10px] text-gray-500 font-medium">Team Member</div>
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -132,8 +142,8 @@ export const UserHeader: React.FC = () => {
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-xs font-bold text-gray-900">Rahul Sharma</p>
-                <p className="text-[11px] text-gray-500">rahul@company.com</p>
+                <p className="text-xs font-bold text-gray-900">{currentUser?.name || 'Rahul Sharma'}</p>
+                <p className="text-[11px] text-gray-500">{currentUser?.email || 'rahul@company.com'}</p>
               </div>
               <button
                 onClick={() => {
@@ -152,6 +162,15 @@ export const UserHeader: React.FC = () => {
                 className="w-full text-left px-4 py-2 text-xs text-[#5a36e6] font-semibold hover:bg-indigo-50 flex items-center gap-2"
               >
                 <ArrowRightLeft className="w-3.5 h-3.5" /> Switch to Admin Portal
+              </button>
+              <button
+                onClick={() => {
+                  setShowDropdown(false);
+                  logout();
+                }}
+                className="w-full text-left px-4 py-2 text-xs text-red-600 font-semibold hover:bg-red-50 flex items-center gap-2 border-t border-gray-100 mt-1"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
               </button>
             </div>
           )}

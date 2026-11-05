@@ -16,10 +16,16 @@ import { UserDashboard } from './components/user/UserDashboard';
 import { UserWorkDetails } from './components/user/UserWorkDetails';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
+import { LoginPage } from './components/auth/LoginPage';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { portalMode, userNav, adminNav } = useApp();
+  const { currentUser, portalMode, userNav, adminNav } = useApp();
+
+  // If no user is logged in, show Common Login Page (ONLY TWO ROLES: admin, user)
+  if (!currentUser) {
+    return <LoginPage />;
+  }
 
   if (portalMode === 'user') {
     return (

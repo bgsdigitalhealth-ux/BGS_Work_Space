@@ -166,5 +166,39 @@ export interface AppointmentStats {
   };
 }
 
+// User & Role System (ONLY TWO ROLES: admin and user)
+export type UserRole = 'admin' | 'user';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatar?: string;
+  department?: string;
+  team?: string;
+  teamRole?: string;
+  title?: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  user: User;
+  token: string;
+  error?: string;
+}
+
+export interface Notification {
+  id: string;
+  recipientRole: UserRole;
+  recipientUserId?: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  link?: string;
+}
+
+
 
 

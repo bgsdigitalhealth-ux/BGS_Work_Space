@@ -11,12 +11,20 @@ import {
   UserAssignedWork, 
   UserWorkHistory,
   Appointment,
-  AppointmentStats
+  AppointmentStats,
+  User,
+  Notification
 } from '../types';
 import { api } from '../services/api';
 
 interface AppContextType {
-  // Portal Toggle
+  // Authentication & Session
+  currentUser: User | null;
+  setCurrentUser: (user: User | null) => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+
+  // Portal Toggle ('admin' | 'user')
   portalMode: 'admin' | 'user';
   setPortalMode: (mode: 'admin' | 'user') => void;
 
@@ -97,6 +105,10 @@ interface AppContextType {
   handleAddUserComment: (taskId: string, commentText: string, badge?: string) => Promise<void>;
   handleStartUserWork: (taskId: string) => Promise<void>;
 
+  // Review & Approval Workflow (Admin Action -> User Sync)
+  handleApproveWork: (taskId: string, comment?: string) => Promise<void>;
+  handleRequestRework: (taskId: string, feedback: string) => Promise<void>;
+
   // Appointments State
   appointments: Appointment[];
   appointmentStats: AppointmentStats | null;
@@ -115,6 +127,13 @@ interface AppContextType {
   handleDeleteAppointment: (id: string) => Promise<void>;
   refreshAppointments: () => Promise<void>;
 
+  // Notifications
+  notifications: Notification[];
+  unreadNotificationCount: number;
+  handleMarkNotificationRead: (id: string) => Promise<void>;
+  handleMarkAllNotificationsRead: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
+
   // Redirect / Scroll helper
   scrollToSection: (sectionId: string) => void;
 }
@@ -122,8 +141,29 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Portal mode: toggle between 'admin' and 'user' (WorkHub)
-  const [portalMode, setPortalMode] = useState<'admin' | 'user'>('user');
+  // Session / Authentication state: default to logged-in user or stored user
+  const [currentUser, setCurrentUser] = useState<User | null>(() => {
+    try {
+      const saved = localStorage.getItem('workhub_user');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+    // Default demo session: User (Rahul Sharma) or Admin
+    return {
+      id: 'usr-admin',
+      name: 'Admin',
+      email: 'admin@company.com',
+      role: 'admin',
+      avatar: 'A',
+      title: 'Admin'
+    };
+  });
+
+  // Portal mode matches logged in user's role: 'admin' or 'user'
+  const [portalMode, setPortalMode] = useState<'admin' | 'user'>(() => {
+    return currentUser?.role === 'user' ? 'user' : 'admin';
+  });
 
   // Admin navigation
   const [adminNav, setAdminNav] = useState<string>('dashboard');
@@ -161,6 +201,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
+  // Notifications state
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+
   // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
   const [editingDept, setEditingDept] = useState<Department | null>(null);
@@ -178,6 +221,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const el = document.getElementById(sectionId);
     if (el) {
       el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  // Auth Functions
+  const login = async (email: string, pass: string): Promise<boolean> => {
+    try {
+      const res = await api.login(email, pass);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        setPortalMode(res.user.role);
+        try {
+          localStorage.setItem('workhub_user', JSON.stringify(res.user));
+        } catch (e) {
+          // ignore
+        }
+        await refreshAll();
+        return true;
+      }
+      return false;
+    } catch (e: any) {
+      alert(e.message || 'Login failed');
+      return false;
+    }
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('workhub_user');
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -266,10 +340,41 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const refreshNotifications = async () => {
+    try {
+      const role = currentUser ? currentUser.role : 'all';
+      const userId = currentUser ? currentUser.id : undefined;
+      const data = await api.getNotifications(role, userId);
+      setNotifications(data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMarkNotificationRead = async (id: string) => {
+    try {
+      await api.markNotificationRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async () => {
+    try {
+      const role = currentUser ? currentUser.role : undefined;
+      await api.markAllNotificationsRead(role);
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const handleCreateAppointment = async (data: Partial<Appointment>) => {
     try {
       await api.createAppointment(data);
       await refreshAppointments();
+      await refreshNotifications();
       setIsAppointmentModalOpen(false);
     } catch (e) {
       console.error(e);
@@ -280,6 +385,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.updateAppointment(id, data);
       await refreshAppointments();
+      await refreshNotifications();
       setIsAppointmentModalOpen(false);
       setEditingAppointment(null);
     } catch (e) {
@@ -326,7 +432,34 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.submitUserWork(payload);
       await refreshUserWorkspace();
+      await refreshNotifications();
       setIsSubmitWorkDrawerOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleApproveWork = async (taskId: string, comment?: string) => {
+    try {
+      await api.approveWork(taskId, comment);
+      await refreshUserWorkspace();
+      await refreshNotifications();
+      if (selectedTeam) fetchAssignments(selectedTeam.id);
+      fetchStats();
+      alert('Work successfully approved as Completed!');
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleRequestRework = async (taskId: string, feedback: string) => {
+    try {
+      await api.requestRework(taskId, feedback);
+      await refreshUserWorkspace();
+      await refreshNotifications();
+      if (selectedTeam) fetchAssignments(selectedTeam.id);
+      fetchStats();
+      alert('Rework requested successfully! User notified.');
     } catch (e) {
       console.error(e);
     }
@@ -334,13 +467,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleAddUserComment = async (taskId: string, commentText: string, badge: string = 'Update') => {
     try {
+      const author = currentUser ? currentUser.name : 'Rahul Sharma';
+      const role = currentUser ? (currentUser.role === 'admin' ? 'Admin' : 'Team Member') : 'Team Member';
       await api.addUserComment(taskId, {
-        author: 'Rahul Sharma',
-        role: 'Team Member',
+        author,
+        role,
         text: commentText,
         badge
       });
       await refreshUserWorkspace();
+      await refreshNotifications();
     } catch (e) {
       console.error(e);
     }
@@ -350,6 +486,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.updateUserTaskStatus(taskId, 'In Progress');
       await refreshUserWorkspace();
+      await refreshNotifications();
     } catch (e) {
       console.error(e);
     }
@@ -361,7 +498,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fetchStats(),
       fetchDepartments(),
       refreshUserWorkspace(),
-      refreshAppointments()
+      refreshAppointments(),
+      refreshNotifications()
     ]);
     setLoading(false);
   };
@@ -370,6 +508,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     refreshAll();
   }, []);
+
+  // Real-Time Server-Sent Events (SSE) Listener for Two-Way Instant Sync
+  useEffect(() => {
+    let es: EventSource | null = null;
+    try {
+      es = new EventSource('/api/events');
+      es.onmessage = (e) => {
+        try {
+          const event = JSON.parse(e.data);
+          if (event.type && event.type !== 'CONNECTED') {
+            // Instant background synchronization across all active browser tabs/windows
+            refreshAll();
+          }
+        } catch (err) {
+          console.error('[SSE] Failed to parse message', err);
+        }
+      };
+    } catch (err) {
+      console.error('[SSE] EventSource connection failed', err);
+    }
+
+    return () => {
+      if (es) es.close();
+    };
+  }, [currentUser]);
 
   // When selected department changes, load its teams
   useEffect(() => {
@@ -480,9 +643,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const unreadNotificationCount = notifications.filter(n => !n.read).length;
+
   return (
     <AppContext.Provider
       value={{
+        currentUser,
+        setCurrentUser,
+        login,
+        logout,
         portalMode,
         setPortalMode,
         adminNav,
@@ -549,6 +718,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleSubmitWork,
         handleAddUserComment,
         handleStartUserWork,
+        handleApproveWork,
+        handleRequestRework,
         appointments,
         appointmentStats,
         selectedAppointmentDate,
@@ -565,6 +736,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleUpdateAppointment,
         handleDeleteAppointment,
         refreshAppointments,
+        notifications,
+        unreadNotificationCount,
+        handleMarkNotificationRead,
+        handleMarkAllNotificationsRead,
+        refreshNotifications,
         scrollToSection
       }}
     >

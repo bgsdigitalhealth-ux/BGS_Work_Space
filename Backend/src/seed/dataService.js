@@ -280,6 +280,41 @@ const createAssignment = async (data) => {
     status: data.status || 'In Progress'
   };
   memoryStore.assignments.unshift(newAssign);
+
+  // Synchronize directly into User Workspace
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const member = memoryStore.members.find(m => m.id === data.memberId);
+  const team = memoryStore.teams.find(t => t.id === data.teamId);
+  const dept = team ? memoryStore.departments.find(d => d.id === team.departmentId) : null;
+
+  const userTask = {
+    id: generateId('user-task'),
+    taskId: `TSK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    title: data.workTitle,
+    department: (dept && dept.name) || 'Engineering',
+    team: (team && team.name) || 'Backend Team',
+    priority: data.priority || 'High',
+    dueDate: data.dueDate || 'Today',
+    status: data.status || 'In Progress',
+    assignedBy: 'Admin',
+    assignedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    description: data.workDescription || '',
+    progress: 0,
+    comments: []
+  };
+  memoryStore.userWorkspace.assignedWork.unshift(userTask);
+
+  // Generate User Notification
+  createNotification({
+    recipientRole: 'user',
+    recipientUserId: (member && member.email === 'rahul@company.com') ? 'usr-rahul' : 'usr-rahul',
+    title: 'New Work Assigned',
+    message: `Admin assigned: "${data.workTitle}" to you.`,
+    link: 'assigned-work'
+  });
+
   return newAssign;
 };
 
@@ -474,7 +509,167 @@ const submitUserWork = async (data) => {
     date: 'Just now'
   });
 
+  // Create Notification for Admin
+  createNotification({
+    recipientRole: 'admin',
+    title: 'Work Submitted for Review',
+    message: `Rahul Sharma submitted "${task ? task.title : 'Work'}" with deliverables.`,
+    link: 'work-management'
+  });
+
   return { success: true, historyItem: newHistoryItem, task };
+};
+
+const approveWork = async (taskId, comment) => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const ws = memoryStore.userWorkspace;
+  const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
+  const historyItem = ws.history.find(h => h.id === taskId || h.taskId === taskId);
+
+  if (task) {
+    task.status = 'Completed';
+    task.progress = 100;
+  }
+  if (historyItem) {
+    historyItem.status = 'Approved';
+    historyItem.reviewerFeedback = comment || 'Approved by Admin. Work completed successfully.';
+    if (!historyItem.reviewerComments) historyItem.reviewerComments = [];
+    historyItem.reviewerComments.push({
+      id: generateId('c'),
+      author: 'Admin',
+      role: 'Admin',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      text: comment || 'Work approved and verified as Completed.'
+    });
+  }
+
+  // Create Notification for User
+  createNotification({
+    recipientRole: 'user',
+    recipientUserId: 'usr-rahul',
+    title: 'Work Approved! 🎉',
+    message: `Admin approved your work "${task ? task.title : 'Work'}" as Completed.`,
+    link: 'work-history'
+  });
+
+  return { success: true, task, historyItem };
+};
+
+const requestRework = async (taskId, feedback) => {
+  if (!memoryStore.userWorkspace) {
+    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+  }
+  const ws = memoryStore.userWorkspace;
+  const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
+  const historyItem = ws.history.find(h => h.id === taskId || h.taskId === taskId);
+
+  if (task) {
+    task.status = 'In Progress';
+    task.progress = 50;
+  }
+  if (historyItem) {
+    historyItem.status = 'Rework Requested';
+    historyItem.reviewerFeedback = feedback || 'Please review notes and resubmit.';
+    if (!historyItem.reviewerComments) historyItem.reviewerComments = [];
+    historyItem.reviewerComments.push({
+      id: generateId('c'),
+      author: 'Admin',
+      role: 'Admin',
+      date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+      text: feedback || 'Please review notes and resubmit.'
+    });
+  }
+
+  // Create Notification for User
+  createNotification({
+    recipientRole: 'user',
+    recipientUserId: 'usr-rahul',
+    title: 'Rework Requested ⚠️',
+    message: `Admin requested revisions on "${task ? task.title : 'Work'}": ${feedback}`,
+    link: 'my-work'
+  });
+
+  return { success: true, task, historyItem };
+};
+
+// --- Authentication & User Accounts (ONLY TWO ROLES: admin, user) ---
+const loginUser = async (email, password) => {
+  if (!memoryStore.users) {
+    memoryStore.users = JSON.parse(JSON.stringify(initialData.users || []));
+  }
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const user = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
+
+  if (!user || user.password !== password) {
+    return { success: false, error: 'Invalid email or password' };
+  }
+
+  const { password: _, ...safeUser } = user;
+  return {
+    success: true,
+    user: safeUser,
+    token: `token-${user.role}-${Date.now()}`
+  };
+};
+
+const getUsers = async () => {
+  if (!memoryStore.users) {
+    memoryStore.users = JSON.parse(JSON.stringify(initialData.users || []));
+  }
+  return memoryStore.users.map(({ password, ...u }) => u);
+};
+
+// --- Notifications Engine ---
+const getNotifications = async (role = 'all', userId = null) => {
+  if (!memoryStore.notifications) {
+    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+  }
+  let list = memoryStore.notifications;
+  if (role && role !== 'all') {
+    list = list.filter(n => n.recipientRole === role || (userId && n.recipientUserId === userId));
+  }
+  return list;
+};
+
+const createNotification = (data) => {
+  if (!memoryStore.notifications) {
+    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+  }
+  const newNotif = {
+    id: generateId('notif'),
+    recipientRole: data.recipientRole || 'user',
+    recipientUserId: data.recipientUserId || null,
+    title: data.title || 'Notification',
+    message: data.message || '',
+    timestamp: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    read: false,
+    link: data.link || ''
+  };
+  memoryStore.notifications.unshift(newNotif);
+  return newNotif;
+};
+
+const markNotificationRead = async (id) => {
+  if (!memoryStore.notifications) {
+    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+  }
+  const notif = memoryStore.notifications.find(n => n.id === id);
+  if (notif) notif.read = true;
+  return notif;
+};
+
+const markAllNotificationsRead = async (role) => {
+  if (!memoryStore.notifications) {
+    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+  }
+  memoryStore.notifications.forEach(n => {
+    if (!role || n.recipientRole === role) {
+      n.read = true;
+    }
+  });
+  return true;
 };
 
 const addUserComment = async (taskId, data) => {
@@ -683,8 +878,16 @@ module.exports = {
   getStats,
   getUserWorkspace,
   submitUserWork,
+  approveWork,
+  requestRework,
   addUserComment,
   updateUserWorkStatus,
+  loginUser,
+  getUsers,
+  getNotifications,
+  createNotification,
+  markNotificationRead,
+  markAllNotificationsRead,
   getAppointments,
   createAppointment,
   updateAppointment,

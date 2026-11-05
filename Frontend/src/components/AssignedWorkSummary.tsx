@@ -1,9 +1,9 @@
 import React from 'react';
-import { Layers, Calendar, Trash2 } from 'lucide-react';
+import { Layers, Calendar, Trash2, CheckCircle2, RotateCcw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const AssignedWorkSummary: React.FC = () => {
-  const { selectedTeam, assignments, members, handleDeleteAssignment } = useApp();
+  const { selectedTeam, assignments, members, handleDeleteAssignment, handleApproveWork, handleRequestRework } = useApp();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -131,12 +131,36 @@ export const AssignedWorkSummary: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <div className="flex items-center gap-1.5 text-xs text-slate-500">
                     <Calendar className="w-3.5 h-3.5 text-slate-400" />
                     <span>{item.dueDate || 'Jan 31, 2026'}</span>
                   </div>
                   <div>{getStatusBadge(item.status)}</div>
+
+                  {/* Admin Quick Review Actions */}
+                  {item.status !== 'Completed' && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleApproveWork(item.id, 'Approved by Admin')}
+                        title="Approve as Completed"
+                        className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          const fb = prompt('Enter rework feedback for team member:');
+                          if (fb) handleRequestRework(item.id, fb);
+                        }}
+                        title="Request Rework"
+                        className="p-1 rounded-md text-amber-600 hover:bg-amber-50 transition"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => handleDeleteAssignment(item.id)}
                     title="Delete assignment"

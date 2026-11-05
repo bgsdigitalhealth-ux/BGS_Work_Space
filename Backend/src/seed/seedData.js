@@ -925,6 +925,100 @@ const initialData = {
     ]
   },
 
+  // System Users (ONLY TWO ROLES: admin and user)
+  users: [
+    {
+      id: 'usr-admin',
+      name: 'Admin',
+      email: 'admin@company.com',
+      password: 'admin123',
+      role: 'admin',
+      avatar: 'A',
+      title: 'Admin'
+    },
+    {
+      id: 'usr-rahul',
+      name: 'Rahul Sharma',
+      email: 'rahul@company.com',
+      password: 'user123',
+      role: 'user',
+      memberId: 'mem-1',
+      department: 'Engineering',
+      team: 'Backend',
+      teamRole: 'Team Lead',
+      avatar: 'RS',
+      title: 'Team Member'
+    },
+    {
+      id: 'usr-priya',
+      name: 'Priya Verma',
+      email: 'priya@company.com',
+      password: 'user123',
+      role: 'user',
+      memberId: 'mem-2',
+      department: 'Design',
+      team: 'UI-UX',
+      teamRole: 'Designer',
+      avatar: 'PV',
+      title: 'Team Member'
+    },
+    {
+      id: 'usr-amit',
+      name: 'Amit Singh',
+      email: 'amit@company.com',
+      password: 'user123',
+      role: 'user',
+      memberId: 'mem-3',
+      department: 'Engineering',
+      team: 'Backend',
+      teamRole: 'Developer',
+      avatar: 'AS',
+      title: 'Team Member'
+    }
+  ],
+
+  // System Notifications for Admin and User
+  notifications: [
+    {
+      id: 'notif-1',
+      recipientRole: 'admin',
+      title: 'Work Submitted for Review',
+      message: 'Rahul Sharma submitted "Prepare event poster for CME"',
+      timestamp: '05 Nov 2026, 04:20 PM',
+      read: false,
+      link: 'work-management'
+    },
+    {
+      id: 'notif-2',
+      recipientRole: 'admin',
+      title: 'Appointment Scheduled',
+      message: 'New appointment "Project Review Meeting" with Rahul Sharma',
+      timestamp: '05 Nov 2026, 10:00 AM',
+      read: false,
+      link: 'appointments'
+    },
+    {
+      id: 'notif-3',
+      recipientRole: 'user',
+      recipientUserId: 'usr-rahul',
+      title: 'New Work Assigned',
+      message: 'Admin assigned "Update departmental website content" to you',
+      timestamp: '05 Nov 2026, 09:30 AM',
+      read: false,
+      link: 'my-work'
+    },
+    {
+      id: 'notif-4',
+      recipientRole: 'user',
+      recipientUserId: 'usr-rahul',
+      title: 'Meeting Scheduled',
+      message: 'Project Review Meeting scheduled for today at 11:00 AM',
+      timestamp: '05 Nov 2026, 09:00 AM',
+      read: true,
+      link: 'appointments'
+    }
+  ],
+
   appointments: [
     {
       id: 'apt-1',

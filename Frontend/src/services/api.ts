@@ -249,5 +249,66 @@ export const api = {
   deleteAppointment: async (id: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/appointments/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete appointment');
+  },
+
+  // Authentication (ONLY TWO ROLES: admin, user)
+  login: async (email: string, password: string): Promise<import('../types').AuthResponse> => {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Login failed' }));
+      throw new Error(err.error || 'Invalid credentials');
+    }
+    return res.json();
+  },
+  getUsers: async (): Promise<import('../types').User[]> => {
+    const res = await fetch(`${API_BASE}/auth/users`);
+    if (!res.ok) throw new Error('Failed to fetch users');
+    return res.json();
+  },
+
+  // Notifications
+  getNotifications: async (role?: string, userId?: string): Promise<import('../types').Notification[]> => {
+    const params = new URLSearchParams();
+    if (role) params.append('role', role);
+    if (userId) params.append('userId', userId);
+    const res = await fetch(`${API_BASE}/notifications?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch notifications');
+    return res.json();
+  },
+  markNotificationRead: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/notifications/${id}/read`, { method: 'PATCH' });
+    if (!res.ok) throw new Error('Failed to mark notification read');
+  },
+  markAllNotificationsRead: async (role?: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/notifications/mark-all-read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role })
+    });
+    if (!res.ok) throw new Error('Failed to mark all notifications read');
+  },
+
+  // Work Review (Admin Actions)
+  approveWork: async (taskId: string, comment?: string) => {
+    const res = await fetch(`${API_BASE}/work/${taskId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment })
+    });
+    if (!res.ok) throw new Error('Failed to approve work');
+    return res.json();
+  },
+  requestRework: async (taskId: string, feedback: string) => {
+    const res = await fetch(`${API_BASE}/work/${taskId}/rework`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ feedback })
+    });
+    if (!res.ok) throw new Error('Failed to request rework');
+    return res.json();
   }
 };

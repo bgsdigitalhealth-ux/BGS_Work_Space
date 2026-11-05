@@ -412,3 +412,4 @@ export const UserAppointments: React.FC = () => {
     </div>
   );
 };
+

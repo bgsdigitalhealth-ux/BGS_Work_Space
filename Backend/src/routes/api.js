@@ -2,7 +2,96 @@ const express = require('express');
 const router = express.Router();
 const dataService = require('../seed/dataService');
 
-// Stats
+// --- Real-Time Server-Sent Events (SSE) Engine ---
+let sseClients = [];
+
+router.get('/events', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+
+  const clientId = Date.now();
+  const client = { id: clientId, res };
+  sseClients.push(client);
+
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', clientId })}\n\n`);
+
+  req.on('close', () => {
+    sseClients = sseClients.filter(c => c.id !== clientId);
+  });
+});
+
+const broadcast = (type, payload = {}) => {
+  const data = JSON.stringify({ type, payload, timestamp: Date.now() });
+  sseClients.forEach(c => {
+    try {
+      c.res.write(`data: ${data}\n\n`);
+    } catch (e) {
+      // stale connection
+    }
+  });
+};
+
+// --- Authentication (ONLY TWO ROLES: admin and user) ---
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: 'Email and password are required' });
+    }
+    const result = await dataService.loginUser(email, password);
+    if (!result.success) {
+      return res.status(401).json({ error: result.error });
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/auth/users', async (req, res) => {
+  try {
+    const users = await dataService.getUsers();
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Notifications Engine ---
+router.get('/notifications', async (req, res) => {
+  try {
+    const { role, userId } = req.query;
+    const list = await dataService.getNotifications(role, userId);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.patch('/notifications/:id/read', async (req, res) => {
+  try {
+    const updated = await dataService.markNotificationRead(req.params.id);
+    broadcast('NOTIFICATION_READ', { id: req.params.id });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/notifications/mark-all-read', async (req, res) => {
+  try {
+    const { role } = req.body;
+    await dataService.markAllNotificationsRead(role);
+    broadcast('NOTIFICATIONS_ALL_READ', { role });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Stats ---
 router.get('/stats', async (req, res) => {
   try {
     const stats = await dataService.getStats();
@@ -27,6 +116,7 @@ router.post('/departments', async (req, res) => {
     const { name, icon, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
     const created = await dataService.createDepartment({ name, icon, description });
+    broadcast('ORG_CHANGED', { entity: 'department', action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -37,6 +127,7 @@ router.put('/departments/:id', async (req, res) => {
   try {
     const updated = await dataService.updateDepartment(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Department not found' });
+    broadcast('ORG_CHANGED', { entity: 'department', action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -46,6 +137,7 @@ router.put('/departments/:id', async (req, res) => {
 router.delete('/departments/:id', async (req, res) => {
   try {
     await dataService.deleteDepartment(req.params.id);
+    broadcast('ORG_CHANGED', { entity: 'department', action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Department deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -68,6 +160,7 @@ router.post('/teams', async (req, res) => {
     const { name, departmentId, description } = req.body;
     if (!name || !departmentId) return res.status(400).json({ error: 'Name and departmentId are required' });
     const created = await dataService.createTeam({ name, departmentId, description });
+    broadcast('ORG_CHANGED', { entity: 'team', action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -78,6 +171,7 @@ router.put('/teams/:id', async (req, res) => {
   try {
     const updated = await dataService.updateTeam(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Team not found' });
+    broadcast('ORG_CHANGED', { entity: 'team', action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -87,6 +181,7 @@ router.put('/teams/:id', async (req, res) => {
 router.delete('/teams/:id', async (req, res) => {
   try {
     await dataService.deleteTeam(req.params.id);
+    broadcast('ORG_CHANGED', { entity: 'team', action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Team deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -106,17 +201,18 @@ router.get('/members', async (req, res) => {
 
 router.post('/members', async (req, res) => {
   try {
-    const { name, email, phone, role, assignedWork, teamId, departmentId } = req.body;
+    const { name, email, phone, role, teamId, departmentId, assignedWork } = req.body;
     if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
     const created = await dataService.createMember({
       name,
       email,
       phone,
-      role,
-      assignedWork,
+      role: role || 'Developer',
       teamId,
-      departmentId
+      departmentId,
+      assignedWork
     });
+    broadcast('ORG_CHANGED', { entity: 'member', action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -127,6 +223,7 @@ router.put('/members/:id', async (req, res) => {
   try {
     const updated = await dataService.updateMember(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Member not found' });
+    broadcast('ORG_CHANGED', { entity: 'member', action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -136,6 +233,7 @@ router.put('/members/:id', async (req, res) => {
 router.delete('/members/:id', async (req, res) => {
   try {
     await dataService.deleteMember(req.params.id);
+    broadcast('ORG_CHANGED', { entity: 'member', action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Member deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -156,7 +254,7 @@ router.get('/assignments', async (req, res) => {
 router.post('/assignments', async (req, res) => {
   try {
     const { memberId, teamId, workTitle, workDescription, role, priority, dueDate, status } = req.body;
-    if (!memberId || !workTitle) return res.status(400).json({ error: 'Member and Work Title are required' });
+    if (!workTitle) return res.status(400).json({ error: 'Work title is required' });
     const created = await dataService.createAssignment({
       memberId,
       teamId,
@@ -167,6 +265,7 @@ router.post('/assignments', async (req, res) => {
       dueDate,
       status
     });
+    broadcast('WORK_ASSIGNED', created);
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -176,7 +275,31 @@ router.post('/assignments', async (req, res) => {
 router.delete('/assignments/:id', async (req, res) => {
   try {
     await dataService.deleteAssignment(req.params.id);
+    broadcast('ASSIGNMENT_DELETED', { id: req.params.id });
     res.json({ success: true, message: 'Assignment deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Admin Work Review (Approve / Rework) ---
+router.post('/work/:id/approve', async (req, res) => {
+  try {
+    const { comment } = req.body;
+    const result = await dataService.approveWork(req.params.id, comment);
+    broadcast('WORK_APPROVED', result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/work/:id/rework', async (req, res) => {
+  try {
+    const { feedback } = req.body;
+    const result = await dataService.requestRework(req.params.id, feedback);
+    broadcast('REWORK_REQUESTED', result);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -196,8 +319,9 @@ router.get('/tasks', async (req, res) => {
 router.post('/tasks', async (req, res) => {
   try {
     const { teamId, title, priority, date } = req.body;
-    if (!title) return res.status(400).json({ error: 'Task title is required' });
+    if (!title) return res.status(400).json({ error: 'Title is required' });
     const created = await dataService.createTask({ teamId, title, priority, date });
+    broadcast('TASK_CHANGED', { action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -208,6 +332,7 @@ router.put('/tasks/:id', async (req, res) => {
   try {
     const updated = await dataService.updateTask(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Task not found' });
+    broadcast('TASK_CHANGED', { action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -218,6 +343,7 @@ router.patch('/tasks/:id/toggle', async (req, res) => {
   try {
     const updated = await dataService.toggleTask(req.params.id);
     if (!updated) return res.status(404).json({ error: 'Task not found' });
+    broadcast('TASK_CHANGED', { action: 'toggle', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -227,6 +353,7 @@ router.patch('/tasks/:id/toggle', async (req, res) => {
 router.delete('/tasks/:id', async (req, res) => {
   try {
     await dataService.deleteTask(req.params.id);
+    broadcast('TASK_CHANGED', { action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Task deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -249,6 +376,7 @@ router.post('/work-done', async (req, res) => {
     const { teamId, title, details, date } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
     const created = await dataService.createWorkDone({ teamId, title, details, date });
+    broadcast('WORK_DONE_CHANGED', { action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -258,6 +386,7 @@ router.post('/work-done', async (req, res) => {
 router.delete('/work-done/:id', async (req, res) => {
   try {
     await dataService.deleteWorkDone(req.params.id);
+    broadcast('WORK_DONE_CHANGED', { action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Work done deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -277,6 +406,7 @@ router.get('/user/workspace', async (req, res) => {
 router.post('/user/submit-work', async (req, res) => {
   try {
     const result = await dataService.submitUserWork(req.body);
+    broadcast('WORK_SUBMITTED', result);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -288,6 +418,7 @@ router.post('/user/comment', async (req, res) => {
     const { taskId, ...data } = req.body;
     if (!taskId) return res.status(400).json({ error: 'taskId is required' });
     const comment = await dataService.addUserComment(taskId, data);
+    broadcast('COMMENT_ADDED', { taskId, comment });
     res.json(comment);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -300,6 +431,7 @@ router.patch('/user/status/:id', async (req, res) => {
     if (!status) return res.status(400).json({ error: 'status is required' });
     const updated = await dataService.updateUserWorkStatus(req.params.id, status);
     if (!updated) return res.status(404).json({ error: 'Task not found' });
+    broadcast('WORK_STATUS_CHANGED', updated);
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -329,6 +461,7 @@ router.get('/appointments', async (req, res) => {
 router.post('/appointments', async (req, res) => {
   try {
     const created = await dataService.createAppointment(req.body);
+    broadcast('APPOINTMENT_CHANGED', { action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -339,6 +472,7 @@ router.put('/appointments/:id', async (req, res) => {
   try {
     const updated = await dataService.updateAppointment(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Appointment not found' });
+    broadcast('APPOINTMENT_CHANGED', { action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -348,6 +482,7 @@ router.put('/appointments/:id', async (req, res) => {
 router.delete('/appointments/:id', async (req, res) => {
   try {
     await dataService.deleteAppointment(req.params.id);
+    broadcast('APPOINTMENT_CHANGED', { action: 'delete', id: req.params.id });
     res.json({ success: true, message: 'Appointment deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
