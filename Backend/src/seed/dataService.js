@@ -1153,6 +1153,141 @@ const getUsers = async () => {
   return memoryStore.users.map(({ password, ...u }) => u);
 };
 
+// --- Admin Management & Profile Settings ---
+const updateAdminProfile = async (identifier, { name, email, newPassword }) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  
+  const user = (memoryStore.users || []).find(u => 
+    u.id === identifier || 
+    (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)
+  );
+
+  if (user) {
+    if (name) user.name = name;
+    if (cleanEmail) user.email = cleanEmail;
+    if (newPassword) {
+      user.password = newPassword;
+      user.hasPassword = true;
+    }
+  }
+
+  if (getStatus()) {
+    try {
+      const updateData = {};
+      if (name) updateData.name = name;
+      if (cleanEmail) updateData.email = cleanEmail;
+      if (newPassword) {
+        updateData.password = newPassword;
+        updateData.hasPassword = true;
+      }
+
+      const updated = await User.findOneAndUpdate(
+        { $or: [{ customId: identifier }, { email: identifier.toLowerCase() }, { email: cleanEmail }] },
+        updateData,
+        { new: true }
+      ).lean();
+
+      if (updated) {
+        const { password: _, ...safeUser } = updated;
+        return { success: true, user: { ...safeUser, id: updated.customId || updated._id.toString() } };
+      }
+    } catch (e) {
+      console.warn('Mongo updateAdminProfile error:', e.message);
+    }
+  }
+
+  if (user) {
+    const { password: _, ...safeUser } = user;
+    return { success: true, user: safeUser };
+  }
+
+  return { success: false, error: 'Admin account not found' };
+};
+
+const getAdmins = async () => {
+  if (getStatus()) {
+    try {
+      const list = await User.find({ role: 'admin' }).select('-password').lean();
+      if (list.length > 0) {
+        return list.map(u => ({ ...u, id: u.customId || u._id.toString() }));
+      }
+    } catch (e) {
+      console.warn('Mongo getAdmins error:', e.message);
+    }
+  }
+
+  return (memoryStore.users || [])
+    .filter(u => u.role === 'admin')
+    .map(({ password, ...u }) => u);
+};
+
+const createAdmin = async ({ name, email, password }) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail || !password) {
+    return { success: false, error: 'Email and password are required' };
+  }
+
+  const existing = (memoryStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+  if (existing) {
+    return { success: false, error: 'An account with this email address already exists' };
+  }
+
+  const newAdmin = {
+    id: generateId('adm'),
+    name: name || 'Administrator',
+    email: cleanEmail,
+    password: password,
+    hasPassword: true,
+    role: 'admin',
+    avatar: (name || 'A').charAt(0).toUpperCase(),
+    title: 'Administrator'
+  };
+
+  memoryStore.users.push(newAdmin);
+
+  if (getStatus()) {
+    try {
+      const created = await User.create({
+        customId: newAdmin.id,
+        name: newAdmin.name,
+        email: cleanEmail,
+        password: password,
+        hasPassword: true,
+        role: 'admin',
+        avatar: newAdmin.avatar,
+        title: 'Administrator'
+      });
+      const { password: _, ...safeAdmin } = created.toObject();
+      return { success: true, user: { ...safeAdmin, id: created._id.toString() } };
+    } catch (e) {
+      console.warn('Mongo createAdmin error:', e.message);
+    }
+  }
+
+  const { password: _, ...safeAdmin } = newAdmin;
+  return { success: true, user: safeAdmin };
+};
+
+const deleteAdmin = async (id) => {
+  const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin').length;
+  if (adminCount <= 1) {
+    return { success: false, error: 'Cannot delete the only administrator account' };
+  }
+
+  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email !== id);
+
+  if (getStatus()) {
+    try {
+      await User.findOneAndDelete({ $or: [{ customId: id }, { _id: id }, { email: id }] });
+    } catch (e) {
+      console.warn('Mongo deleteAdmin error:', e.message);
+    }
+  }
+
+  return { success: true, message: 'Administrator removed successfully' };
+};
+
 // --- Notifications Engine ---
 const getNotifications = async (role = 'all', userId = null) => {
   if (getStatus()) {
@@ -1593,6 +1728,10 @@ module.exports = {
   checkEmail,
   createPassword,
   getUsers,
+  updateAdminProfile,
+  getAdmins,
+  createAdmin,
+  deleteAdmin,
   getNotifications,
   createNotification,
   markNotificationRead,

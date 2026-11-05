@@ -197,8 +197,10 @@ export const Sidebar: React.FC = () => {
 
         {/* Settings */}
         <button 
-          onClick={() => alert('Settings panel')}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+          onClick={() => setAdminNav('settings')}
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
+            adminNav === 'settings' ? 'text-white bg-indigo-600/80 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+          }`}
         >
           <Settings className="w-4 h-4 text-slate-400" />
           <span>Settings</span>

@@ -34,6 +34,7 @@ const initialData = {
       name: 'Admin',
       email: 'dynamicsajjan@gamil.com',
       password: 'Apple9844?',
+      hasPassword: true,
       role: 'admin',
       avatar: 'A',
       title: 'Administrator'
@@ -43,6 +44,7 @@ const initialData = {
       name: 'Admin',
       email: 'dynamicsajjan@gmail.com',
       password: 'Apple9844?',
+      hasPassword: true,
       role: 'admin',
       avatar: 'A',
       title: 'Administrator'
@@ -52,6 +54,7 @@ const initialData = {
       name: 'Admin',
       email: 'admin@company.com',
       password: 'Apple9844?',
+      hasPassword: true,
       role: 'admin',
       avatar: 'A',
       title: 'Administrator'

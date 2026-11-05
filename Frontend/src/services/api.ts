@@ -289,6 +289,42 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
   },
+  updateAdminProfile: async (data: { identifier: string; name?: string; email?: string; newPassword?: string }): Promise<{ success: boolean; user: import('../types').User }> => {
+    const res = await fetch(`${API_BASE}/auth/profile`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update profile' }));
+      throw new Error(err.error || 'Failed to update profile');
+    }
+    return res.json();
+  },
+  getAdmins: async (): Promise<import('../types').User[]> => {
+    const res = await fetch(`${API_BASE}/auth/admins`);
+    if (!res.ok) throw new Error('Failed to fetch administrators');
+    return res.json();
+  },
+  createAdmin: async (data: { name: string; email: string; password: string }): Promise<{ success: boolean; user: import('../types').User }> => {
+    const res = await fetch(`${API_BASE}/auth/admins`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create administrator' }));
+      throw new Error(err.error || 'Failed to create administrator');
+    }
+    return res.json();
+  },
+  deleteAdmin: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/auth/admins/${id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to delete administrator' }));
+      throw new Error(err.error || 'Failed to delete administrator');
+    }
+  },
 
   // Notifications
   getNotifications: async (role?: string, userId?: string): Promise<import('../types').Notification[]> => {

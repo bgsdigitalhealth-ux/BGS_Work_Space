@@ -89,6 +89,64 @@ router.get('/auth/users', async (req, res) => {
   }
 });
 
+// --- Admin Profile & Personnel Settings ---
+router.put('/auth/profile', async (req, res) => {
+  try {
+    const { identifier, name, email, newPassword } = req.body;
+    const target = identifier || email;
+    if (!target) {
+      return res.status(400).json({ error: 'User identifier or email is required' });
+    }
+    const result = await dataService.updateAdminProfile(target, { name, email, newPassword });
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('ADMIN_PROFILE_UPDATED', { user: result.user });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/auth/admins', async (req, res) => {
+  try {
+    const admins = await dataService.getAdmins();
+    res.json(admins);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/auth/admins', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email, and password are required' });
+    }
+    const result = await dataService.createAdmin({ name, email, password });
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('ADMIN_CREATED', { admin: result.user });
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/auth/admins/:id', async (req, res) => {
+  try {
+    const result = await dataService.deleteAdmin(req.params.id);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('ADMIN_DELETED', { id: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Notifications Engine ---
 router.get('/notifications', async (req, res) => {
   try {

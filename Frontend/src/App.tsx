@@ -8,6 +8,7 @@ import { Modals } from './components/Modals';
 
 // Admin Views
 import { AdminAppointments } from './components/admin/AdminAppointments';
+import { AdminSettings } from './components/admin/AdminSettings';
 
 // User Portal Components
 import { UserSidebar } from './components/user/UserSidebar';
@@ -87,6 +88,9 @@ export const App: React.FC = () => {
         {adminNav === 'appointments' ? (
           /* Admin Side - Appointment Management */
           <AdminAppointments />
+        ) : adminNav === 'settings' ? (
+          /* Admin Side - Settings & Personnel Management */
+          <AdminSettings />
         ) : (
           <>
             {/* Top 5 KPI Stats Cards */}
