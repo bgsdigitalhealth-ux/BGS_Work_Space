@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, ArrowRight, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const LoginPage: React.FC = () => {
   const { login } = useApp();
-  const [email, setEmail] = useState('admin@company.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -19,15 +19,6 @@ export const LoginPage: React.FC = () => {
     if (!success) {
       setErrorMessage('Invalid email or password. Please check your credentials.');
     }
-  };
-
-  const handleQuickLogin = async (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMessage('');
-    setLoading(true);
-    await login(demoEmail, demoPass);
-    setLoading(false);
   };
 
   return (
@@ -102,45 +93,6 @@ export const LoginPage: React.FC = () => {
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
-
-        {/* Login Credentials Box */}
-        <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">
-            Authorized Login Accounts (2 Roles Only)
-          </p>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* Admin Credentials Card */}
-            <div 
-              onClick={() => handleQuickLogin('admin@company.com', 'admin123')}
-              className="p-3.5 rounded-2xl bg-[#232050] hover:bg-[#2b2763] border border-purple-500/30 transition cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Admin
-                </span>
-                <span className="text-[10px] text-purple-300 font-semibold bg-purple-500/20 px-2 py-0.5 rounded-full">Auto-fill</span>
-              </div>
-              <p className="text-[11px] text-gray-300 font-mono">ID: <span className="text-white font-bold">admin@company.com</span></p>
-              <p className="text-[11px] text-gray-300 font-mono">Pass: <span className="text-white font-bold">admin123</span></p>
-            </div>
-
-            {/* User Credentials Card */}
-            <div 
-              onClick={() => handleQuickLogin('rahul@company.com', 'user123')}
-              className="p-3.5 rounded-2xl bg-[#232050] hover:bg-[#2b2763] border border-emerald-500/30 transition cursor-pointer group"
-            >
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> User (Member)
-                </span>
-                <span className="text-[10px] text-emerald-300 font-semibold bg-emerald-500/20 px-2 py-0.5 rounded-full">Auto-fill</span>
-              </div>
-              <p className="text-[11px] text-gray-300 font-mono">ID: <span className="text-white font-bold">rahul@company.com</span></p>
-              <p className="text-[11px] text-gray-300 font-mono">Pass: <span className="text-white font-bold">user123</span></p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

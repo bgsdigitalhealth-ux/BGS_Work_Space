@@ -101,7 +101,7 @@ export const UserHeader: React.FC = () => {
       <div className="flex items-center gap-3 relative">
         {/* Notification Bell */}
         <div className="relative">
-          <button 
+          <button
             onClick={() => setShowNotifs(!showNotifs)}
             className="relative p-2.5 rounded-xl bg-white border border-gray-200/80 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition shadow-sm"
           >
