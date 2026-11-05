@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { StatsOverview } from './components/StatsOverview';
@@ -20,14 +20,24 @@ import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
 import { LoginPage } from './components/auth/LoginPage';
+import { LandingPage } from './components/landing/LandingPage';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
   const { currentUser, userNav, adminNav, members, userWorkspace } = useApp();
+  const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
-  // If no user is logged in, show Common Login Page (ONLY TWO ROLES: admin, user)
+  // If no user is logged in, show the WorkHub Landing Page as the starting face
   if (!currentUser) {
-    return <LoginPage />;
+    if (authView === 'login') {
+      return <LoginPage onBack={() => setAuthView('landing')} />;
+    }
+    return (
+      <LandingPage 
+        onLogin={() => setAuthView('login')} 
+        onAssignWork={() => setAuthView('login')} 
+      />
+    );
   }
 
   if (currentUser.role === 'user') {

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, ArrowRight, Eye, EyeOff, KeyRound, CheckCircle2 } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowRight, Eye, EyeOff, KeyRound, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-export const LoginPage: React.FC = () => {
+export const LoginPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const { login, createPassword } = useApp();
   const [mode, setMode] = useState<'login' | 'create_password'>('login');
   
@@ -72,6 +72,16 @@ export const LoginPage: React.FC = () => {
 
       {/* Main Card */}
       <div className="max-w-md w-full bg-[#181639]/90 border border-white/10 rounded-3xl p-8 shadow-2xl backdrop-blur-xl relative z-10">
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="mb-4 inline-flex items-center gap-1.5 text-xs text-indigo-300 hover:text-white transition-colors cursor-pointer"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to Home</span>
+          </button>
+        )}
+
         {/* Brand Logo Header */}
         <div className="flex flex-col items-center text-center mb-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#704fe6] to-[#4f32c2] flex items-center justify-center shadow-lg shadow-indigo-600/40 mb-3">
