@@ -2169,6 +2169,57 @@ const getStats = async () => {
 
 // --- Real-Time Messaging Services ---
 const getEligibleUsers = async (currentUserId = null) => {
+  // Pre-load Department and Team maps to resolve IDs to proper human-readable names
+  const deptMap = new Map();
+  const teamMap = new Map();
+
+  try {
+    const allDepts = await getDepartments();
+    for (const d of (allDepts || [])) {
+      if (d.id) deptMap.set(d.id.toString(), d.name);
+      if (d._id) deptMap.set(d._id.toString(), d.name);
+      if (d.customId) deptMap.set(d.customId.toString(), d.name);
+    }
+    const allTeams = await getTeams();
+    for (const t of (allTeams || [])) {
+      if (t.id) teamMap.set(t.id.toString(), t.name);
+      if (t._id) teamMap.set(t._id.toString(), t.name);
+      if (t.customId) teamMap.set(t.customId.toString(), t.name);
+    }
+  } catch (err) {
+    console.warn('Error loading dept/team maps in getEligibleUsers:', err.message);
+  }
+
+  const resolveDept = (rawDept, memId) => {
+    if (!rawDept && !memId) return '';
+    if (rawDept && deptMap.has(rawDept.toString())) return deptMap.get(rawDept.toString());
+    if (memId) {
+      const mem = (memoryStore.members || []).find(m => m.id === memId || m._id?.toString() === memId);
+      if (mem && mem.departmentId && deptMap.has(mem.departmentId.toString())) {
+        return deptMap.get(mem.departmentId.toString());
+      }
+    }
+    if (rawDept && !rawDept.startsWith('dept-') && !/^[0-9a-fA-F]{24}$/.test(rawDept)) {
+      return rawDept;
+    }
+    return '';
+  };
+
+  const resolveTeam = (rawTeam, memId) => {
+    if (!rawTeam && !memId) return '';
+    if (rawTeam && teamMap.has(rawTeam.toString())) return teamMap.get(rawTeam.toString());
+    if (memId) {
+      const mem = (memoryStore.members || []).find(m => m.id === memId || m._id?.toString() === memId);
+      if (mem && mem.teamId && teamMap.has(mem.teamId.toString())) {
+        return teamMap.get(mem.teamId.toString());
+      }
+    }
+    if (rawTeam && !rawTeam.startsWith('team-') && !/^[0-9a-fA-F]{24}$/.test(rawTeam)) {
+      return rawTeam;
+    }
+    return '';
+  };
+
   let list = [];
   if (getStatus()) {
     try {
@@ -2178,8 +2229,8 @@ const getEligibleUsers = async (currentUserId = null) => {
         name: u.name,
         email: (u.email || '').toLowerCase().trim(),
         role: u.role,
-        department: u.department || '',
-        team: u.team || '',
+        department: resolveDept(u.department, u.memberId),
+        team: resolveTeam(u.team, u.memberId),
         teamRole: u.teamRole || '',
         avatar: u.avatar || (u.name || 'U').charAt(0).toUpperCase(),
         title: u.title || (u.role === 'admin' ? 'Administrator' : 'Team Member')
@@ -2195,8 +2246,8 @@ const getEligibleUsers = async (currentUserId = null) => {
       name: u.name,
       email: (u.email || '').toLowerCase().trim(),
       role: u.role,
-      department: u.department || '',
-      team: u.team || '',
+      department: resolveDept(u.department, u.memberId),
+      team: resolveTeam(u.team, u.memberId),
       teamRole: u.teamRole || '',
       avatar: u.avatar || (u.name || 'U').charAt(0).toUpperCase(),
       title: u.title || (u.role === 'admin' ? 'Administrator' : 'Team Member')

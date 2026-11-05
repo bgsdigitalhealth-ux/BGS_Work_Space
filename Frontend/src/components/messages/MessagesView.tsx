@@ -28,7 +28,7 @@ import { getSocket, connectSocketUser } from '../../services/socket';
 import { Conversation, ChatMessage, EligibleUser } from '../../types';
 
 export const MessagesView: React.FC = () => {
-  const { currentUser } = useApp();
+  const { currentUser, departments = [], teams = [], members = [] } = useApp();
 
   // State
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -482,6 +482,46 @@ export const MessagesView: React.FC = () => {
     return list;
   }, [conversations, filterTab, searchQuery]);
 
+  // Resolve Department Name from ID or raw string (no raw numbers/IDs)
+  const resolveDepartmentName = (deptVal?: string) => {
+    if (!deptVal) return '';
+    if (!deptVal.startsWith('dept-') && !/^[0-9a-fA-F]{24}$/.test(deptVal)) {
+      return deptVal;
+    }
+    const match = departments.find(d => d.id === deptVal || (d as any)._id === deptVal || (d as any).customId === deptVal);
+    if (match) return match.name;
+    return '';
+  };
+
+  // Resolve Team Name from ID or raw string (no raw numbers/IDs)
+  const resolveTeamName = (teamVal?: string) => {
+    if (!teamVal) return '';
+    if (!teamVal.startsWith('team-') && !/^[0-9a-fA-F]{24}$/.test(teamVal)) {
+      return teamVal;
+    }
+    const match = teams.find(t => t.id === teamVal || (t as any)._id === teamVal || (t as any).customId === teamVal);
+    if (match) return match.name;
+    return '';
+  };
+
+  // Resolve user department & team display
+  const getUserOrgInfo = (u: EligibleUser) => {
+    let deptName = resolveDepartmentName(u.department);
+    let teamName = resolveTeamName(u.team);
+
+    // If still missing, check in members list
+    if ((!deptName || !teamName) && u.email) {
+      const mem = members.find(m => m.email?.toLowerCase() === u.email.toLowerCase());
+      if (mem) {
+        if (!deptName && mem.departmentId) deptName = resolveDepartmentName(mem.departmentId);
+        if (!teamName && mem.teamId) teamName = resolveTeamName(mem.teamId);
+      }
+    }
+
+    const label = [deptName, teamName].filter(Boolean).join(' • ');
+    return { deptName, teamName, label };
+  };
+
   // Filter modal users
   const filteredEligibleUsers = useMemo(() => {
     let list = [...eligibleUsers];
@@ -490,15 +530,18 @@ export const MessagesView: React.FC = () => {
     }
     if (newChatSearch.trim()) {
       const q = newChatSearch.toLowerCase().trim();
-      list = list.filter(u => 
-        (u.email || '').toLowerCase().includes(q) ||
-        (u.name || '').toLowerCase().includes(q) ||
-        (u.department || '').toLowerCase().includes(q) ||
-        (u.team || '').toLowerCase().includes(q)
-      );
+      list = list.filter(u => {
+        const org = getUserOrgInfo(u);
+        return (
+          (u.email || '').toLowerCase().includes(q) ||
+          (u.name || '').toLowerCase().includes(q) ||
+          org.deptName.toLowerCase().includes(q) ||
+          org.teamName.toLowerCase().includes(q)
+        );
+      });
     }
     return list;
-  }, [eligibleUsers, newChatRoleFilter, newChatSearch]);
+  }, [eligibleUsers, newChatRoleFilter, newChatSearch, departments, teams, members]);
 
   const totalUnreadCount = useMemo(() => {
     return conversations.reduce((acc, c) => acc + (c.unread || 0), 0);
@@ -1293,11 +1336,15 @@ export const MessagesView: React.FC = () => {
                             </span>
                           </div>
                           <p className="text-[11px] text-[#667781] truncate mt-0.5">{user.email}</p>
-                          {(user.department || user.team) && (
-                            <p className="text-[10px] text-gray-400 truncate mt-0.5">
-                              {[user.department, user.team].filter(Boolean).join(' • ')}
-                            </p>
-                          )}
+                          {(() => {
+                            const org = getUserOrgInfo(user);
+                            if (!org.label) return null;
+                            return (
+                              <p className="text-[10px] text-gray-500 font-medium truncate mt-0.5">
+                                {org.label}
+                              </p>
+                            );
+                          })()}
                         </div>
                       </div>
 
