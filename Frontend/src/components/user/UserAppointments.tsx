@@ -27,17 +27,17 @@ export const UserAppointments: React.FC = () => {
 
   // Form State
   const [formTitle, setFormTitle] = useState('');
-  const [formDate, setFormDate] = useState('2026-11-05');
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [formTime, setFormTime] = useState('11:00 AM');
   const [formDeptTeam, setFormDeptTeam] = useState('Engineering / Backend');
   const [formPurpose, setFormPurpose] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const stats = appointmentStats?.user || {
-    total: 12,
-    today: 3,
-    upcoming: 4,
-    completed: 5,
+    total: 0,
+    today: 0,
+    upcoming: 0,
+    completed: 0,
     cancelled: 0
   };
 
@@ -47,7 +47,8 @@ export const UserAppointments: React.FC = () => {
   );
 
   const filteredAppointments = userAppointments.filter(apt => {
-    if (activeTab === 'Today' && !apt.isToday && apt.date !== '2026-11-05') return false;
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (activeTab === 'Today' && !apt.isToday && apt.date !== todayStr) return false;
     if (activeTab === 'Upcoming' && apt.status !== 'Upcoming' && apt.status !== 'Scheduled') return false;
     if (activeTab === 'Completed' && apt.status !== 'Completed') return false;
     if (activeTab === 'Cancelled' && apt.status !== 'Cancelled') return false;
@@ -213,7 +214,7 @@ export const UserAppointments: React.FC = () => {
             {calendarDays.map(day => {
               const dateStr = `2026-11-${String(day).padStart(2, '0')}`;
               const isSelected = selectedAppointmentDate === dateStr;
-              const hasEvents = [5, 12, 19, 26].includes(day);
+              const hasEvents = userAppointments.some(a => a.date === dateStr);
 
               return (
                 <button
@@ -270,7 +271,7 @@ export const UserAppointments: React.FC = () => {
               filteredAppointments.map(apt => {
                 const dateObj = new Date(apt.date);
                 const dayStr = String(dateObj.getDate()).padStart(2, '0');
-                const isToday = apt.isToday || apt.date === '2026-11-05';
+                const isToday = apt.isToday || apt.date === new Date().toISOString().split('T')[0];
 
                 return (
                   <div 

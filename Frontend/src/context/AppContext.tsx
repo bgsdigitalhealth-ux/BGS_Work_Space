@@ -1,14 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { 
-  Department, 
-  Team, 
-  Member, 
-  Assignment, 
-  Task, 
-  WorkDone, 
-  DashboardStats, 
-  UserWorkspaceData, 
-  UserAssignedWork, 
+import {
+  Department,
+  Team,
+  Member,
+  Assignment,
+  Task,
+  WorkDone,
+  DashboardStats,
+  UserWorkspaceData,
+  UserAssignedWork,
   UserWorkHistory,
   Appointment,
   AppointmentStats,
@@ -407,12 +407,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const data = await api.getUserWorkspace();
       setUserWorkspace(data);
-      if (data.assignedWork && data.assignedWork.length > 0 && !selectedUserTask) {
-        const cmeTask = data.assignedWork.find(t => t.taskId === 'TSK-2026-0487') || data.assignedWork[0];
-        setSelectedUserTask(cmeTask);
+      if (data.assignedWork && data.assignedWork.length > 0) {
+        if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
+          setSelectedUserTask(data.assignedWork[0]);
+        }
+      } else {
+        setSelectedUserTask(null);
       }
-      if (data.history && data.history.length > 0 && !selectedHistoryItem) {
-        setSelectedHistoryItem(data.history[0]);
+      if (data.history && data.history.length > 0) {
+        if (!selectedHistoryItem || !data.history.some(h => h.id === selectedHistoryItem.id)) {
+          setSelectedHistoryItem(data.history[0]);
+        }
+      } else {
+        setSelectedHistoryItem(null);
       }
     } catch (e) {
       console.error(e);

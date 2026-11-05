@@ -41,7 +41,7 @@ export const AdminAppointments: React.FC = () => {
     requestedBy: 'Rahul Sharma',
     department: 'Engineering',
     team: 'Backend',
-    date: '2026-11-05',
+    date: new Date().toISOString().split('T')[0],
     time: '11:00 AM',
     location: 'Online (Google Meet)',
     purpose: '',
@@ -49,17 +49,18 @@ export const AdminAppointments: React.FC = () => {
   });
 
   const stats = appointmentStats?.admin || {
-    total: 124,
-    today: 28,
-    completed: 96,
-    upcoming: 18,
-    cancelled: 10
+    total: 0,
+    today: 0,
+    completed: 0,
+    upcoming: 0,
+    cancelled: 0
   };
 
   // Filtered Appointments
   const filteredAppointments = appointments.filter(apt => {
+    const todayStr = new Date().toISOString().split('T')[0];
     // Tab filter
-    if (activeTab === 'Today' && !apt.isToday && apt.date !== '2026-11-05') return false;
+    if (activeTab === 'Today' && !apt.isToday && apt.date !== todayStr) return false;
     if (activeTab === 'Upcoming' && apt.status !== 'Upcoming' && apt.status !== 'Scheduled') return false;
     if (activeTab === 'Completed' && apt.status !== 'Completed') return false;
     if (activeTab === 'Cancelled' && apt.status !== 'Cancelled') return false;
@@ -97,7 +98,7 @@ export const AdminAppointments: React.FC = () => {
       requestedBy: 'Rahul Sharma',
       department: 'Engineering',
       team: 'Backend',
-      date: selectedAppointmentDate || '2026-11-05',
+      date: selectedAppointmentDate || new Date().toISOString().split('T')[0],
       time: '11:00 AM',
       location: 'Online (Google Meet)',
       purpose: '',
@@ -255,7 +256,7 @@ export const AdminAppointments: React.FC = () => {
             {calendarDays.map(day => {
               const dateStr = `2026-11-${String(day).padStart(2, '0')}`;
               const isSelected = selectedAppointmentDate === dateStr;
-              const hasEvents = [5, 12, 19, 26].includes(day);
+              const hasEvents = appointments.some(a => a.date === dateStr);
 
               return (
                 <button

@@ -7,7 +7,7 @@ const Task = require('../models/Task');
 const WorkDone = require('../models/WorkDone');
 const initialData = require('./seedData');
 
-// In-Memory store initialized with deep copy of seed data
+// In-Memory store initialized with deep copy of clean seed data
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
 // Helper for generating unique ID for in-memory operations
@@ -19,7 +19,7 @@ const initMongoSeed = async () => {
   try {
     const deptCount = await Department.countDocuments();
     if (deptCount === 0) {
-      console.log('[Seed] Seeding initial data into MongoDB...');
+      console.log('[Seed] Seeding initial departments and teams into MongoDB...');
       const deptMap = {};
       for (const d of initialData.departments) {
         const created = await Department.create({
@@ -40,59 +40,20 @@ const initMongoSeed = async () => {
         teamMap[t.id] = created._id;
       }
 
-      const memberMap = {};
       for (const m of initialData.members) {
-        const created = await Member.create({
+        await Member.create({
           name: m.name,
           email: m.email,
           phone: m.phone,
           role: m.role,
-          assignedWork: m.assignedWork,
+          assignedWork: m.assignedWork || '',
           teamId: teamMap[m.teamId] || Object.values(teamMap)[0],
           departmentId: deptMap[m.departmentId] || Object.values(deptMap)[0],
           avatar: m.avatar
         });
-        memberMap[m.id] = created._id;
       }
 
-      for (const a of initialData.assignments) {
-        if (memberMap[a.memberId] && teamMap[a.teamId]) {
-          await Assignment.create({
-            memberId: memberMap[a.memberId],
-            teamId: teamMap[a.teamId],
-            workTitle: a.workTitle,
-            workDescription: a.workDescription,
-            role: a.role,
-            priority: a.priority,
-            dueDate: a.dueDate,
-            status: a.status
-          });
-        }
-      }
-
-      for (const tk of initialData.tasks) {
-        if (teamMap[tk.teamId]) {
-          await Task.create({
-            teamId: teamMap[tk.teamId],
-            title: tk.title,
-            priority: tk.priority,
-            completed: tk.completed,
-            date: tk.date
-          });
-        }
-      }
-
-      for (const wd of initialData.workDone) {
-        if (teamMap[wd.teamId]) {
-          await WorkDone.create({
-            teamId: teamMap[wd.teamId],
-            title: wd.title,
-            details: wd.details,
-            date: wd.date
-          });
-        }
-      }
-      console.log('[Seed] MongoDB initial seeding finished!');
+      console.log('[Seed] MongoDB initial seeding finished (clean state)!');
     }
   } catch (err) {
     console.error('[Seed Error] Failed to seed MongoDB:', err);
@@ -276,16 +237,26 @@ const createAssignment = async (data) => {
     workDescription: data.workDescription || '',
     role: data.role || 'Developer',
     priority: data.priority || 'Medium',
-    dueDate: data.dueDate || 'Jan 31, 2026',
+    dueDate: data.dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
     status: data.status || 'In Progress'
   };
   memoryStore.assignments.unshift(newAssign);
 
+  // Update member assignedWork attribute
+  const member = memoryStore.members.find(m => m.id === data.memberId);
+  if (member) {
+    member.assignedWork = data.workTitle;
+  }
+
   // Synchronize directly into User Workspace
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionRate: 0, completedCount: 0, totalCount: 0 },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
-  const member = memoryStore.members.find(m => m.id === data.memberId);
   const team = memoryStore.teams.find(t => t.id === data.teamId);
   const dept = team ? memoryStore.departments.find(d => d.id === team.departmentId) : null;
 
@@ -335,13 +306,7 @@ const getTasks = async (teamId = null) => {
     return list.map(t => ({ ...t, id: t._id.toString() }));
   }
   if (teamId) {
-    const found = memoryStore.tasks.filter(t => t.teamId === teamId);
-    if (found.length > 0) return found;
-    // Default contextual tasks if team has none yet
-    return [
-      { id: generateId('task'), teamId, title: 'Review sprint deliverables', priority: 'High', completed: false, date: '2026-11-05' },
-      { id: generateId('task'), teamId, title: 'Sync with team leads', priority: 'Medium', completed: false, date: '2026-11-05' }
-    ];
+    return memoryStore.tasks.filter(t => t.teamId === teamId);
   }
   return memoryStore.tasks;
 };
@@ -405,11 +370,7 @@ const getWorkDone = async (teamId = null) => {
     return list.map(w => ({ ...w, id: w._id.toString() }));
   }
   if (teamId) {
-    const found = memoryStore.workDone.filter(w => w.teamId === teamId);
-    if (found.length > 0) return found;
-    return [
-      { id: generateId('wd'), teamId, title: 'Sprint planning and task alignment completed', details: 'All backlog tasks groomed', date: '2026-11-05' }
-    ];
+    return memoryStore.workDone.filter(w => w.teamId === teamId);
   }
   return memoryStore.workDone;
 };
@@ -442,38 +403,60 @@ const deleteWorkDone = async (id) => {
 // --- User Portal Workspace ---
 const getUserWorkspace = async () => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: {
+        totalAssigned: 0,
+        inProgress: 0,
+        upcomingWork: 0,
+        completedWork: 0,
+        completionPercentage: 0,
+        completedFractionText: '0 of 0 Tasks'
+      },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
 
   const ws = memoryStore.userWorkspace;
   const assigned = ws.assignedWork || [];
+  const history = ws.history || [];
+
   const inProgressCount = assigned.filter(a => a.status === 'In Progress').length;
-  const upcomingCount = assigned.filter(a => a.status === 'Not Started' || a.status === 'Upcoming').length;
-  const completedCount = (ws.history || []).length;
+  const upcomingCount = assigned.filter(a => a.status === 'Not Started' || a.status === 'Upcoming' || a.status === 'To Do').length;
+  const completedFromAssigned = assigned.filter(a => a.status === 'Completed').length;
+  const completedFromHistory = history.filter(h => h.status === 'Approved' || h.status === 'Completed').length;
+  const completedCount = completedFromAssigned + completedFromHistory;
   const totalAssigned = assigned.length;
-  const completionPercentage = totalAssigned + completedCount > 0 
-    ? Math.round((completedCount / (totalAssigned + completedCount)) * 100) 
-    : 82;
+  const totalTasks = totalAssigned + completedFromHistory;
+  const completionPercentage = totalTasks > 0
+    ? Math.round((completedCount / totalTasks) * 100)
+    : 0;
 
   return {
     ...ws,
     stats: {
-      totalAssigned: 12,
+      totalAssigned: totalAssigned,
       inProgress: inProgressCount,
       upcomingWork: upcomingCount,
-      completedWork: completedCount || 18,
-      completionPercentage: completionPercentage || 82,
-      completedFractionText: `${completedCount || 18} of ${12 + (completedCount || 18)} Tasks`
+      completedWork: completedCount,
+      completionPercentage: completionPercentage,
+      completedFractionText: `${completedCount} of ${totalTasks} Tasks`
     }
   };
 };
 
 const submitUserWork = async (data) => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
   const ws = memoryStore.userWorkspace;
-  const { taskId, workStatus, comment, attachments } = data;
+  const { taskId, workStatus, comment } = data;
 
   // Find task if exists
   const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
@@ -488,14 +471,14 @@ const submitUserWork = async (data) => {
     id: generateId('h'),
     title: task ? task.title : 'Submitted Work',
     taskId: task && task.taskId ? task.taskId : `TSK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-    department: task ? task.department : 'Marketing',
-    team: task ? task.team : 'Digital Media',
+    department: task ? task.department : 'Engineering',
+    team: task ? task.team : 'Backend Team',
     submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    status: workStatus === 'Completed' ? 'Under Review' : 'Under Review',
-    reviewerFeedback: 'Submitted. Pending review by Team Lead.',
-    assignedBy: task ? task.assignedBy : 'Priya Verma',
+    status: 'Under Review',
+    reviewerFeedback: 'Submitted. Pending review by Admin / Team Lead.',
+    assignedBy: task ? task.assignedBy : 'Admin',
     dueDate: task ? task.dueDate : 'Today',
-    submittedComment: comment || 'Work completed and submitted with attachments.',
+    submittedComment: comment || 'Work completed and submitted for review.',
     reviewerComments: []
   };
 
@@ -513,7 +496,7 @@ const submitUserWork = async (data) => {
   createNotification({
     recipientRole: 'admin',
     title: 'Work Submitted for Review',
-    message: `Rahul Sharma submitted "${task ? task.title : 'Work'}" with deliverables.`,
+    message: `User submitted "${task ? task.title : 'Work'}" for approval.`,
     link: 'work-management'
   });
 
@@ -522,7 +505,12 @@ const submitUserWork = async (data) => {
 
 const approveWork = async (taskId, comment) => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
   const ws = memoryStore.userWorkspace;
   const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
@@ -559,7 +547,12 @@ const approveWork = async (taskId, comment) => {
 
 const requestRework = async (taskId, feedback) => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
   const ws = memoryStore.userWorkspace;
   const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
@@ -624,7 +617,7 @@ const getUsers = async () => {
 // --- Notifications Engine ---
 const getNotifications = async (role = 'all', userId = null) => {
   if (!memoryStore.notifications) {
-    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+    memoryStore.notifications = [];
   }
   let list = memoryStore.notifications;
   if (role && role !== 'all') {
@@ -635,7 +628,7 @@ const getNotifications = async (role = 'all', userId = null) => {
 
 const createNotification = (data) => {
   if (!memoryStore.notifications) {
-    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+    memoryStore.notifications = [];
   }
   const newNotif = {
     id: generateId('notif'),
@@ -653,7 +646,7 @@ const createNotification = (data) => {
 
 const markNotificationRead = async (id) => {
   if (!memoryStore.notifications) {
-    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+    memoryStore.notifications = [];
   }
   const notif = memoryStore.notifications.find(n => n.id === id);
   if (notif) notif.read = true;
@@ -662,7 +655,7 @@ const markNotificationRead = async (id) => {
 
 const markAllNotificationsRead = async (role) => {
   if (!memoryStore.notifications) {
-    memoryStore.notifications = JSON.parse(JSON.stringify(initialData.notifications || []));
+    memoryStore.notifications = [];
   }
   memoryStore.notifications.forEach(n => {
     if (!role || n.recipientRole === role) {
@@ -674,7 +667,12 @@ const markAllNotificationsRead = async (role) => {
 
 const addUserComment = async (taskId, data) => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
   const ws = memoryStore.userWorkspace;
   const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
@@ -705,7 +703,12 @@ const addUserComment = async (taskId, data) => {
 
 const updateUserWorkStatus = async (taskId, status) => {
   if (!memoryStore.userWorkspace) {
-    memoryStore.userWorkspace = JSON.parse(JSON.stringify(initialData.userWorkspace || {}));
+    memoryStore.userWorkspace = {
+      stats: { totalAssigned: 0, inProgress: 0, upcomingWork: 0, completedWork: 0, completionPercentage: 0, completedFractionText: '0 of 0 Tasks' },
+      assignedWork: [],
+      history: [],
+      recentActivities: []
+    };
   }
   const ws = memoryStore.userWorkspace;
   const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
@@ -729,7 +732,7 @@ const updateUserWorkStatus = async (taskId, status) => {
 // --- Appointment Services ---
 const getAppointments = async (filter = {}) => {
   if (!memoryStore.appointments) {
-    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+    memoryStore.appointments = [];
   }
   let list = memoryStore.appointments;
 
@@ -758,11 +761,12 @@ const getAppointments = async (filter = {}) => {
 
 const createAppointment = async (data) => {
   if (!memoryStore.appointments) {
-    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+    memoryStore.appointments = [];
   }
   const dateObj = data.date ? new Date(data.date) : new Date();
   const dateFormatted = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   const timeFormatted = data.time || '11:00 AM';
+  const todayStr = new Date().toISOString().split('T')[0];
 
   const newApt = {
     id: generateId('apt'),
@@ -771,14 +775,14 @@ const createAppointment = async (data) => {
     userId: data.userId || 'mem-1',
     department: data.department || 'Engineering',
     team: data.team || 'Backend',
-    date: data.date || new Date().toISOString().split('T')[0],
+    date: data.date || todayStr,
     time: timeFormatted,
     endTime: data.endTime || '12:00 PM',
     dateTimeDisplay: `${dateFormatted}, ${timeFormatted}`,
     location: data.location || 'Online (Google Meet)',
     purpose: data.purpose || '',
     status: data.status || 'Scheduled',
-    isToday: data.date === '2026-11-05' || data.date === new Date().toISOString().split('T')[0]
+    isToday: data.date === todayStr
   };
 
   memoryStore.appointments.unshift(newApt);
@@ -787,7 +791,7 @@ const createAppointment = async (data) => {
 
 const updateAppointment = async (id, data) => {
   if (!memoryStore.appointments) {
-    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+    memoryStore.appointments = [];
   }
   const index = memoryStore.appointments.findIndex(a => a.id === id);
   if (index === -1) return null;
@@ -801,7 +805,7 @@ const updateAppointment = async (id, data) => {
 
 const deleteAppointment = async (id) => {
   if (!memoryStore.appointments) {
-    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+    memoryStore.appointments = [];
   }
   memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
   return true;
@@ -809,25 +813,38 @@ const deleteAppointment = async (id) => {
 
 const getAppointmentStats = async () => {
   if (!memoryStore.appointments) {
-    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+    memoryStore.appointments = [];
   }
   const all = memoryStore.appointments;
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const adminTotal = all.length;
+  const adminToday = all.filter(a => a.isToday || a.date === todayStr).length;
+  const adminCompleted = all.filter(a => a.status === 'Completed').length;
+  const adminUpcoming = all.filter(a => a.status === 'Upcoming' || a.status === 'Scheduled').length;
+  const adminCancelled = all.filter(a => a.status === 'Cancelled').length;
+
   const userApts = all.filter(a => a.requestedBy === 'Rahul Sharma' || a.userId === 'mem-1');
+  const userTotal = userApts.length;
+  const userToday = userApts.filter(a => a.isToday || a.date === todayStr).length;
+  const userCompleted = userApts.filter(a => a.status === 'Completed').length;
+  const userUpcoming = userApts.filter(a => a.status === 'Upcoming' || a.status === 'Scheduled').length;
+  const userCancelled = userApts.filter(a => a.status === 'Cancelled').length;
 
   return {
     admin: {
-      total: Math.max(all.length, 124),
-      today: 28,
-      completed: 96,
-      upcoming: 18,
-      cancelled: 10
+      total: adminTotal,
+      today: adminToday,
+      completed: adminCompleted,
+      upcoming: adminUpcoming,
+      cancelled: adminCancelled
     },
     user: {
-      total: Math.max(userApts.length, 12),
-      today: 3,
-      upcoming: 4,
-      completed: 5,
-      cancelled: 0
+      total: userTotal,
+      today: userToday,
+      completed: userCompleted,
+      upcoming: userUpcoming,
+      cancelled: userCancelled
     }
   };
 };
@@ -844,8 +861,8 @@ const getStats = async () => {
     departmentsCount: depts.length,
     teamsCount: tms.length,
     membersCount: mems.length,
-    todaysTasksCount: Math.max(tsks.length, 18),
-    workDoneTodayCount: Math.max(wd.length, 14),
+    todaysTasksCount: tsks.length,
+    workDoneTodayCount: wd.length,
     databaseMode: getStatus() ? 'MongoDB' : 'In-Memory Store (Ready for MongoDB)'
   };
 };

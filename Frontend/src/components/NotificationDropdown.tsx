@@ -119,3 +119,4 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
     </div>
   );
 };
+

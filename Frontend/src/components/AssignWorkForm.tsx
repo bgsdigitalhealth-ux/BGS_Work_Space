@@ -10,12 +10,10 @@ export const AssignWorkForm: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState('Team Lead');
-  const [workTitle, setWorkTitle] = useState('Oversee backend development');
-  const [workDescription, setWorkDescription] = useState(
-    'Review code, guide the team, and ensure timely delivery of backend features for the current sprint.'
-  );
+  const [workTitle, setWorkTitle] = useState('');
+  const [workDescription, setWorkDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('High');
-  const [dueDate, setDueDate] = useState('Jan 31, 2026');
+  const [dueDate, setDueDate] = useState('');
   const [status, setStatus] = useState<'In Progress' | 'To Do' | 'In Review' | 'Completed'>('In Progress');
   const [submitting, setSubmitting] = useState(false);
 

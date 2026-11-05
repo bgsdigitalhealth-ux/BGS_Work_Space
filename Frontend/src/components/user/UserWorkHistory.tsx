@@ -102,8 +102,8 @@ export const UserWorkHistory: React.FC = () => {
 
       {/* Main Two-Column Layout: History Table + Selected Submission Inspector */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left: History Table (7 cols) */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
+        {/* Left: History Table (7 cols or 12 cols if no selection) */}
+        <div className={`${activeItem ? 'lg:col-span-7' : 'lg:col-span-12'} bg-white rounded-2xl border border-gray-100 shadow-sm p-5`}>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>

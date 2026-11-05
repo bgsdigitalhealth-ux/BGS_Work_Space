@@ -37,20 +37,25 @@ export const UserDashboard: React.FC = () => {
 
   // Drawer Form State
   const [drawerStatus, setDrawerStatus] = useState<'Completed' | 'In Progress' | 'Under Review'>('Completed');
-  const [drawerComment, setDrawerComment] = useState('Updated the department homepage, added CME details and new banner images.');
+  const [drawerComment, setDrawerComment] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const stats = userWorkspace?.stats || {
-    totalAssigned: 12,
-    inProgress: 5,
-    upcomingWork: 4,
-    completedWork: 18,
-    completionPercentage: 82,
-    completedFractionText: '18 of 22 Tasks'
+    totalAssigned: 0,
+    inProgress: 0,
+    upcomingWork: 0,
+    completedWork: 0,
+    completionPercentage: 0,
+    completedFractionText: '0 of 0 Tasks'
   };
 
   const assignedList = userWorkspace?.assignedWork || [];
+  const historyList = userWorkspace?.history || [];
+  const totalTasks = stats.totalAssigned + historyList.length;
+  const inProgressPct = totalTasks > 0 ? Math.round((stats.inProgress / totalTasks) * 100) : 0;
+  const upcomingPct = totalTasks > 0 ? Math.round((stats.upcomingWork / totalTasks) * 100) : 0;
+  const completedPct = totalTasks > 0 ? Math.round((stats.completedWork / totalTasks) * 100) : 0;
 
   // Filter tasks based on filter tab, search query, and dropdown
   const filteredTasks = assignedList.filter(task => {
@@ -535,7 +540,7 @@ export const UserDashboard: React.FC = () => {
                 />
               </svg>
               <div className="absolute text-center">
-                <span className="text-2xl font-black text-gray-900">22</span>
+                <span className="text-2xl font-black text-gray-900">{totalTasks}</span>
                 <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider">Total Work</p>
               </div>
             </div>
@@ -545,17 +550,17 @@ export const UserDashboard: React.FC = () => {
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full bg-[#6366f1]" />
                 <span className="w-28 text-gray-600">In Progress</span>
-                <span className="font-bold text-gray-900">5 (23%)</span>
+                <span className="font-bold text-gray-900">{stats.inProgress} ({inProgressPct}%)</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full bg-[#38bdf8]" />
                 <span className="w-28 text-gray-600">Upcoming Work</span>
-                <span className="font-bold text-gray-900">4 (18%)</span>
+                <span className="font-bold text-gray-900">{stats.upcomingWork} ({upcomingPct}%)</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full bg-[#10b981]" />
                 <span className="w-28 text-gray-600">Completed Work</span>
-                <span className="font-bold text-gray-900">18 (82%)</span>
+                <span className="font-bold text-gray-900">{stats.completedWork} ({completedPct}%)</span>
               </div>
             </div>
           </div>
@@ -574,49 +579,36 @@ export const UserDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            {(userWorkspace?.recentActivities || [
-              {
-                id: 'act-1',
-                type: 'submitted',
-                title: 'Submitted: Social media post - World Suicide Prevention Day',
-                date: '04 Nov, 05:20 PM'
-              },
-              {
-                id: 'act-2',
-                type: 'started',
-                title: 'Work Started: Update departmental brochure',
-                date: '04 Nov, 11:10 AM'
-              },
-              {
-                id: 'act-3',
-                type: 'assigned',
-                title: 'Assigned: Prepare event poster for CME',
-                date: '03 Nov, 04:45 PM'
-              }
-            ]).map((act) => (
-              <div key={act.id} className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-gray-50/70 transition">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                  act.type === 'submitted'
-                    ? 'bg-emerald-100 text-emerald-600'
-                    : act.type === 'started'
-                    ? 'bg-blue-100 text-blue-600'
-                    : 'bg-purple-100 text-[#5a36e6]'
-                }`}>
-                  {act.type === 'submitted' ? (
-                    <CheckCircle2 className="w-4 h-4" />
-                  ) : act.type === 'started' ? (
-                    <Clock className="w-4 h-4" />
-                  ) : (
-                    <ImageIcon className="w-4 h-4" />
-                  )}
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-1">{act.title}</p>
-                  <p className="text-[11px] text-gray-400 font-medium mt-0.5">{act.date}</p>
-                </div>
+            {(!userWorkspace?.recentActivities || userWorkspace.recentActivities.length === 0) ? (
+              <div className="py-8 text-center text-gray-400 text-xs font-medium">
+                No recent activity yet. When work is assigned or submitted, activities will appear here.
               </div>
-            ))}
+            ) : (
+              userWorkspace.recentActivities.map((act) => (
+                <div key={act.id} className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-gray-50/70 transition">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
+                    act.type === 'submitted'
+                      ? 'bg-emerald-100 text-emerald-600'
+                      : act.type === 'started'
+                      ? 'bg-blue-100 text-blue-600'
+                      : 'bg-purple-100 text-[#5a36e6]'
+                  }`}>
+                    {act.type === 'submitted' ? (
+                      <CheckCircle2 className="w-4 h-4" />
+                    ) : act.type === 'started' ? (
+                      <Clock className="w-4 h-4" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4" />
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-1">{act.title}</p>
+                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">{act.date}</p>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>

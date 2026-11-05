@@ -21,6 +21,7 @@ import { useApp } from '../../context/AppContext';
 export const UserWorkDetails: React.FC = () => {
   const { 
     selectedUserTask, 
+    setUserNav,
     openSubmitWorkDrawer, 
     handleAddUserComment 
   } = useApp();
@@ -30,51 +31,27 @@ export const UserWorkDetails: React.FC = () => {
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentBadge, setNewCommentBadge] = useState('Update');
 
-  // Fallback default task if none selected
-  const task = selectedUserTask || {
-    id: 'user-task-2',
-    taskId: 'TSK-2026-0487',
-    title: 'Prepare event poster for CME',
-    department: 'Events',
-    team: 'Design',
-    priority: 'Medium',
-    dueDate: '06 Nov 2026',
-    status: 'In Progress',
-    assignedBy: 'Priya Verma',
-    assignedOn: '03 Nov 2026, 10:30 AM',
-    description: 'Design an event poster for the upcoming CME on "Anaesthesia Awareness Programme" with institutional branding, date, venue and resource faculty details.',
-    progress: 60,
-    comments: [
-      {
-        id: 'c-1',
-        author: 'Rahul Sharma',
-        role: 'Team Member',
-        date: '04 Nov 2026, 11:10 AM',
-        badge: 'Work Started',
-        text: 'Started working on the poster. Concept and layout are under progress.'
-      },
-      {
-        id: 'c-2',
-        author: 'Rahul Sharma',
-        role: 'Team Member',
-        date: '05 Nov 2026, 04:20 PM',
-        badge: 'Update',
-        text: 'Draft version completed. Attached for review and feedback.'
-      },
-      {
-        id: 'c-3',
-        author: 'Priya Verma (Team Lead)',
-        role: 'Team Lead',
-        date: '05 Nov 2026, 05:00 PM',
-        badge: 'Feedback',
-        text: 'Looks good. Please add the venue and contact details, then submit the final version.'
-      }
-    ],
-    attachments: [
-      { name: 'CME_Brief.pdf', size: '1.2 MB', date: '03 Nov 2026' },
-      { name: 'Branding_Assets.zip', size: '4.8 MB', date: '03 Nov 2026' }
-    ]
-  };
+  if (!selectedUserTask) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center max-w-lg mx-auto mt-12">
+        <div className="w-16 h-16 rounded-2xl bg-indigo-50 text-[#5a36e6] flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-8 h-8" />
+        </div>
+        <h3 className="text-base font-bold text-gray-900 mb-2">No Work Item Selected</h3>
+        <p className="text-xs text-gray-500 mb-6 font-medium leading-relaxed">
+          Please select a task from your dashboard or assigned work list to view its progression, submission history, and team feedback.
+        </p>
+        <button
+          onClick={() => setUserNav('dashboard')}
+          className="bg-[#5a36e6] hover:bg-[#4d2ec4] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition"
+        >
+          Go to My Dashboard
+        </button>
+      </div>
+    );
+  }
+
+  const task = selectedUserTask;
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,10 +62,7 @@ export const UserWorkDetails: React.FC = () => {
   };
 
   const comments = task.comments || [];
-  const attachments = task.attachments || [
-    { name: 'CME_Brief.pdf', size: '1.2 MB', date: '03 Nov 2026' },
-    { name: 'Branding_Assets.zip', size: '4.8 MB', date: '03 Nov 2026' }
-  ];
+  const attachments = task.attachments || [];
 
   const getCommentBadgeStyle = (badge?: string) => {
     if (badge === 'Work Started') return 'bg-blue-50 text-blue-600 border border-blue-200';
@@ -441,7 +415,7 @@ export const UserWorkDetails: React.FC = () => {
             <div className="divide-y divide-gray-100 text-xs">
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Task ID</span>
-                <span className="font-bold text-gray-900">{task.taskId || 'TSK-2026-0487'}</span>
+                <span className="font-bold text-gray-900">{task.taskId || task.id}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Priority</span>
@@ -455,7 +429,7 @@ export const UserWorkDetails: React.FC = () => {
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Assigned On</span>
-                <span className="font-semibold text-gray-800">{task.assignedOn || '03 Nov 2026, 10:30 AM'}</span>
+                <span className="font-semibold text-gray-800">{task.assignedOn || 'Recently'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Due Date</span>
@@ -463,7 +437,7 @@ export const UserWorkDetails: React.FC = () => {
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Assigned By</span>
-                <span className="font-semibold text-gray-800">{task.assignedBy || 'Priya Verma'}</span>
+                <span className="font-semibold text-gray-800">{task.assignedBy || 'Admin'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Department</span>
@@ -484,7 +458,10 @@ export const UserWorkDetails: React.FC = () => {
             </div>
 
             <div className="space-y-2.5">
-              {attachments.map((file, idx) => (
+              {attachments.length === 0 ? (
+                <p className="text-gray-400 text-xs py-3 text-center font-medium">No attachments uploaded</p>
+              ) : (
+                attachments.map((file, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-[10px]">
@@ -504,7 +481,7 @@ export const UserWorkDetails: React.FC = () => {
                     <Download className="w-4 h-4" />
                   </button>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         </div>

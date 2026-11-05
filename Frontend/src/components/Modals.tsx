@@ -64,7 +64,7 @@ export const Modals: React.FC = () => {
   // Add / Edit Member State
   const [memName, setMemName] = useState('');
   const [memEmail, setMemEmail] = useState('');
-  const [memPhone, setMemPhone] = useState('+91 98765 43210');
+  const [memPhone, setMemPhone] = useState('');
   const [memRole, setMemRole] = useState('Developer');
   const [memWork, setMemWork] = useState('');
 
@@ -72,13 +72,13 @@ export const Modals: React.FC = () => {
     if (editingMember) {
       setMemName(editingMember.name);
       setMemEmail(editingMember.email);
-      setMemPhone(editingMember.phone || '+91 98765 43210');
+      setMemPhone(editingMember.phone || '');
       setMemRole(editingMember.role || 'Developer');
       setMemWork(editingMember.assignedWork || '');
     } else {
       setMemName('');
       setMemEmail('');
-      setMemPhone('+91 98765 43210');
+      setMemPhone('');
       setMemRole('Developer');
       setMemWork('');
     }

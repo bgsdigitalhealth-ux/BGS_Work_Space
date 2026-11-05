@@ -15,14 +15,16 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
-  const { userNav, setUserNav, setPortalMode, openSubmitWorkDrawer } = useApp();
+  const { userNav, setUserNav, setPortalMode, openSubmitWorkDrawer, userWorkspace, currentUser } = useApp();
+
+  const assignedCount = userWorkspace?.assignedWork?.length || 0;
 
   const navItems = [
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
     { id: 'appointments', label: 'Appointments', icon: CalendarIcon },
     { id: 'my-schedule', label: 'My Schedule', icon: CalendarCheck },
-    { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: 6 },
+    { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: assignedCount > 0 ? assignedCount : undefined },
     { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
     { id: 'work-history', label: 'Work History', icon: History },
     { id: 'team', label: 'Team', icon: Users },
@@ -87,7 +89,7 @@ export const UserSidebar: React.FC = () => {
       {/* Bottom Switcher Card & Wave Graphics */}
       <div className="p-5 relative z-10">
         <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-4 text-center shadow-lg">
-          <p className="text-xs text-[#a2a0c4] mb-2 font-medium">Logged in as Rahul Sharma</p>
+          <p className="text-xs text-[#a2a0c4] mb-2 font-medium">Logged in as {currentUser?.name || 'Rahul Sharma'}</p>
           <button
             onClick={() => setPortalMode('admin')}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#2e2960] hover:bg-[#3d367d] text-white text-xs font-semibold transition border border-white/10 shadow-sm"
