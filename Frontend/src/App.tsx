@@ -6,16 +6,20 @@ import { DepartmentList } from './components/DepartmentList';
 import { DepartmentDetail } from './components/DepartmentDetail';
 import { Modals } from './components/Modals';
 
+// Admin Views
+import { AdminAppointments } from './components/admin/AdminAppointments';
+
 // User Portal Components
 import { UserSidebar } from './components/user/UserSidebar';
 import { UserHeader } from './components/user/UserHeader';
 import { UserDashboard } from './components/user/UserDashboard';
 import { UserWorkDetails } from './components/user/UserWorkDetails';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
+import { UserAppointments } from './components/user/UserAppointments';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { portalMode, userNav } = useApp();
+  const { portalMode, userNav, adminNav } = useApp();
 
   if (portalMode === 'user') {
     return (
@@ -29,6 +33,7 @@ export const App: React.FC = () => {
 
           {/* Conditional View by userNav */}
           {userNav === 'dashboard' && <UserDashboard />}
+          {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserWorkDetails />}
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'team' && (
@@ -92,14 +97,21 @@ export const App: React.FC = () => {
       <main className="flex-1 flex flex-col min-w-0 p-6 lg:p-8 overflow-y-auto">
         <Header />
         
-        {/* Top 5 KPI Stats Cards */}
-        <StatsOverview />
+        {adminNav === 'appointments' ? (
+          /* Admin Side - Appointment Management */
+          <AdminAppointments />
+        ) : (
+          <>
+            {/* Top 5 KPI Stats Cards */}
+            <StatsOverview />
 
-        {/* Central Departments + Unified Department Detail (Teams, Members, Roles, Tasks, Work Done) */}
-        <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
-          <DepartmentList />
-          <DepartmentDetail />
-        </div>
+            {/* Central Departments + Unified Department Detail (Teams, Members, Roles, Tasks, Work Done) */}
+            <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
+              <DepartmentList />
+              <DepartmentDetail />
+            </div>
+          </>
+        )}
 
         {/* Global Modals for Add/Edit Actions */}
         <Modals />

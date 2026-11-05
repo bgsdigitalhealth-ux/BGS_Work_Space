@@ -531,6 +531,112 @@ const updateUserWorkStatus = async (taskId, status) => {
   return task;
 };
 
+// --- Appointment Services ---
+const getAppointments = async (filter = {}) => {
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+  }
+  let list = memoryStore.appointments;
+
+  if (filter.status && filter.status !== 'All') {
+    list = list.filter(a => a.status.toLowerCase() === filter.status.toLowerCase());
+  }
+  if (filter.userId) {
+    list = list.filter(a => a.userId === filter.userId || a.requestedBy === 'Rahul Sharma');
+  }
+  if (filter.date) {
+    list = list.filter(a => a.date === filter.date);
+  }
+  if (filter.search) {
+    const q = filter.search.toLowerCase();
+    list = list.filter(a => 
+      a.title.toLowerCase().includes(q) ||
+      a.requestedBy.toLowerCase().includes(q) ||
+      a.department.toLowerCase().includes(q) ||
+      a.team.toLowerCase().includes(q) ||
+      (a.location && a.location.toLowerCase().includes(q))
+    );
+  }
+
+  return list;
+};
+
+const createAppointment = async (data) => {
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+  }
+  const dateObj = data.date ? new Date(data.date) : new Date();
+  const dateFormatted = dateObj.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const timeFormatted = data.time || '11:00 AM';
+
+  const newApt = {
+    id: generateId('apt'),
+    title: data.title || 'Untitled Meeting',
+    requestedBy: data.requestedBy || 'Rahul Sharma',
+    userId: data.userId || 'mem-1',
+    department: data.department || 'Engineering',
+    team: data.team || 'Backend',
+    date: data.date || new Date().toISOString().split('T')[0],
+    time: timeFormatted,
+    endTime: data.endTime || '12:00 PM',
+    dateTimeDisplay: `${dateFormatted}, ${timeFormatted}`,
+    location: data.location || 'Online (Google Meet)',
+    purpose: data.purpose || '',
+    status: data.status || 'Scheduled',
+    isToday: data.date === '2026-11-05' || data.date === new Date().toISOString().split('T')[0]
+  };
+
+  memoryStore.appointments.unshift(newApt);
+  return newApt;
+};
+
+const updateAppointment = async (id, data) => {
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+  }
+  const index = memoryStore.appointments.findIndex(a => a.id === id);
+  if (index === -1) return null;
+
+  memoryStore.appointments[index] = {
+    ...memoryStore.appointments[index],
+    ...data
+  };
+  return memoryStore.appointments[index];
+};
+
+const deleteAppointment = async (id) => {
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+  }
+  memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
+  return true;
+};
+
+const getAppointmentStats = async () => {
+  if (!memoryStore.appointments) {
+    memoryStore.appointments = JSON.parse(JSON.stringify(initialData.appointments || []));
+  }
+  const all = memoryStore.appointments;
+  const userApts = all.filter(a => a.requestedBy === 'Rahul Sharma' || a.userId === 'mem-1');
+
+  return {
+    admin: {
+      total: Math.max(all.length, 124),
+      today: 28,
+      completed: 96,
+      upcoming: 18,
+      cancelled: 10
+    },
+    user: {
+      total: Math.max(userApts.length, 12),
+      today: 3,
+      upcoming: 4,
+      completed: 5,
+      cancelled: 0
+    }
+  };
+};
+
 // --- Top KPI Stats ---
 const getStats = async () => {
   const depts = await getDepartments();
@@ -578,5 +684,10 @@ module.exports = {
   getUserWorkspace,
   submitUserWork,
   addUserComment,
-  updateUserWorkStatus
+  updateUserWorkStatus,
+  getAppointments,
+  createAppointment,
+  updateAppointment,
+  deleteAppointment,
+  getAppointmentStats
 };

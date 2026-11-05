@@ -306,4 +306,52 @@ router.patch('/user/status/:id', async (req, res) => {
   }
 });
 
+// --- Appointments Routes ---
+router.get('/appointments/stats', async (req, res) => {
+  try {
+    const stats = await dataService.getAppointmentStats();
+    res.json(stats);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/appointments', async (req, res) => {
+  try {
+    const { status, userId, date, search } = req.query;
+    const list = await dataService.getAppointments({ status, userId, date, search });
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/appointments', async (req, res) => {
+  try {
+    const created = await dataService.createAppointment(req.body);
+    res.status(201).json(created);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/appointments/:id', async (req, res) => {
+  try {
+    const updated = await dataService.updateAppointment(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Appointment not found' });
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/appointments/:id', async (req, res) => {
+  try {
+    await dataService.deleteAppointment(req.params.id);
+    res.json({ success: true, message: 'Appointment deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

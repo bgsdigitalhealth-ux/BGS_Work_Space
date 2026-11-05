@@ -131,4 +131,40 @@ export interface UserWorkspaceData {
   recentActivities: UserActivity[];
 }
 
+// Appointment Types
+export interface Appointment {
+  id: string;
+  title: string;
+  requestedBy: string;
+  userId?: string;
+  department: string;
+  team: string;
+  date: string;
+  time: string;
+  endTime?: string;
+  dateTimeDisplay?: string;
+  location?: string;
+  purpose?: string;
+  status: 'Scheduled' | 'Upcoming' | 'Completed' | 'Cancelled';
+  isToday?: boolean;
+}
+
+export interface AppointmentStats {
+  admin: {
+    total: number;
+    today: number;
+    completed: number;
+    upcoming: number;
+    cancelled: number;
+  };
+  user: {
+    total: number;
+    today: number;
+    upcoming: number;
+    completed: number;
+    cancelled: number;
+  };
+}
+
+
 

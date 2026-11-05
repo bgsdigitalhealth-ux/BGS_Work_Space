@@ -923,7 +923,138 @@ const initialData = {
         date: '03 Nov, 04:45 PM'
       }
     ]
-  }
+  },
+
+  appointments: [
+    {
+      id: 'apt-1',
+      title: 'Project Review Meeting',
+      requestedBy: 'Rahul Sharma',
+      userId: 'mem-1',
+      department: 'Engineering',
+      team: 'Backend',
+      date: '2026-11-05',
+      time: '11:00 AM',
+      endTime: '12:00 PM',
+      dateTimeDisplay: '05 Nov 2026, 11:00 AM',
+      location: 'Online (Google Meet)',
+      purpose: 'Sprint milestone review, backend API progress, and blockers resolution.',
+      status: 'Scheduled',
+      isToday: true
+    },
+    {
+      id: 'apt-2',
+      title: 'Design Discussion',
+      requestedBy: 'Priya Verma',
+      userId: 'mem-2',
+      department: 'Design',
+      team: 'UI-UX',
+      date: '2026-11-05',
+      time: '02:00 PM',
+      endTime: '03:00 PM',
+      dateTimeDisplay: '05 Nov 2026, 02:00 PM',
+      location: 'Meeting Room - 2',
+      purpose: 'Review of wireframes and high-fidelity mockups for new portal design.',
+      status: 'Scheduled',
+      isToday: true
+    },
+    {
+      id: 'apt-3',
+      title: 'Marketing Plan Review',
+      requestedBy: 'Amit Singh',
+      userId: 'mem-3',
+      department: 'Marketing',
+      team: 'Growth & SEO',
+      date: '2026-11-06',
+      time: '10:30 AM',
+      endTime: '11:30 AM',
+      dateTimeDisplay: '06 Nov 2026, 10:30 AM',
+      location: 'Conference Hall',
+      purpose: 'Q4 lead generation campaigns and content calendar planning.',
+      status: 'Upcoming',
+      isToday: false
+    },
+    {
+      id: 'apt-4',
+      title: 'Monthly Team Sync',
+      requestedBy: 'Nanditha V.',
+      userId: 'mem-4',
+      department: 'Operations',
+      team: 'Human Resources',
+      date: '2026-11-06',
+      time: '03:00 PM',
+      endTime: '04:00 PM',
+      dateTimeDisplay: '06 Nov 2026, 03:00 PM',
+      location: 'Operations Hub',
+      purpose: 'Monthly cross-departmental operations sync and workplace updates.',
+      status: 'Upcoming',
+      isToday: false
+    },
+    {
+      id: 'apt-5',
+      title: 'Website Content Approval',
+      requestedBy: 'Akarsh M.',
+      userId: 'mem-5',
+      department: 'Marketing',
+      team: 'Content',
+      date: '2026-11-04',
+      time: '04:00 PM',
+      endTime: '05:00 PM',
+      dateTimeDisplay: '04 Nov 2026, 04:00 PM',
+      location: 'Online (Zoom)',
+      purpose: 'Final sign-off on updated landing page copy and press releases.',
+      status: 'Completed',
+      isToday: false
+    },
+    {
+      id: 'apt-6',
+      title: 'Architecture Review: Microservices',
+      requestedBy: 'Rahul Sharma',
+      userId: 'mem-1',
+      department: 'Engineering',
+      team: 'Backend',
+      date: '2026-11-12',
+      time: '10:00 AM',
+      endTime: '11:00 AM',
+      dateTimeDisplay: '12 Nov 2026, 10:00 AM',
+      location: 'Online (Google Meet)',
+      purpose: 'Service discovery and gRPC communication latency evaluation.',
+      status: 'Upcoming',
+      isToday: false
+    },
+    {
+      id: 'apt-7',
+      title: 'Sprint Retrospective & Demo',
+      requestedBy: 'Rahul Sharma',
+      userId: 'mem-1',
+      department: 'Engineering',
+      team: 'Backend',
+      date: '2026-11-19',
+      time: '04:00 PM',
+      endTime: '05:30 PM',
+      dateTimeDisplay: '19 Nov 2026, 04:00 PM',
+      location: 'Conference Room A',
+      purpose: 'Sprint closing demo for stakeholders and retro action items.',
+      status: 'Upcoming',
+      isToday: false
+    },
+    {
+      id: 'apt-8',
+      title: 'Security Compliance Audit Sync',
+      requestedBy: 'Rahul Sharma',
+      userId: 'mem-1',
+      department: 'Operations',
+      team: 'IT Support & Infra',
+      date: '2026-11-26',
+      time: '02:30 PM',
+      endTime: '03:30 PM',
+      dateTimeDisplay: '26 Nov 2026, 02:30 PM',
+      location: 'Virtual Room 4',
+      purpose: 'Quarterly SOC2 compliance review and access logs review.',
+      status: 'Upcoming',
+      isToday: false
+    }
+  ]
 };
 
 module.exports = initialData;

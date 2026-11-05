@@ -3,6 +3,8 @@ import {
   Shield, 
   LayoutDashboard, 
   Briefcase, 
+  Calendar as CalendarIcon,
+  CalendarCheck,
   ClipboardList, 
   Send, 
   History, 
@@ -18,6 +20,8 @@ export const UserSidebar: React.FC = () => {
   const navItems = [
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
+    { id: 'appointments', label: 'Appointments', icon: CalendarIcon },
+    { id: 'my-schedule', label: 'My Schedule', icon: CalendarCheck },
     { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: 6 },
     { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
     { id: 'work-history', label: 'Work History', icon: History },

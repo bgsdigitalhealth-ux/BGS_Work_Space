@@ -210,5 +210,44 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to update task status');
     return res.json();
+  },
+
+  // Appointments
+  getAppointmentStats: async (): Promise<import('../types').AppointmentStats> => {
+    const res = await fetch(`${API_BASE}/appointments/stats`);
+    if (!res.ok) throw new Error('Failed to fetch appointment stats');
+    return res.json();
+  },
+  getAppointments: async (filter?: { status?: string; userId?: string; date?: string; search?: string }): Promise<import('../types').Appointment[]> => {
+    const params = new URLSearchParams();
+    if (filter?.status) params.append('status', filter.status);
+    if (filter?.userId) params.append('userId', filter.userId);
+    if (filter?.date) params.append('date', filter.date);
+    if (filter?.search) params.append('search', filter.search);
+    const res = await fetch(`${API_BASE}/appointments?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch appointments');
+    return res.json();
+  },
+  createAppointment: async (data: Partial<import('../types').Appointment>): Promise<import('../types').Appointment> => {
+    const res = await fetch(`${API_BASE}/appointments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to create appointment');
+    return res.json();
+  },
+  updateAppointment: async (id: string, data: Partial<import('../types').Appointment>): Promise<import('../types').Appointment> => {
+    const res = await fetch(`${API_BASE}/appointments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update appointment');
+    return res.json();
+  },
+  deleteAppointment: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/appointments/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete appointment');
   }
 };

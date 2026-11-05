@@ -1,11 +1,28 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, UserWorkspaceData, UserAssignedWork, UserWorkHistory } from '../types';
+import { 
+  Department, 
+  Team, 
+  Member, 
+  Assignment, 
+  Task, 
+  WorkDone, 
+  DashboardStats, 
+  UserWorkspaceData, 
+  UserAssignedWork, 
+  UserWorkHistory,
+  Appointment,
+  AppointmentStats
+} from '../types';
 import { api } from '../services/api';
 
 interface AppContextType {
   // Portal Toggle
   portalMode: 'admin' | 'user';
   setPortalMode: (mode: 'admin' | 'user') => void;
+
+  // Admin Navigation: 'dashboard' | 'appointments'
+  adminNav: string;
+  setAdminNav: (nav: string) => void;
 
   // Admin Dashboard State
   departments: Department[];
@@ -80,6 +97,24 @@ interface AppContextType {
   handleAddUserComment: (taskId: string, commentText: string, badge?: string) => Promise<void>;
   handleStartUserWork: (taskId: string) => Promise<void>;
 
+  // Appointments State
+  appointments: Appointment[];
+  appointmentStats: AppointmentStats | null;
+  selectedAppointmentDate: string;
+  setSelectedAppointmentDate: (date: string) => void;
+  appointmentFilterTab: string;
+  setAppointmentFilterTab: (tab: string) => void;
+  appointmentSearchQuery: string;
+  setAppointmentSearchQuery: (q: string) => void;
+  isAppointmentModalOpen: boolean;
+  setIsAppointmentModalOpen: (open: boolean) => void;
+  editingAppointment: Appointment | null;
+  setEditingAppointment: (apt: Appointment | null) => void;
+  handleCreateAppointment: (data: Partial<Appointment>) => Promise<void>;
+  handleUpdateAppointment: (id: string, data: Partial<Appointment>) => Promise<void>;
+  handleDeleteAppointment: (id: string) => Promise<void>;
+  refreshAppointments: () => Promise<void>;
+
   // Redirect / Scroll helper
   scrollToSection: (sectionId: string) => void;
 }
@@ -89,6 +124,9 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Portal mode: toggle between 'admin' and 'user' (WorkHub)
   const [portalMode, setPortalMode] = useState<'admin' | 'user'>('user');
+
+  // Admin navigation
+  const [adminNav, setAdminNav] = useState<string>('dashboard');
 
   // Admin states
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -113,6 +151,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [drawerSelectedTask, setDrawerSelectedTask] = useState<UserAssignedWork | null>(null);
   const [userFilterTab, setUserFilterTab] = useState<string>('In Progress');
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
+
+  // Appointments states
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [appointmentStats, setAppointmentStats] = useState<AppointmentStats | null>(null);
+  const [selectedAppointmentDate, setSelectedAppointmentDate] = useState<string>('2026-11-05');
+  const [appointmentFilterTab, setAppointmentFilterTab] = useState<string>('All');
+  const [appointmentSearchQuery, setAppointmentSearchQuery] = useState<string>('');
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
+  const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
 
   // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
@@ -206,12 +253,55 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const refreshAppointments = async () => {
+    try {
+      const [aptList, aptStats] = await Promise.all([
+        api.getAppointments(),
+        api.getAppointmentStats()
+      ]);
+      setAppointments(aptList);
+      setAppointmentStats(aptStats);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleCreateAppointment = async (data: Partial<Appointment>) => {
+    try {
+      await api.createAppointment(data);
+      await refreshAppointments();
+      setIsAppointmentModalOpen(false);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleUpdateAppointment = async (id: string, data: Partial<Appointment>) => {
+    try {
+      await api.updateAppointment(id, data);
+      await refreshAppointments();
+      setIsAppointmentModalOpen(false);
+      setEditingAppointment(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteAppointment = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    try {
+      await api.deleteAppointment(id);
+      await refreshAppointments();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   const refreshUserWorkspace = async () => {
     try {
       const data = await api.getUserWorkspace();
       setUserWorkspace(data);
       if (data.assignedWork && data.assignedWork.length > 0 && !selectedUserTask) {
-        // Set default selected task (TSK-2026-0487 CME poster)
         const cmeTask = data.assignedWork.find(t => t.taskId === 'TSK-2026-0487') || data.assignedWork[0];
         setSelectedUserTask(cmeTask);
       }
@@ -270,7 +360,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     await Promise.all([
       fetchStats(),
       fetchDepartments(),
-      refreshUserWorkspace()
+      refreshUserWorkspace(),
+      refreshAppointments()
     ]);
     setLoading(false);
   };
@@ -394,6 +485,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       value={{
         portalMode,
         setPortalMode,
+        adminNav,
+        setAdminNav,
         departments,
         selectedDepartment,
         setSelectedDepartment,
@@ -456,6 +549,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleSubmitWork,
         handleAddUserComment,
         handleStartUserWork,
+        appointments,
+        appointmentStats,
+        selectedAppointmentDate,
+        setSelectedAppointmentDate,
+        appointmentFilterTab,
+        setAppointmentFilterTab,
+        appointmentSearchQuery,
+        setAppointmentSearchQuery,
+        isAppointmentModalOpen,
+        setIsAppointmentModalOpen,
+        editingAppointment,
+        setEditingAppointment,
+        handleCreateAppointment,
+        handleUpdateAppointment,
+        handleDeleteAppointment,
+        refreshAppointments,
         scrollToSection
       }}
     >

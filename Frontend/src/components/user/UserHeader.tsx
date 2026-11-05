@@ -21,6 +21,17 @@ export const UserHeader: React.FC = () => {
           </div>
         )}
 
+        {(userNav === 'appointments' || userNav === 'my-schedule') && (
+          <div>
+            <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight">
+              My Appointments
+            </h1>
+            <p className="text-sm text-[#6b7280] font-medium mt-1">
+              View, schedule and manage your appointments.
+            </p>
+          </div>
+        )}
+
         {(userNav === 'my-work' || userNav === 'details') && (
           <div className="flex items-center gap-3">
             <button
