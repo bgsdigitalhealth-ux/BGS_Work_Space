@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, RefreshCw, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, RefreshCw, LogOut, Menu } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { NotificationDropdown } from './NotificationDropdown';
 
 export const Header: React.FC = () => {
-  const { refreshAll, currentUser, logout, unreadNotificationCount } = useApp();
+  const { refreshAll, currentUser, logout, unreadNotificationCount, setMobileSidebarOpen } = useApp();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
   return (
     <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 pt-2">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          Welcome, {currentUser?.name || 'Admin'} <span className="inline-block animate-pulse">👋</span>
-        </h2>
-        <p className="text-sm text-slate-500 mt-0.5">
-          Manage departments, teams, members, roles and daily work.
-        </p>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setMobileSidebarOpen(true)}
+          className="p-2 rounded-xl text-slate-700 bg-white border border-slate-200/80 hover:bg-slate-50 lg:hidden shadow-xs shrink-0 cursor-pointer"
+          title="Open Navigation Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+            Welcome, {currentUser?.name || 'Admin'} <span className="inline-block animate-pulse">👋</span>
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
+            Manage departments, teams, members, roles and daily work.
+          </p>
+        </div>
       </div>
 
       <div className="flex items-center gap-3 relative">

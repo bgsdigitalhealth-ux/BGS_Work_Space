@@ -34,6 +34,10 @@ interface AppContextType {
   adminNav: string;
   setAdminNav: (nav: string) => void;
 
+  // Responsive Mobile Navigation
+  mobileSidebarOpen: boolean;
+  setMobileSidebarOpen: (open: boolean) => void;
+
   // Admin Dashboard State
   departments: Department[];
   selectedDepartment: Department | null;
@@ -165,6 +169,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Admin navigation
   const [adminNav, setAdminNav] = useState<string>('dashboard');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
 
   // Admin states
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -270,6 +275,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setCurrentUser(null);
     setUserNav('dashboard');
     setAdminNav('dashboard');
+    setMobileSidebarOpen(false);
     disconnectSocket();
     try {
       localStorage.removeItem('workhub_user');
@@ -776,6 +782,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         portalMode,
         adminNav,
         setAdminNav,
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
         departments,
         selectedDepartment,
         setSelectedDepartment,

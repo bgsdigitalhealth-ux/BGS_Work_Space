@@ -161,7 +161,7 @@ export const DepartmentDetail: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-6 mt-6 border-b border-slate-100 text-xs font-bold text-slate-500 overflow-x-auto">
+        <div className="flex items-center gap-4 sm:gap-6 mt-6 border-b border-slate-100 text-xs font-bold text-slate-500 overflow-x-auto no-scrollbar">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = isTabActive(tab.id);

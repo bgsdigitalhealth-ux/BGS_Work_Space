@@ -50,12 +50,12 @@ export const App: React.FC = () => {
 
   if (currentUser.role === 'user') {
     return (
-      <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased">
+      <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
         {/* WorkHub Sidebar */}
         <UserSidebar />
 
         {/* User Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 p-6 lg:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+        <main className="flex-1 flex flex-col min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
           <UserHeader />
 
           {/* Conditional View by userNav */}
@@ -100,12 +100,12 @@ export const App: React.FC = () => {
 
   // Admin Dashboard Mode
   return (
-    <div className="min-h-screen flex bg-[#f3f4fa] font-sans antialiased">
+    <div className="min-h-screen flex bg-[#f3f4fa] font-sans antialiased relative overflow-x-hidden">
       {/* Dark Navy Sidebar */}
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 p-6 lg:p-8 overflow-y-auto">
+      <main className="flex-1 flex flex-col min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full">
         <Header />
         
         {adminNav === 'appointments' ? (

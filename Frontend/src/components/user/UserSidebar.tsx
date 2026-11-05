@@ -12,12 +12,23 @@ import {
   FileText,
   LogOut,
   MessageSquare,
-  Settings
+  Settings,
+  X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
-  const { userNav, setUserNav, logout, openSubmitWorkDrawer, userWorkspace, currentUser, unreadMessagesCount } = useApp();
+  const { 
+    userNav, 
+    setUserNav, 
+    logout, 
+    openSubmitWorkDrawer, 
+    userWorkspace, 
+    currentUser, 
+    unreadMessagesCount,
+    mobileSidebarOpen,
+    setMobileSidebarOpen
+  } = useApp();
 
   const assignedCount = userWorkspace?.assignedWork?.length || 0;
 
@@ -37,6 +48,7 @@ export const UserSidebar: React.FC = () => {
   ];
 
   const handleNavClick = (item: typeof navItems[0]) => {
+    setMobileSidebarOpen(false);
     if (item.isAction) {
       openSubmitWorkDrawer();
     } else {
@@ -45,19 +57,49 @@ export const UserSidebar: React.FC = () => {
   };
 
   return (
-    <aside className="w-64 bg-[#14122d] text-white flex flex-col justify-between shrink-0 min-h-screen relative overflow-hidden shadow-2xl">
-      {/* Top Section */}
-      <div className="p-6 relative z-10">
-        {/* Brand Header */}
-        <div className="flex items-center gap-3 mb-8 cursor-pointer" onClick={() => setUserNav('dashboard')}>
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#704fe6] to-[#4f32c2] flex items-center justify-center shadow-lg shadow-indigo-900/50">
-            <Shield className="w-6 h-6 text-white" />
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-64 bg-[#14122d] text-white flex flex-col justify-between shrink-0 min-h-screen transition-transform duration-300 ease-in-out relative overflow-hidden shadow-2xl ${
+        mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      }`}>
+        {/* Top Section */}
+        <div className="p-6 relative z-10">
+          {/* Brand Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div 
+              className="flex items-center gap-3 cursor-pointer" 
+              onClick={() => {
+                setUserNav('dashboard');
+                setMobileSidebarOpen(false);
+              }}
+            >
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#704fe6] to-[#4f32c2] flex items-center justify-center shadow-lg shadow-indigo-900/50">
+                <Shield className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold tracking-tight text-white leading-none">WorkHub</h1>
+                <p className="text-xs text-[#9d9bb9] font-medium tracking-wide mt-1">Team Workspace</p>
+              </div>
+            </div>
+
+            {/* Mobile Close Button */}
+            <button
+              type="button"
+              onClick={() => setMobileSidebarOpen(false)}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              title="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
           </div>
-          <div>
-            <h1 className="text-xl font-bold tracking-tight text-white leading-none">WorkHub</h1>
-            <p className="text-xs text-[#9d9bb9] font-medium tracking-wide mt-1">Team Workspace</p>
-          </div>
-        </div>
 
         {/* Navigation Items */}
         <nav className="space-y-1.5">
@@ -125,5 +167,6 @@ export const UserSidebar: React.FC = () => {
       <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full bg-gradient-to-tr from-[#6d28d9]/40 via-[#4f46e5]/20 to-transparent blur-2xl pointer-events-none" />
       <div className="absolute bottom-10 -right-10 w-48 h-48 rounded-full bg-gradient-to-tl from-[#9333ea]/30 via-[#6366f1]/10 to-transparent blur-xl pointer-events-none" />
     </aside>
+    </>
   );
 };

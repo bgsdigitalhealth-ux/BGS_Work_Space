@@ -254,7 +254,7 @@ export const UserDashboard: React.FC = () => {
           </div>
 
           {/* Filter Pills */}
-          <div className="flex items-center gap-2 mb-5 border-b border-gray-100 pb-4 overflow-x-auto">
+          <div className="flex items-center gap-2 mb-5 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setUserFilterTab('In Progress')}
               className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${

@@ -1,17 +1,27 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, LogOut, Settings } from 'lucide-react';
+import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
-  const { userNav, setUserNav, currentUser, logout, unreadNotificationCount } = useApp();
+  const { userNav, setUserNav, currentUser, logout, unreadNotificationCount, setMobileSidebarOpen } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
 
   return (
     <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-      {/* Dynamic Title / Breadcrumb */}
-      <div>
+      {/* Dynamic Title / Breadcrumb with Mobile Menu Toggle */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setMobileSidebarOpen(true)}
+          className="p-2 rounded-xl text-gray-700 bg-white border border-gray-200/80 hover:bg-gray-50 lg:hidden shadow-xs shrink-0 cursor-pointer"
+          title="Open Menu"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+
+        <div className="min-w-0">
         {userNav === 'dashboard' && (
           <div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
@@ -126,6 +136,7 @@ export const UserHeader: React.FC = () => {
             </p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Right Controls */}

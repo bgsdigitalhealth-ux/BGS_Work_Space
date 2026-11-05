@@ -20,7 +20,8 @@ import {
   Sparkles, 
   Mic, 
   Lock, 
-  SquarePen
+  SquarePen,
+  ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -566,10 +567,10 @@ export const MessagesView: React.FC = () => {
   };
 
   return (
-    <div className="flex h-[calc(100vh-85px)] min-h-[640px] bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-2xl relative select-none">
+    <div className="flex h-[calc(100dvh-120px)] md:h-[calc(100vh-85px)] min-h-[500px] md:min-h-[640px] bg-white rounded-xl md:rounded-2xl border border-gray-200 overflow-hidden shadow-xl md:shadow-2xl relative select-none">
       
       {/* ---------------- 1. WHATSAPP ICON NAVIGATION RAIL (FAR LEFT) ---------------- */}
-      <aside className="w-14 sm:w-16 bg-[#f0f2f5] border-r border-[#e9edef] flex flex-col items-center justify-between py-3.5 shrink-0 z-20">
+      <aside className="hidden md:flex w-14 sm:w-16 bg-[#f0f2f5] border-r border-[#e9edef] flex flex-col items-center justify-between py-3.5 shrink-0 z-20">
         {/* Top Icons */}
         <div className="flex flex-col items-center gap-3">
           {/* WhatsApp / WorkHub Brand Icon */}
@@ -672,7 +673,7 @@ export const MessagesView: React.FC = () => {
       </aside>
 
       {/* ---------------- 2. CHATS LIST COLUMN (MIDDLE PANEL) ---------------- */}
-      <div className="w-80 sm:w-96 flex flex-col bg-white border-r border-[#e9edef] shrink-0 z-10">
+      <div className={`${activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex flex-col bg-white border-r border-[#e9edef] shrink-0 z-10`}>
         {/* Header: "Chats" + Action Icons */}
         <div className="p-3.5 px-4 flex items-center justify-between border-b border-[#f0f2f5]">
           <h2 className="text-xl font-bold text-[#111b21] tracking-tight">Chats</h2>
@@ -836,8 +837,18 @@ export const MessagesView: React.FC = () => {
           />
 
           {/* Top Chat Header matching Screenshot 2 */}
-          <div className="h-[60px] px-4 bg-[#f0f2f5] border-b border-[#e9edef] flex items-center justify-between shrink-0 z-10">
-            <div className="flex items-center gap-3 min-w-0">
+          <div className="h-[60px] px-3 sm:px-4 bg-[#f0f2f5] border-b border-[#e9edef] flex items-center justify-between shrink-0 z-10">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              {/* Mobile Back Button to return to Chats List */}
+              <button 
+                type="button"
+                onClick={() => setActiveConversation(null)}
+                className="md:hidden p-1.5 rounded-full hover:bg-gray-200/60 text-[#54656f] -ml-1 transition-colors cursor-pointer"
+                title="Back to Chats"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+
               <div className="relative shrink-0">
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(activeConversation.otherUser?.email || 'user')}`}>
                   {getInitials(activeConversation.otherUser?.name, activeConversation.otherUser?.email)}
@@ -1213,7 +1224,7 @@ export const MessagesView: React.FC = () => {
         </div>
       ) : (
         /* ---------------- WHATSAPP WEB SPLASH SCREEN (WHEN NO CHAT SELECTED) ---------------- */
-        <div className="flex-1 flex flex-col items-center justify-center p-8 bg-[#f0f2f5] text-center border-l border-[#e9edef] relative select-none">
+        <div className="hidden md:flex flex-1 flex-col items-center justify-center p-8 bg-[#f0f2f5] text-center border-l border-[#e9edef] relative select-none">
           <div className="max-w-md flex flex-col items-center">
             {/* WhatsApp Laptop/Phone Center Graphic */}
             <div className="w-20 h-20 rounded-full bg-[#d9fdd3] text-[#008069] flex items-center justify-center mb-6 shadow-sm">

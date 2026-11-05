@@ -14,7 +14,8 @@ import {
   Database,
   Settings,
   MessageSquare,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
@@ -30,35 +31,69 @@ export const Sidebar: React.FC = () => {
     setAdminNav,
     unreadMessagesCount,
     currentUser,
-    logout
+    logout,
+    mobileSidebarOpen,
+    setMobileSidebarOpen
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
 
-  return (
-    <aside className="w-64 bg-[#121139] text-slate-300 flex flex-col shrink-0 min-h-screen">
-      {/* Brand Header */}
-      <div className="p-5 flex items-center gap-3 border-b border-indigo-950/60 cursor-pointer" onClick={() => setAdminNav('dashboard')}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-900/30">
-          <Shield className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <h1 className="text-white font-bold text-base leading-tight">WorkHub</h1>
-          <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">Admin Panel</span>
-        </div>
-      </div>
+  const handleNavAction = (action: () => void) => {
+    action();
+    setMobileSidebarOpen(false);
+  };
 
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {/* Dashboard Link */}
-        <button 
-          onClick={() => {
-            setAdminNav('dashboard');
-            setActiveTab('Teams');
-            setTeamSubTab('Members');
-            scrollToSection('stats-overview');
-          }}
+  return (
+    <>
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div
+          onClick={() => setMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40 lg:hidden transition-opacity"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-64 bg-[#121139] text-slate-300 flex flex-col shrink-0 min-h-screen transition-transform duration-300 ease-in-out ${
+        mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      }`}>
+        {/* Brand Header */}
+        <div className="p-5 flex items-center justify-between border-b border-indigo-950/60">
+          <div 
+            className="flex items-center gap-3 cursor-pointer" 
+            onClick={() => handleNavAction(() => setAdminNav('dashboard'))}
+          >
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-900/30">
+              <Shield className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-white font-bold text-base leading-tight">WorkHub</h1>
+              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">Admin Panel</span>
+            </div>
+          </div>
+
+          {/* Mobile Close Button */}
+          <button
+            type="button"
+            onClick={() => setMobileSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title="Close navigation"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+          {/* Dashboard Link */}
+          <button 
+            onClick={() => handleNavAction(() => {
+              setAdminNav('dashboard');
+              setActiveTab('Teams');
+              setTeamSubTab('Members');
+              scrollToSection('stats-overview');
+            })}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
             adminNav === 'dashboard' && activeTab === 'Teams' && teamSubTab === 'Members'
               ? 'text-white bg-indigo-600 shadow-sm'
@@ -85,33 +120,33 @@ export const Sidebar: React.FC = () => {
           {orgOpen && (
             <div className="mt-1 ml-4 pl-3 border-l border-indigo-950/70 space-y-1">
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('dashboard');
                   scrollToSection('departments-section');
-                }}
+                })}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
                 <span>Departments</span>
               </button>
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('dashboard');
                   setActiveTab('Teams');
                   setTeamSubTab('Members');
                   scrollToSection('department-detail');
-                }}
+                })}
                 className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
               >
                 <Users className="w-3.5 h-3.5 text-slate-400" />
                 <span>Teams</span>
               </button>
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('dashboard');
                   setActiveTab('Members');
                   scrollToSection('department-detail');
-                }}
+                })}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
                   activeTab === 'Members' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
@@ -140,9 +175,9 @@ export const Sidebar: React.FC = () => {
             <div className="mt-1 ml-4 pl-3 border-l border-indigo-950/70 space-y-1">
               {/* Appointments (Active link matching screenshot!) */}
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('appointments');
-                }}
+                })}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
                   adminNav === 'appointments' ? 'text-white font-bold bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
@@ -152,12 +187,12 @@ export const Sidebar: React.FC = () => {
               </button>
 
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('dashboard');
                   setActiveTab('Teams');
                   setTeamSubTab('Tasks');
                   scrollToSection('department-detail');
-                }}
+                })}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
                   adminNav === 'dashboard' && teamSubTab === 'Tasks' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
@@ -167,12 +202,12 @@ export const Sidebar: React.FC = () => {
               </button>
 
               <button 
-                onClick={() => {
+                onClick={() => handleNavAction(() => {
                   setAdminNav('dashboard');
                   setActiveTab('Teams');
                   setTeamSubTab('WorkDone');
                   scrollToSection('department-detail');
-                }}
+                })}
                 className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
                   adminNav === 'dashboard' && teamSubTab === 'WorkDone' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
@@ -186,9 +221,9 @@ export const Sidebar: React.FC = () => {
 
         {/* Appointments Direct Nav Item */}
         <button 
-          onClick={() => {
+          onClick={() => handleNavAction(() => {
             setAdminNav('appointments');
-          }}
+          })}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
             adminNav === 'appointments' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
           }`}
@@ -199,7 +234,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Messages Link Matching Screenshot */}
         <button 
-          onClick={() => setAdminNav('messages')}
+          onClick={() => handleNavAction(() => setAdminNav('messages'))}
           className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all text-left cursor-pointer ${
             adminNav === 'messages' 
               ? 'text-white bg-[#15803d] shadow-md shadow-emerald-900/30' 
@@ -219,12 +254,12 @@ export const Sidebar: React.FC = () => {
 
         {/* Reports */}
         <button 
-          onClick={() => {
+          onClick={() => handleNavAction(() => {
             setAdminNav('dashboard');
             setActiveTab('Teams');
             setTeamSubTab('Roles');
             scrollToSection('department-detail');
-          }}
+          })}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
             teamSubTab === 'Roles' && adminNav === 'dashboard' ? 'text-white bg-indigo-600/80' : 'text-slate-300 hover:text-white hover:bg-white/5'
           }`}
@@ -235,7 +270,7 @@ export const Sidebar: React.FC = () => {
 
         {/* Settings */}
         <button 
-          onClick={() => setAdminNav('settings')}
+          onClick={() => handleNavAction(() => setAdminNav('settings'))}
           className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
             adminNav === 'settings' ? 'text-white bg-indigo-600/80 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
           }`}
@@ -266,5 +301,6 @@ export const Sidebar: React.FC = () => {
         </div>
       </div>
     </aside>
+    </>
   );
 };

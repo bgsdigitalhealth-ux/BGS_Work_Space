@@ -16,7 +16,8 @@ import {
   Mail,
   Phone,
   MapPin,
-  ShieldCheck
+  ShieldCheck,
+  Menu
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -29,6 +30,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Departments List matching Screenshot 2
   const departments = [
@@ -142,23 +144,115 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
           </nav>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={onLogin}
-              className="px-5 py-2 rounded-full border border-gray-300 text-gray-800 font-semibold text-xs sm:text-sm hover:border-[#5a36e6] hover:text-[#5a36e6] bg-white transition-all cursor-pointer shadow-2xs"
+              className="hidden sm:inline-flex px-5 py-2 rounded-full border border-gray-300 text-gray-800 font-semibold text-xs sm:text-sm hover:border-[#5a36e6] hover:text-[#5a36e6] bg-white transition-all cursor-pointer shadow-2xs"
             >
               Login
             </button>
 
             <button
               onClick={onAssignWork}
-              className="px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
+              className="px-4 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
             >
               <span>Assign Work</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            {/* Mobile Hamburger Menu Button */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
+              title="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Navigation Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-purple-100 px-4 py-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-[#5a36e6] bg-purple-50"
+            >
+              Home
+            </button>
+
+            {/* Department Options for mobile */}
+            <div className="space-y-1">
+              <div className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-400">
+                Departments
+              </div>
+              <div className="grid grid-cols-1 gap-1 pl-1">
+                {departments.slice(0, 5).map(dept => {
+                  const Icon = dept.icon;
+                  return (
+                    <button
+                      key={dept.id}
+                      onClick={() => {
+                        handleDeptClick(dept);
+                        setMobileMenuOpen(false);
+                      }}
+                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-purple-50 hover:text-[#5a36e6] text-left transition-colors cursor-pointer"
+                    >
+                      <Icon className="w-4 h-4 text-purple-600 shrink-0" />
+                      <span>{dept.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-gray-100 flex flex-col gap-1.5">
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowAboutModal(true);
+                }}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+              >
+                About Platform
+              </button>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setShowContactModal(true);
+                }}
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+              >
+                Contact & Support
+              </button>
+              <div className="flex items-center gap-3 pt-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onLogin();
+                  }}
+                  className="flex-1 py-2.5 rounded-full border border-gray-300 text-gray-800 font-semibold text-xs text-center cursor-pointer hover:border-[#5a36e6] hover:text-[#5a36e6]"
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onAssignWork();
+                  }}
+                  className="flex-1 py-2.5 rounded-full bg-[#5a36e6] text-white font-semibold text-xs text-center flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#4b28c7]"
+                >
+                  <span>Assign Work</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
