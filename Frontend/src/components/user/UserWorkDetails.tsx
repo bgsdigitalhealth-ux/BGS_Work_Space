@@ -2,8 +2,6 @@ import React, { useState } from 'react';
 import {
   Image as ImageIcon,
   Calendar,
-  Clock,
-  CheckCircle2,
   FileText,
   Send,
   Plus,
@@ -187,88 +185,7 @@ export const UserWorkDetails: React.FC = () => {
             </div>
           </div>
 
-          {/* Work Progress Stepper */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-center gap-2 text-[#5a36e6] mb-6">
-              <Clock className="w-4 h-4" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Progress</h3>
-            </div>
 
-            {/* Stepper Graphic */}
-            <div className="relative mb-8">
-              {/* Connector Line */}
-              <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 -z-0" />
-              <div
-                className="absolute top-4 left-6 h-0.5 bg-emerald-500 -z-0 transition-all duration-500"
-                style={{ width: `${task.status === 'Completed' ? 100 : task.status === 'Under Review' ? 75 : task.status === 'In Progress' ? 50 : 25}%` }}
-              />
-
-              <div className="flex justify-between items-start relative z-10">
-                {/* Step 1: Assigned */}
-                <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-gray-900 mt-2">Assigned</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">{task.assignedOn || 'Assigned'}</span>
-                </div>
-
-                {/* Step 2: Work Started */}
-                <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm ${task.status !== 'Not Started' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {task.status !== 'Not Started' ? <CheckCircle2 className="w-4 h-4" /> : '2'}
-                  </div>
-                  <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status !== 'Not Started' ? 'Started' : '-'}</span>
-                </div>
-
-                {/* Step 3: In Progress (Current) */}
-                <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-purple-100 shadow-md ${task.status === 'In Progress' ? 'bg-[#5a36e6] text-white animate-pulse' : (task.status === 'Under Review' || task.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {task.status === 'In Progress' ? <MoreHorizontal className="w-4 h-4" /> : (task.status === 'Under Review' || task.status === 'Completed') ? <CheckCircle2 className="w-4 h-4" /> : '3'}
-                  </div>
-                  <span className="text-xs font-bold text-[#5a36e6] mt-2">In Progress</span>
-                  <span className="text-[10px] text-purple-600 font-semibold mt-0.5">{task.status === 'In Progress' ? '(Current)' : '-'}</span>
-                </div>
-
-                {/* Step 4: Submitted */}
-                <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${task.status === 'Under Review' ? 'bg-amber-500 text-white animate-pulse' : task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '4'}
-                  </div>
-                  <span className="text-xs font-semibold text-gray-400 mt-2">Submitted</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status === 'Under Review' ? '(Under Review)' : '-'}</span>
-                </div>
-
-                {/* Step 5: Completed */}
-                <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                    }`}>
-                    {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '5'}
-                  </div>
-                  <span className="text-xs font-semibold text-gray-400 mt-2">Completed</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status === 'Completed' ? 'Approved' : '-'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Bottom Progress Bar */}
-            <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-semibold text-gray-600">
-                <span>Overall Completion</span>
-                <span className="font-bold text-gray-900">{task.progress || 0}%</span>
-              </div>
-              <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className="bg-gradient-to-r from-emerald-500 to-[#5a36e6] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${task.progress || 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
 
           {/* Work Updates / Comments (Dynamic) */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
