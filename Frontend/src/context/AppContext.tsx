@@ -256,9 +256,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const data = await api.getDepartments();
       setDepartments(data);
-      if (data.length > 0 && !selectedDepartment) {
-        const eng = data.find(d => d.name.toLowerCase().includes('engineer')) || data[0];
-        setSelectedDepartment(eng);
+      if (data.length === 0) {
+        setSelectedDepartment(null);
+        setSelectedTeam(null);
+      } else if (!selectedDepartment || !data.some(d => d.id === selectedDepartment.id)) {
+        setSelectedDepartment(data[0]);
       }
     } catch (e) {
       console.error(e);
@@ -462,7 +464,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleAddUserComment = async (taskId: string, commentText: string, badge: string = 'Update') => {
     try {
-      const author = currentUser ? currentUser.name : 'Rahul Sharma';
+      const author = currentUser ? currentUser.name : 'Team Member';
       const role = currentUser ? (currentUser.role === 'admin' ? 'Admin' : 'Team Member') : 'Team Member';
       await api.addUserComment(taskId, {
         author,
@@ -533,6 +535,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     if (selectedDepartment) {
       fetchTeams(selectedDepartment.id);
+    } else {
+      setTeams([]);
+      setSelectedTeam(null);
     }
   }, [selectedDepartment]);
 
@@ -543,6 +548,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       fetchAssignments(selectedTeam.id);
       fetchTasks(selectedTeam.id);
       fetchWorkDone(selectedTeam.id);
+    } else {
+      setMembers([]);
+      setAssignments([]);
+      setTasks([]);
+      setWorkDone([]);
     }
   }, [selectedTeam]);
 

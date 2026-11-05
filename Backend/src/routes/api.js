@@ -489,4 +489,15 @@ router.delete('/appointments/:id', async (req, res) => {
   }
 });
 
+// --- Purge & Reset All Dummy Data ---
+router.post(['/reset-data', '/purge-all-data'], async (req, res) => {
+  try {
+    const result = await dataService.clearAllData();
+    broadcast('DATA_RESET', { message: 'All dummy data purged completely' });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

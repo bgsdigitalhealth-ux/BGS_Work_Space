@@ -19,11 +19,11 @@ import {
 import { useApp } from '../../context/AppContext';
 
 export const UserWorkDetails: React.FC = () => {
-  const { 
-    selectedUserTask, 
+  const {
+    selectedUserTask,
     setUserNav,
-    openSubmitWorkDrawer, 
-    handleAddUserComment 
+    openSubmitWorkDrawer,
+    handleAddUserComment
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'attachments' | 'activity'>('overview');
@@ -109,8 +109,8 @@ export const UserWorkDetails: React.FC = () => {
           <button
             onClick={() => setActiveTab('overview')}
             className={`pb-3 relative transition ${activeTab === 'overview'
-                ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
-                : 'text-gray-500 hover:text-gray-900'
+              ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
+              : 'text-gray-500 hover:text-gray-900'
               }`}
           >
             Work Overview
@@ -118,8 +118,8 @@ export const UserWorkDetails: React.FC = () => {
           <button
             onClick={() => setActiveTab('updates')}
             className={`pb-3 relative transition ${activeTab === 'updates'
-                ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
-                : 'text-gray-500 hover:text-gray-900'
+              ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
+              : 'text-gray-500 hover:text-gray-900'
               }`}
           >
             Work Updates ({comments.length})
@@ -127,8 +127,8 @@ export const UserWorkDetails: React.FC = () => {
           <button
             onClick={() => setActiveTab('attachments')}
             className={`pb-3 relative transition ${activeTab === 'attachments'
-                ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
-                : 'text-gray-500 hover:text-gray-900'
+              ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
+              : 'text-gray-500 hover:text-gray-900'
               }`}
           >
             Attachments ({attachments.length})
@@ -136,8 +136,8 @@ export const UserWorkDetails: React.FC = () => {
           <button
             onClick={() => setActiveTab('activity')}
             className={`pb-3 relative transition ${activeTab === 'activity'
-                ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
-                : 'text-gray-500 hover:text-gray-900'
+              ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
+              : 'text-gray-500 hover:text-gray-900'
               }`}
           >
             Activity Log
@@ -198,8 +198,8 @@ export const UserWorkDetails: React.FC = () => {
             <div className="relative mb-8">
               {/* Connector Line */}
               <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 -z-0" />
-              <div 
-                className="absolute top-4 left-6 h-0.5 bg-emerald-500 -z-0 transition-all duration-500" 
+              <div
+                className="absolute top-4 left-6 h-0.5 bg-emerald-500 -z-0 transition-all duration-500"
                 style={{ width: `${task.status === 'Completed' ? 100 : task.status === 'Under Review' ? 75 : task.status === 'In Progress' ? 50 : 25}%` }}
               />
 
@@ -215,9 +215,8 @@ export const UserWorkDetails: React.FC = () => {
 
                 {/* Step 2: Work Started */}
                 <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm ${
-                    task.status !== 'Not Started' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm ${task.status !== 'Not Started' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     {task.status !== 'Not Started' ? <CheckCircle2 className="w-4 h-4" /> : '2'}
                   </div>
                   <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
@@ -226,9 +225,8 @@ export const UserWorkDetails: React.FC = () => {
 
                 {/* Step 3: In Progress (Current) */}
                 <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-purple-100 shadow-md ${
-                    task.status === 'In Progress' ? 'bg-[#5a36e6] text-white animate-pulse' : (task.status === 'Under Review' || task.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-purple-100 shadow-md ${task.status === 'In Progress' ? 'bg-[#5a36e6] text-white animate-pulse' : (task.status === 'Under Review' || task.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     {task.status === 'In Progress' ? <MoreHorizontal className="w-4 h-4" /> : (task.status === 'Under Review' || task.status === 'Completed') ? <CheckCircle2 className="w-4 h-4" /> : '3'}
                   </div>
                   <span className="text-xs font-bold text-[#5a36e6] mt-2">In Progress</span>
@@ -237,9 +235,8 @@ export const UserWorkDetails: React.FC = () => {
 
                 {/* Step 4: Submitted */}
                 <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${
-                    task.status === 'Under Review' ? 'bg-amber-500 text-white animate-pulse' : task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${task.status === 'Under Review' ? 'bg-amber-500 text-white animate-pulse' : task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '4'}
                   </div>
                   <span className="text-xs font-semibold text-gray-400 mt-2">Submitted</span>
@@ -248,9 +245,8 @@ export const UserWorkDetails: React.FC = () => {
 
                 {/* Step 5: Completed */}
                 <div className="flex flex-col items-center text-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${
-                    task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                    }`}>
                     {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '5'}
                   </div>
                   <span className="text-xs font-semibold text-gray-400 mt-2">Completed</span>
@@ -302,8 +298,8 @@ export const UserWorkDetails: React.FC = () => {
                       type="button"
                       onClick={() => setNewCommentBadge(b)}
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${newCommentBadge === b
-                          ? 'bg-[#5a36e6] text-white'
-                          : 'bg-white border border-gray-200 text-gray-600'
+                        ? 'bg-[#5a36e6] text-white'
+                        : 'bg-white border border-gray-200 text-gray-600'
                         }`}
                     >
                       {b}
@@ -349,8 +345,8 @@ export const UserWorkDetails: React.FC = () => {
                     <div key={c.id} className="flex items-start gap-3.5 group">
                       {/* Avatar */}
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm ${isLead
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-purple-100 text-[#5a36e6]'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-purple-100 text-[#5a36e6]'
                         }`}>
                         {c.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
@@ -475,10 +471,19 @@ export const UserWorkDetails: React.FC = () => {
                 <p className="text-gray-400 text-xs py-3 text-center font-medium">No attachments uploaded</p>
               ) : (
                 attachments.map((file, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-[10px]">
-                      {file.name.endsWith('.pdf') ? 'PDF' : 'ZIP'}
+                  <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-[10px]">
+                        {file.name.endsWith('.pdf') ? 'PDF' : 'ZIP'}
+                      </div>
+
+                      <button
+                        onClick={() => alert(`Downloading attachment: ${file.name}`)}
+                        className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-white transition"
+                        title="Download Attachment"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                     </div>
 
                     <button
@@ -489,16 +494,7 @@ export const UserWorkDetails: React.FC = () => {
                       <Download className="w-4 h-4" />
                     </button>
                   </div>
-
-                  <button 
-                    onClick={() => alert(`Downloading attachment: ${file.name}`)}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-white transition"
-                    title="Download Attachment"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                </div>
-              )))}
+                )))}
             </div>
           </div>
         </div>

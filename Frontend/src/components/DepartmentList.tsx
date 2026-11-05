@@ -22,19 +22,7 @@ export const DepartmentList: React.FC = () => {
 
   const getTeamCountText = (dept: Department) => {
     const deptTeams = teams.filter(t => t.departmentId === dept.id);
-    if (deptTeams.length > 0) return `(${deptTeams.length} teams)`;
-    switch (dept.name) {
-      case 'Engineering':
-        return '(3 teams)';
-      case 'Design':
-        return '(2 teams)';
-      case 'Marketing':
-        return '(3 teams)';
-      case 'Operations':
-        return '(4 teams)';
-      default:
-        return '(2 teams)';
-    }
+    return `(${deptTeams.length} ${deptTeams.length === 1 ? 'team' : 'teams'})`;
   };
 
   return (
@@ -54,7 +42,12 @@ export const DepartmentList: React.FC = () => {
       </div>
 
       <div className="space-y-1.5">
-        {departments.map((dept) => {
+        {departments.length === 0 ? (
+          <div className="text-center py-6 px-3 bg-slate-50 border border-dashed border-slate-200 rounded-xl text-slate-400 text-xs">
+            No departments created yet. Click <span className="font-semibold text-indigo-600">+ Add Department</span> above!
+          </div>
+        ) : (
+          departments.map((dept) => {
           const isSelected = selectedDepartment?.id === dept.id;
           return (
             <button
@@ -77,7 +70,8 @@ export const DepartmentList: React.FC = () => {
               </span>
             </button>
           );
-        })}
+        })
+        )}
       </div>
     </div>
   );

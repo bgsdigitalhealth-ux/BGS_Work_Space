@@ -7,8 +7,7 @@ export const TeamList: React.FC = () => {
 
   const getTeamMemberCount = (teamId: string) => {
     const count = members.filter(m => m.teamId === teamId).length;
-    if (count > 0) return `${count} members`;
-    return '3 members';
+    return `${count} ${count === 1 ? 'member' : 'members'}`;
   };
 
   return (

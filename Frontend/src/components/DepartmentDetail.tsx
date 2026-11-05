@@ -39,8 +39,12 @@ export const DepartmentDetail: React.FC = () => {
 
   if (!selectedDepartment) {
     return (
-      <div id="department-detail" className="bg-white rounded-2xl border border-slate-200/60 p-8 text-center text-slate-500 shadow-sm flex-1">
-        Please select a department from the left panel.
+      <div id="department-detail" className="bg-white rounded-2xl border border-dashed border-slate-200 p-12 text-center text-slate-500 shadow-sm flex-1 flex flex-col items-center justify-center min-h-[320px]">
+        <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">
+          <Layers className="w-6 h-6" />
+        </div>
+        <h4 className="text-base font-bold text-slate-800 mb-1">No Department Selected</h4>
+        <p className="text-xs text-slate-400 max-w-sm">Create a department using "+ Add Department" on the left panel to begin managing teams, members, and daily assignments.</p>
       </div>
     );
   }

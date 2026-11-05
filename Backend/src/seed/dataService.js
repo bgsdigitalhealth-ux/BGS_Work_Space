@@ -18,54 +18,66 @@ let memoryStore = JSON.parse(JSON.stringify(initialData));
 // Helper for generating unique ID for operations
 const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
-// Seed MongoDB if connected and empty
+// Purge and reset all dummy data across memory store and MongoDB
+const clearAllData = async () => {
+  memoryStore.departments = [];
+  memoryStore.teams = [];
+  memoryStore.members = [];
+  memoryStore.assignments = [];
+  memoryStore.tasks = [];
+  memoryStore.workDone = [];
+  memoryStore.appointments = [];
+  memoryStore.notifications = [];
+  memoryStore.userWorkspace = {
+    stats: {
+      totalAssigned: 0,
+      inProgress: 0,
+      upcomingWork: 0,
+      completedWork: 0,
+      completionRate: 0,
+      completionPercentage: 0,
+      completedCount: 0,
+      totalCount: 0,
+      completedFractionText: '0 of 0 Tasks'
+    },
+    assignedWork: [],
+    history: [],
+    recentActivities: []
+  };
+
+  // Reset users to the 2 authorized base roles (Admin and User)
+  memoryStore.users = JSON.parse(JSON.stringify(initialData.users));
+
+  if (getStatus()) {
+    try {
+      await Department.deleteMany({});
+      await Team.deleteMany({});
+      await Member.deleteMany({});
+      await Assignment.deleteMany({});
+      await Task.deleteMany({});
+      await WorkDone.deleteMany({});
+      await Appointment.deleteMany({});
+      await Notification.deleteMany({});
+      await UserTask.deleteMany({});
+      await WorkHistory.deleteMany({});
+      await User.deleteMany({ email: { $nin: ['admin@company.com', 'user@company.com', 'rahul@company.com'] } });
+      console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
+    } catch (e) {
+      console.warn('[Storage] Mongo wipe error:', e.message);
+    }
+  }
+
+  return { success: true, message: 'All dummy data purged completely. Workspace is 100% clean and dynamic.' };
+};
+
+// Seed MongoDB if connected and ensure base authentication accounts exist
 const initMongoSeed = async () => {
   if (!getStatus()) return;
   try {
-    // 1. Departments & Teams & Members
-    const deptCount = await Department.countDocuments();
-    if (deptCount === 0) {
-      console.log('[Seed] Seeding initial departments, teams, and members into MongoDB Atlas...');
-      const deptMap = {};
-      for (const d of initialData.departments) {
-        const created = await Department.create({
-          name: d.name,
-          icon: d.icon,
-          description: d.description
-        });
-        deptMap[d.id] = created._id;
-      }
-
-      const teamMap = {};
-      for (const t of initialData.teams) {
-        const created = await Team.create({
-          name: t.name,
-          departmentId: deptMap[t.departmentId],
-          description: t.description
-        });
-        teamMap[t.id] = created._id;
-      }
-
-      for (const m of initialData.members) {
-        await Member.create({
-          name: m.name,
-          email: m.email,
-          phone: m.phone,
-          role: m.role,
-          assignedWork: m.assignedWork || '',
-          teamId: teamMap[m.teamId] || Object.values(teamMap)[0],
-          departmentId: deptMap[m.departmentId] || Object.values(deptMap)[0],
-          avatar: m.avatar
-        });
-      }
-      console.log('[Seed] Departments, teams, and members seeded into Atlas.');
-    }
-
-    // 2. Users (Admin and User roles only)
-    const userCount = await User.countDocuments();
-    if (userCount === 0) {
-      console.log('[Seed] Seeding authorized login accounts into MongoDB Atlas...');
-      for (const u of initialData.users) {
+    // Ensure base login accounts (admin@company.com and user@company.com) exist
+    for (const u of initialData.users) {
+      const exists = await User.findOne({ email: u.email.toLowerCase() });
+      if (!exists) {
         await User.create({
           customId: u.id,
           name: u.name,
@@ -80,12 +92,10 @@ const initMongoSeed = async () => {
           title: u.title || ''
         });
       }
-      console.log('[Seed] Authorized login users seeded into Atlas.');
     }
-
-    console.log('[Seed] MongoDB Atlas database ready and synchronized!');
+    console.log('[Seed] Base authorized users verified in MongoDB Atlas.');
   } catch (err) {
-    console.error('[Seed Error] Failed to seed MongoDB Atlas:', err);
+    console.error('[Seed Error] Failed to verify base accounts in Atlas:', err);
   }
 };
 
@@ -96,7 +106,7 @@ const getDepartments = async () => {
       const list = await Department.find().lean();
       return list.map(d => ({ ...d, id: d._id.toString() }));
     } catch (e) {
-      console.warn('Mongo read error, falling back to in-memory:', e.message);
+      console.warn('Mongo read error, falling back to memoryStore:', e.message);
     }
   }
   return memoryStore.departments;
@@ -147,6 +157,8 @@ const deleteDepartment = async (id) => {
   if (getStatus()) {
     try {
       await Department.findByIdAndDelete(id);
+      await Team.deleteMany({ departmentId: id });
+      await Member.deleteMany({ departmentId: id });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
@@ -215,6 +227,7 @@ const deleteTeam = async (id) => {
   if (getStatus()) {
     try {
       await Team.findByIdAndDelete(id);
+      await Member.deleteMany({ teamId: id });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
@@ -246,7 +259,7 @@ const createMember = async (data) => {
     id: generateId('mem'),
     name: data.name,
     email: data.email,
-    phone: data.phone || '+91 98765 43210',
+    phone: data.phone || '',
     role: data.role || 'Developer',
     assignedWork: data.assignedWork || '',
     teamId: data.teamId,
@@ -255,9 +268,45 @@ const createMember = async (data) => {
   };
   memoryStore.members.push(newMember);
 
+  // Automatically register a dynamic user login account for this member so they can log in
+  const cleanEmail = (data.email || '').trim().toLowerCase();
+  const existingUser = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
+  if (!existingUser) {
+    const newUser = {
+      id: generateId('usr'),
+      name: data.name,
+      email: cleanEmail,
+      password: 'user123',
+      role: 'user',
+      memberId: newMember.id,
+      department: data.departmentId,
+      team: data.teamId,
+      teamRole: data.role || 'Team Member',
+      avatar: newMember.avatar,
+      title: data.role || 'Team Member'
+    };
+    memoryStore.users.push(newUser);
+  }
+
   if (getStatus()) {
     try {
       const created = await Member.create(data);
+      const dbUser = await User.findOne({ email: cleanEmail });
+      if (!dbUser) {
+        await User.create({
+          customId: generateId('usr'),
+          name: data.name,
+          email: cleanEmail,
+          password: 'user123',
+          role: 'user',
+          memberId: created._id.toString(),
+          department: data.departmentId,
+          team: data.teamId,
+          teamRole: data.role || 'Team Member',
+          avatar: newMember.avatar,
+          title: data.role || 'Team Member'
+        });
+      }
       return { ...created.toObject(), id: created._id.toString() };
     } catch (e) {
       console.warn('Mongo create error:', e.message);
@@ -284,11 +333,19 @@ const updateMember = async (id, data) => {
 };
 
 const deleteMember = async (id) => {
+  const member = memoryStore.members.find(m => m.id === id);
+  if (member) {
+    memoryStore.users = memoryStore.users.filter(u => u.email.toLowerCase() !== member.email.toLowerCase());
+  }
   memoryStore.members = memoryStore.members.filter(m => m.id !== id);
   memoryStore.assignments = memoryStore.assignments.filter(a => a.memberId !== id);
 
   if (getStatus()) {
     try {
+      const dbMem = await Member.findById(id);
+      if (dbMem) {
+        await User.findOneAndDelete({ email: dbMem.email.toLowerCase() });
+      }
       await Member.findByIdAndDelete(id);
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
@@ -348,10 +405,10 @@ const createAssignment = async (data) => {
 
   const userTask = {
     id: generateId('user-task'),
-    taskId: `TSK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+    taskId: `TSK-${Date.now().toString().slice(-4)}`,
     title: data.workTitle,
-    department: (dept && dept.name) || 'Engineering',
-    team: (team && team.name) || 'Backend Team',
+    department: (dept && dept.name) || 'General',
+    team: (team && team.name) || 'Team',
     priority: data.priority || 'High',
     dueDate: data.dueDate || 'Today',
     status: data.status || 'In Progress',
@@ -360,14 +417,14 @@ const createAssignment = async (data) => {
     description: data.workDescription || '',
     progress: 0,
     comments: [],
-    userId: 'usr-rahul'
+    userId: member ? member.id : 'usr-user'
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
 
   // Create Notification for User
   createNotification({
     recipientRole: 'user',
-    recipientUserId: 'usr-rahul',
+    recipientUserId: member ? member.id : null,
     title: 'New Work Assigned',
     message: `Admin assigned: "${data.workTitle}" to you.`,
     link: 'assigned-work'
@@ -391,7 +448,7 @@ const createAssignment = async (data) => {
         description: userTask.description,
         progress: 0,
         comments: [],
-        userId: 'usr-rahul'
+        userId: member ? member.id : 'usr-user'
       });
       return { ...createdAssign.toObject(), id: createdAssign._id.toString() };
     } catch (e) {
@@ -554,25 +611,25 @@ const deleteWorkDone = async (id) => {
 };
 
 // --- User Portal Workspace ---
-const getUserWorkspace = async () => {
+const getUserWorkspace = async (userId = null) => {
   let assigned = [];
   let history = [];
   let recentActivities = [];
 
+  const targetUser = userId || 'usr-user';
+
   if (getStatus()) {
     try {
-      const dbTasks = await UserTask.find({ userId: 'usr-rahul' }).lean();
-      const dbHistory = await WorkHistory.find({ userId: 'usr-rahul' }).sort({ createdAt: -1 }).lean();
-      if (dbTasks.length > 0 || dbHistory.length > 0) {
-        assigned = dbTasks.map(t => ({ ...t, id: t.customId || t._id.toString() }));
-        history = dbHistory.map(h => ({ ...h, id: h.customId || h._id.toString() }));
-      }
+      const dbTasks = await UserTask.find(userId ? { userId: targetUser } : {}).lean();
+      const dbHistory = await WorkHistory.find(userId ? { userId: targetUser } : {}).sort({ createdAt: -1 }).lean();
+      assigned = dbTasks.map(t => ({ ...t, id: t.customId || t._id.toString() }));
+      history = dbHistory.map(h => ({ ...h, id: h.customId || h._id.toString() }));
     } catch (e) {
       console.warn('Mongo user workspace read error:', e.message);
     }
   }
 
-  // Fallback to memoryStore if Mongo is empty or not yet seeded
+  // Fallback to memoryStore
   if (assigned.length === 0 && history.length === 0) {
     if (!memoryStore.userWorkspace) {
       memoryStore.userWorkspace = {
@@ -623,7 +680,7 @@ const submitUserWork = async (data) => {
     };
   }
   const ws = memoryStore.userWorkspace;
-  const { taskId, workStatus, comment } = data;
+  const { taskId, workStatus, comment, userId } = data;
 
   const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
   let task = taskIndex >= 0 ? ws.assignedWork[taskIndex] : null;
@@ -636,9 +693,9 @@ const submitUserWork = async (data) => {
   const newHistoryItem = {
     id: generateId('h'),
     title: task ? task.title : 'Submitted Work',
-    taskId: task && task.taskId ? task.taskId : `TSK-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-    department: task ? task.department : 'Engineering',
-    team: task ? task.team : 'Backend Team',
+    taskId: task && task.taskId ? task.taskId : `TSK-${Date.now().toString().slice(-4)}`,
+    department: task ? task.department : 'General',
+    team: task ? task.team : 'Team',
     submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     status: 'Under Review',
     reviewerFeedback: 'Submitted. Pending review by Admin / Team Lead.',
@@ -646,7 +703,7 @@ const submitUserWork = async (data) => {
     dueDate: task ? task.dueDate : 'Today',
     submittedComment: comment || 'Work completed and submitted for review.',
     reviewerComments: [],
-    userId: 'usr-rahul'
+    userId: userId || (task && task.userId) || 'usr-user'
   };
 
   ws.history.unshift(newHistoryItem);
@@ -688,7 +745,7 @@ const submitUserWork = async (data) => {
         dueDate: newHistoryItem.dueDate,
         submittedComment: newHistoryItem.submittedComment,
         reviewerComments: [],
-        userId: 'usr-rahul'
+        userId: newHistoryItem.userId
       });
     } catch (e) {
       console.warn('Mongo submit error:', e.message);
@@ -731,7 +788,7 @@ const approveWork = async (taskId, comment) => {
   // Create Notification for User
   createNotification({
     recipientRole: 'user',
-    recipientUserId: 'usr-rahul',
+    recipientUserId: task ? task.userId : null,
     title: 'Work Approved! 🎉',
     message: `Admin approved your work "${task ? task.title : 'Work'}" as Completed.`,
     link: 'work-history'
@@ -801,7 +858,7 @@ const requestRework = async (taskId, feedback) => {
   // Create Notification for User
   createNotification({
     recipientRole: 'user',
-    recipientUserId: 'usr-rahul',
+    recipientUserId: task ? task.userId : null,
     title: 'Rework Requested ⚠️',
     message: `Admin requested revisions on "${task ? task.title : 'Work'}": ${feedback}`,
     link: 'my-work'
@@ -1015,7 +1072,7 @@ const addUserComment = async (taskId, data) => {
 
   const newComment = {
     id: generateId('c'),
-    author: data.author || 'Rahul Sharma',
+    author: data.author || 'Team Member',
     role: data.role || 'Team Member',
     date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     badge: data.badge || 'Update',
@@ -1099,7 +1156,7 @@ const getAppointments = async (filter = {}) => {
         q.status = filter.status;
       }
       if (filter.userId) {
-        q.$or = [{ userId: filter.userId }, { requestedBy: 'Rahul Sharma' }];
+        q.userId = filter.userId;
       }
       if (filter.date) {
         q.date = filter.date;
@@ -1129,7 +1186,7 @@ const getAppointments = async (filter = {}) => {
     list = list.filter(a => a.status.toLowerCase() === filter.status.toLowerCase());
   }
   if (filter.userId) {
-    list = list.filter(a => a.userId === filter.userId || a.requestedBy === 'Rahul Sharma');
+    list = list.filter(a => a.userId === filter.userId);
   }
   if (filter.date) {
     list = list.filter(a => a.date === filter.date);
@@ -1139,8 +1196,8 @@ const getAppointments = async (filter = {}) => {
     list = list.filter(a => 
       a.title.toLowerCase().includes(q) ||
       a.requestedBy.toLowerCase().includes(q) ||
-      a.department.toLowerCase().includes(q) ||
-      a.team.toLowerCase().includes(q) ||
+      (a.department && a.department.toLowerCase().includes(q)) ||
+      (a.team && a.team.toLowerCase().includes(q)) ||
       (a.location && a.location.toLowerCase().includes(q))
     );
   }
@@ -1157,10 +1214,10 @@ const createAppointment = async (data) => {
   const newApt = {
     id: generateId('apt'),
     title: data.title || 'Untitled Meeting',
-    requestedBy: data.requestedBy || 'Rahul Sharma',
-    userId: data.userId || 'mem-1',
-    department: data.department || 'Engineering',
-    team: data.team || 'Backend',
+    requestedBy: data.requestedBy || 'Team Member',
+    userId: data.userId || 'usr-user',
+    department: data.department || '',
+    team: data.team || '',
     date: data.date || todayStr,
     time: timeFormatted,
     endTime: data.endTime || '12:00 PM',
@@ -1247,7 +1304,7 @@ const deleteAppointment = async (id) => {
   return true;
 };
 
-const getAppointmentStats = async () => {
+const getAppointmentStats = async (userId = null) => {
   const all = await getAppointments();
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -1257,7 +1314,7 @@ const getAppointmentStats = async () => {
   const adminUpcoming = all.filter(a => a.status === 'Upcoming' || a.status === 'Scheduled').length;
   const adminCancelled = all.filter(a => a.status === 'Cancelled').length;
 
-  const userApts = all.filter(a => a.requestedBy === 'Rahul Sharma' || a.userId === 'mem-1');
+  const userApts = userId ? all.filter(a => a.userId === userId) : all;
   const userTotal = userApts.length;
   const userToday = userApts.filter(a => a.isToday || a.date === todayStr).length;
   const userCompleted = userApts.filter(a => a.status === 'Completed').length;
@@ -1296,11 +1353,12 @@ const getStats = async () => {
     membersCount: mems.length,
     todaysTasksCount: tsks.length,
     workDoneTodayCount: wd.length,
-    databaseMode: getStatus() ? 'MongoDB Atlas' : 'Synchronized Store (Ready for Atlas)'
+    databaseMode: getStatus() ? 'MongoDB Atlas' : 'Dynamic Storage (Ready for Atlas)'
   };
 };
 
 module.exports = {
+  clearAllData,
   initMongoSeed,
   getDepartments,
   createDepartment,
