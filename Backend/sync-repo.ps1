@@ -8,6 +8,9 @@ if (-not (Test-Path $gitExe)) {
     $gitExe = "git"
 }
 
+$repoRoot = Resolve-Path "$PSScriptRoot\.."
+Set-Location $repoRoot
+
 Write-Host "--- Pulling latest changes from remote ---" -ForegroundColor Cyan
 & $gitExe pull --rebase origin main
 
@@ -18,6 +21,7 @@ if ($status) {
     & $gitExe commit -m $CommitMessage
     Write-Host "--- Pushing changes to remote repository ---" -ForegroundColor Green
     & $gitExe push origin main
-} else {
+}
+else {
     Write-Host "--- Working tree clean, no local changes to push ---" -ForegroundColor Green
 }

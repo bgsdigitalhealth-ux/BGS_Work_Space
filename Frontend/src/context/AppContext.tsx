@@ -20,7 +20,7 @@ interface AppContextType {
   setTeamSubTab: (tab: string) => void;
   loading: boolean;
   refreshAll: () => Promise<void>;
-  
+
   // Modals
   isAddDeptOpen: boolean;
   setIsAddDeptOpen: (open: boolean) => void;
