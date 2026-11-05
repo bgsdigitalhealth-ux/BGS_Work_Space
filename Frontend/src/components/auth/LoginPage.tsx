@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, Lock, Mail, ArrowRight, Eye, EyeOff, KeyRound, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { api } from '../../services/api';
 
 export const LoginPage: React.FC = () => {
   const { login, createPassword } = useApp();
@@ -37,37 +36,6 @@ export const LoginPage: React.FC = () => {
 
     if (!res.success) {
       setErrorMessage(res.error || 'Your email is invalid or not registered by Admin.');
-    }
-  };
-
-  // Handle first-time email check
-  const handleVerifyEmailForSetup = async () => {
-    if (!email.trim()) {
-      setErrorMessage('Please enter your email address first.');
-      return;
-    }
-    setErrorMessage('');
-    setInfoMessage('');
-    setLoading(true);
-
-    try {
-      const res = await api.checkEmail(email);
-      setLoading(false);
-
-      if (!res.exists) {
-        setErrorMessage(res.error || 'Your email is invalid or not registered by Admin.');
-        return;
-      }
-
-      if (!res.hasPassword) {
-        setMode('create_password');
-        setInfoMessage(`Welcome ${res.name || 'Team Member'}! Please create your password below.`);
-      } else {
-        setInfoMessage('Your password is already created. Please sign in with your password.');
-      }
-    } catch (e: any) {
-      setLoading(false);
-      setErrorMessage('Verification failed. Please check your network.');
     }
   };
 
@@ -147,21 +115,11 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-gray-300">Password</label>
-                <button
-                  type="button"
-                  onClick={handleVerifyEmailForSetup}
-                  className="text-[11px] font-semibold text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                >
-                  First time? Create password
-                </button>
-              </div>
+              <label className="block text-xs font-bold text-gray-300 mb-1.5">Password</label>
               <div className="relative">
                 <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-3.5" />
                 <input
                   type={showPassword ? 'text' : 'password'}
-                  required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"

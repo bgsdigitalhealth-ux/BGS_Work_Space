@@ -26,7 +26,10 @@ export const AdminAppointments: React.FC = () => {
     setSelectedAppointmentDate,
     handleCreateAppointment,
     handleUpdateAppointment,
-    handleDeleteAppointment
+    handleDeleteAppointment,
+    departments,
+    teams,
+    members
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'All' | 'Today' | 'Upcoming' | 'Completed' | 'Cancelled'>('All');
@@ -38,9 +41,9 @@ export const AdminAppointments: React.FC = () => {
   // Form State
   const [formData, setFormData] = useState({
     title: '',
-    requestedBy: 'Rahul Sharma',
-    department: 'Engineering',
-    team: 'Backend',
+    requestedBy: members[0]?.name || '',
+    department: departments[0]?.name || '',
+    team: teams[0]?.name || '',
     date: new Date().toISOString().split('T')[0],
     time: '11:00 AM',
     location: 'Online (Google Meet)',
@@ -95,9 +98,9 @@ export const AdminAppointments: React.FC = () => {
     setEditingItem(null);
     setFormData({
       title: '',
-      requestedBy: 'Rahul Sharma',
-      department: 'Engineering',
-      team: 'Backend',
+      requestedBy: members[0]?.name || '',
+      department: departments[0]?.name || '',
+      team: teams[0]?.name || '',
       date: selectedAppointmentDate || new Date().toISOString().split('T')[0],
       time: '11:00 AM',
       location: 'Online (Google Meet)',

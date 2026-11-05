@@ -90,7 +90,7 @@ export const UserSidebar: React.FC = () => {
       <div className="p-5 relative z-10">
         <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-3.5 shadow-lg flex items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Rahul Sharma'}</p>
+            <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Team Member'}</p>
             <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'User'}</p>
           </div>
           <button

@@ -13,11 +13,11 @@ const appointmentSchema = new mongoose.Schema({
   },
   requestedBy: {
     type: String,
-    default: 'Rahul Sharma'
+    default: 'Team Member'
   },
   userId: {
     type: String,
-    default: 'mem-1'
+    default: 'usr-member'
   },
   department: {
     type: String,

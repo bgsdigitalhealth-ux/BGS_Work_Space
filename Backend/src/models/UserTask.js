@@ -62,7 +62,7 @@ const userTaskSchema = new mongoose.Schema({
   comments: [commentSchema],
   userId: {
     type: String,
-    default: 'usr-rahul'
+    default: 'usr-user'
   }
 }, { timestamps: true });
 

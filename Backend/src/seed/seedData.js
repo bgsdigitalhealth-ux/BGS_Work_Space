@@ -71,19 +71,6 @@ const initialData = {
       teamRole: 'Team Member',
       avatar: 'TM',
       title: 'Team Member'
-    },
-    {
-      id: 'usr-rahul',
-      name: 'Rahul Sharma',
-      email: 'rahul@company.com',
-      password: 'user123',
-      role: 'user',
-      memberId: '',
-      department: '',
-      team: '',
-      teamRole: 'Team Member',
-      avatar: 'RS',
-      title: 'Team Member'
     }
   ]
 };

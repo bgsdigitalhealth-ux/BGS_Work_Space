@@ -15,7 +15,7 @@ export const UserHeader: React.FC = () => {
         {userNav === 'dashboard' && (
           <div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-              Hello, {currentUser?.name || 'Rahul Sharma'} <span className="animate-pulse">👋</span>
+              Hello, {currentUser?.name || 'Team Member'} <span className="animate-pulse">👋</span>
             </h1>
             <p className="text-sm text-[#6b7280] font-medium mt-1">
               Here is your assigned work and progress.
@@ -119,11 +119,11 @@ export const UserHeader: React.FC = () => {
             onClick={() => setShowDropdown(!showDropdown)}
             className="flex items-center gap-3 bg-white border border-gray-200/80 px-3.5 py-2 rounded-xl shadow-sm hover:border-gray-300 transition"
           >
-            <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm">
-              {currentUser?.avatar || 'RS'}
+            <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm uppercase">
+              {currentUser?.avatar || (currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'TM')}
             </div>
             <div className="text-left hidden sm:block">
-              <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Rahul Sharma'}</div>
+              <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Team Member'}</div>
               <div className="text-[10px] text-gray-500 font-medium">Team Member</div>
             </div>
             <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -133,8 +133,8 @@ export const UserHeader: React.FC = () => {
           {showDropdown && (
             <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-xs font-bold text-gray-900">{currentUser?.name || 'Rahul Sharma'}</p>
-                <p className="text-[11px] text-gray-500">{currentUser?.email || 'rahul@company.com'}</p>
+                <p className="text-xs font-bold text-gray-900">{currentUser?.name || 'Team Member'}</p>
+                <p className="text-[11px] text-gray-500">{currentUser?.email || ''}</p>
               </div>
               <button
                 onClick={() => {

@@ -60,7 +60,7 @@ const clearAllData = async () => {
       await Notification.deleteMany({});
       await UserTask.deleteMany({});
       await WorkHistory.deleteMany({});
-      await User.deleteMany({ email: { $nin: ['dynamicsajjan@gamil.com', 'dynamicsajjan@gmail.com', 'admin@company.com', 'user@company.com', 'rahul@company.com'] } });
+      await User.deleteMany({ email: { $nin: ['dynamicsajjan@gamil.com', 'dynamicsajjan@gmail.com'] } });
       console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
     } catch (e) {
       console.warn('[Storage] Mongo wipe error:', e.message);

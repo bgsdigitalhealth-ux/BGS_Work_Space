@@ -20,7 +20,8 @@ export const UserAppointments: React.FC = () => {
     appointmentStats, 
     selectedAppointmentDate, 
     setSelectedAppointmentDate,
-    handleCreateAppointment
+    handleCreateAppointment,
+    currentUser
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'All' | 'Today' | 'Upcoming' | 'Completed' | 'Cancelled'>('All');
@@ -41,9 +42,12 @@ export const UserAppointments: React.FC = () => {
     cancelled: 0
   };
 
-  // User appointments (either requested by Rahul Sharma or in user workspace)
+  // User appointments (either requested by current user or assigned to them)
   const userAppointments = appointments.filter(apt => 
-    apt.requestedBy === 'Rahul Sharma' || apt.userId === 'mem-1' || !apt.userId
+    apt.userId === currentUser?.id || 
+    apt.requestedBy === currentUser?.name || 
+    (currentUser?.email && (apt as any).email === currentUser.email) ||
+    !apt.userId
   );
 
   const filteredAppointments = userAppointments.filter(apt => {
@@ -68,10 +72,10 @@ export const UserAppointments: React.FC = () => {
 
     await handleCreateAppointment({
       title: formTitle,
-      requestedBy: 'Rahul Sharma',
-      userId: 'mem-1',
-      department: dept || 'Engineering',
-      team: team || 'Backend',
+      requestedBy: currentUser?.name || 'Team Member',
+      userId: currentUser?.id || 'usr-user',
+      department: dept || currentUser?.department || 'General',
+      team: team || currentUser?.team || 'General',
       date: formDate,
       time: formTime,
       location: 'Online (Google Meet)',

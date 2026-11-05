@@ -57,7 +57,7 @@ const workHistorySchema = new mongoose.Schema({
   reviewerComments: [reviewerCommentSchema],
   userId: {
     type: String,
-    default: 'usr-rahul'
+    default: 'usr-user'
   }
 }, { timestamps: true });
 
