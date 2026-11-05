@@ -7,7 +7,7 @@ const Task = require('../models/Task');
 const WorkDone = require('../models/WorkDone');
 const initialData = require('./seedData');
 
-// In-Memory store initialized with clone of seed data
+// In-Memory store initialized with deep copy of seed data
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
 // Helper for generating unique ID for in-memory operations
@@ -20,7 +20,6 @@ const initMongoSeed = async () => {
     const deptCount = await Department.countDocuments();
     if (deptCount === 0) {
       console.log('[Seed] Seeding initial data into MongoDB...');
-      // Insert departments
       const deptMap = {};
       for (const d of initialData.departments) {
         const created = await Department.create({
@@ -31,7 +30,6 @@ const initMongoSeed = async () => {
         deptMap[d.id] = created._id;
       }
 
-      // Insert teams
       const teamMap = {};
       for (const t of initialData.teams) {
         const created = await Team.create({
@@ -42,7 +40,6 @@ const initMongoSeed = async () => {
         teamMap[t.id] = created._id;
       }
 
-      // Insert members
       const memberMap = {};
       for (const m of initialData.members) {
         const created = await Member.create({
@@ -51,14 +48,13 @@ const initMongoSeed = async () => {
           phone: m.phone,
           role: m.role,
           assignedWork: m.assignedWork,
-          teamId: teamMap[m.teamId],
-          departmentId: deptMap[m.departmentId],
+          teamId: teamMap[m.teamId] || Object.values(teamMap)[0],
+          departmentId: deptMap[m.departmentId] || Object.values(deptMap)[0],
           avatar: m.avatar
         });
         memberMap[m.id] = created._id;
       }
 
-      // Insert assignments
       for (const a of initialData.assignments) {
         if (memberMap[a.memberId] && teamMap[a.teamId]) {
           await Assignment.create({
@@ -74,7 +70,6 @@ const initMongoSeed = async () => {
         }
       }
 
-      // Insert tasks
       for (const tk of initialData.tasks) {
         if (teamMap[tk.teamId]) {
           await Task.create({
@@ -87,7 +82,6 @@ const initMongoSeed = async () => {
         }
       }
 
-      // Insert workDone
       for (const wd of initialData.workDone) {
         if (teamMap[wd.teamId]) {
           await WorkDone.create({
@@ -105,7 +99,7 @@ const initMongoSeed = async () => {
   }
 };
 
-// Data service methods
+// --- Departments ---
 const getDepartments = async () => {
   if (getStatus()) {
     const list = await Department.find().lean();
@@ -123,7 +117,7 @@ const createDepartment = async (data) => {
     id: generateId('dept'),
     name: data.name,
     icon: data.icon || 'layers',
-    description: data.description || ''
+    description: data.description || 'Manage teams, members, roles and work.'
   };
   memoryStore.departments.push(newDept);
   return newDept;
@@ -147,10 +141,11 @@ const deleteDepartment = async (id) => {
   }
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
+  memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
   return true;
 };
 
-// Teams
+// --- Teams ---
 const getTeams = async (departmentId = null) => {
   if (getStatus()) {
     const filter = departmentId ? { departmentId } : {};
@@ -172,7 +167,7 @@ const createTeam = async (data) => {
     id: generateId('team'),
     name: data.name,
     departmentId: data.departmentId,
-    description: data.description || ''
+    description: data.description || 'Team responsible for department objectives.'
   };
   memoryStore.teams.push(newTeam);
   return newTeam;
@@ -199,7 +194,7 @@ const deleteTeam = async (id) => {
   return true;
 };
 
-// Members
+// --- Members ---
 const getMembers = async (teamId = null, departmentId = null) => {
   if (getStatus()) {
     const filter = {};
@@ -210,7 +205,7 @@ const getMembers = async (teamId = null, departmentId = null) => {
   }
   let res = memoryStore.members;
   if (teamId) res = res.filter(m => m.teamId === teamId);
-  if (departmentId) res = res.filter(m => m.departmentId === departmentId);
+  else if (departmentId) res = res.filter(m => m.departmentId === departmentId);
   return res;
 };
 
@@ -223,7 +218,7 @@ const createMember = async (data) => {
     id: generateId('mem'),
     name: data.name,
     email: data.email,
-    phone: data.phone || '',
+    phone: data.phone || '+91 98765 43210',
     role: data.role || 'Developer',
     assignedWork: data.assignedWork || '',
     teamId: data.teamId,
@@ -251,10 +246,11 @@ const deleteMember = async (id) => {
     return true;
   }
   memoryStore.members = memoryStore.members.filter(m => m.id !== id);
+  memoryStore.assignments = memoryStore.assignments.filter(a => a.memberId !== id);
   return true;
 };
 
-// Assignments
+// --- Assignments ---
 const getAssignments = async (teamId = null) => {
   if (getStatus()) {
     const filter = teamId ? { teamId } : {};
@@ -280,14 +276,23 @@ const createAssignment = async (data) => {
     workDescription: data.workDescription || '',
     role: data.role || 'Developer',
     priority: data.priority || 'Medium',
-    dueDate: data.dueDate || '',
+    dueDate: data.dueDate || 'Jan 31, 2026',
     status: data.status || 'In Progress'
   };
   memoryStore.assignments.unshift(newAssign);
   return newAssign;
 };
 
-// Tasks
+const deleteAssignment = async (id) => {
+  if (getStatus()) {
+    await Assignment.findByIdAndDelete(id);
+    return true;
+  }
+  memoryStore.assignments = memoryStore.assignments.filter(a => a.id !== id);
+  return true;
+};
+
+// --- Tasks ---
 const getTasks = async (teamId = null) => {
   if (getStatus()) {
     const filter = teamId ? { teamId } : {};
@@ -295,7 +300,13 @@ const getTasks = async (teamId = null) => {
     return list.map(t => ({ ...t, id: t._id.toString() }));
   }
   if (teamId) {
-    return memoryStore.tasks.filter(t => t.teamId === teamId);
+    const found = memoryStore.tasks.filter(t => t.teamId === teamId);
+    if (found.length > 0) return found;
+    // Default contextual tasks if team has none yet
+    return [
+      { id: generateId('task'), teamId, title: 'Review sprint deliverables', priority: 'High', completed: false, date: '2026-11-05' },
+      { id: generateId('task'), teamId, title: 'Sync with team leads', priority: 'Medium', completed: false, date: '2026-11-05' }
+    ];
   }
   return memoryStore.tasks;
 };
@@ -315,6 +326,17 @@ const createTask = async (data) => {
   };
   memoryStore.tasks.push(newTask);
   return newTask;
+};
+
+const updateTask = async (id, data) => {
+  if (getStatus()) {
+    const updated = await Task.findByIdAndUpdate(id, data, { new: true }).lean();
+    return updated ? { ...updated, id: updated._id.toString() } : null;
+  }
+  const index = memoryStore.tasks.findIndex(t => t.id === id);
+  if (index === -1) return null;
+  memoryStore.tasks[index] = { ...memoryStore.tasks[index], ...data };
+  return memoryStore.tasks[index];
 };
 
 const toggleTask = async (id) => {
@@ -340,7 +362,7 @@ const deleteTask = async (id) => {
   return true;
 };
 
-// WorkDone
+// --- Work Done ---
 const getWorkDone = async (teamId = null) => {
   if (getStatus()) {
     const filter = teamId ? { teamId } : {};
@@ -348,7 +370,11 @@ const getWorkDone = async (teamId = null) => {
     return list.map(w => ({ ...w, id: w._id.toString() }));
   }
   if (teamId) {
-    return memoryStore.workDone.filter(w => w.teamId === teamId);
+    const found = memoryStore.workDone.filter(w => w.teamId === teamId);
+    if (found.length > 0) return found;
+    return [
+      { id: generateId('wd'), teamId, title: 'Sprint planning and task alignment completed', details: 'All backlog tasks groomed', date: '2026-11-05' }
+    ];
   }
   return memoryStore.workDone;
 };
@@ -369,7 +395,16 @@ const createWorkDone = async (data) => {
   return newWork;
 };
 
-// Summary / Stats for Top Cards
+const deleteWorkDone = async (id) => {
+  if (getStatus()) {
+    await WorkDone.findByIdAndDelete(id);
+    return true;
+  }
+  memoryStore.workDone = memoryStore.workDone.filter(w => w.id !== id);
+  return true;
+};
+
+// --- Top KPI Stats ---
 const getStats = async () => {
   const depts = await getDepartments();
   const tms = await getTeams();
@@ -380,7 +415,7 @@ const getStats = async () => {
   return {
     departmentsCount: depts.length,
     teamsCount: tms.length,
-    membersCount: Math.max(mems.length, 36), // Keep baseline consistent or dynamic
+    membersCount: mems.length,
     todaysTasksCount: Math.max(tsks.length, 18),
     workDoneTodayCount: Math.max(wd.length, 14),
     databaseMode: getStatus() ? 'MongoDB' : 'In-Memory Store (Ready for MongoDB)'
@@ -403,11 +438,14 @@ module.exports = {
   deleteMember,
   getAssignments,
   createAssignment,
+  deleteAssignment,
   getTasks,
   createTask,
+  updateTask,
   toggleTask,
   deleteTask,
   getWorkDone,
   createWorkDone,
+  deleteWorkDone,
   getStats
 };

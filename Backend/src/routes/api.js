@@ -12,7 +12,7 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Departments
+// --- Departments ---
 router.get('/departments', async (req, res) => {
   try {
     const departments = await dataService.getDepartments();
@@ -52,7 +52,7 @@ router.delete('/departments/:id', async (req, res) => {
   }
 });
 
-// Teams
+// --- Teams ---
 router.get('/teams', async (req, res) => {
   try {
     const { departmentId } = req.query;
@@ -93,7 +93,7 @@ router.delete('/teams/:id', async (req, res) => {
   }
 });
 
-// Members
+// --- Members ---
 router.get('/members', async (req, res) => {
   try {
     const { teamId, departmentId } = req.query;
@@ -142,7 +142,7 @@ router.delete('/members/:id', async (req, res) => {
   }
 });
 
-// Assignments
+// --- Assignments ---
 router.get('/assignments', async (req, res) => {
   try {
     const { teamId } = req.query;
@@ -173,7 +173,16 @@ router.post('/assignments', async (req, res) => {
   }
 });
 
-// Tasks
+router.delete('/assignments/:id', async (req, res) => {
+  try {
+    await dataService.deleteAssignment(req.params.id);
+    res.json({ success: true, message: 'Assignment deleted' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Tasks ---
 router.get('/tasks', async (req, res) => {
   try {
     const { teamId } = req.query;
@@ -190,6 +199,16 @@ router.post('/tasks', async (req, res) => {
     if (!title) return res.status(400).json({ error: 'Task title is required' });
     const created = await dataService.createTask({ teamId, title, priority, date });
     res.status(201).json(created);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/tasks/:id', async (req, res) => {
+  try {
+    const updated = await dataService.updateTask(req.params.id, req.body);
+    if (!updated) return res.status(404).json({ error: 'Task not found' });
+    res.json(updated);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -214,7 +233,7 @@ router.delete('/tasks/:id', async (req, res) => {
   }
 });
 
-// Work Done
+// --- Work Done ---
 router.get('/work-done', async (req, res) => {
   try {
     const { teamId } = req.query;
@@ -231,6 +250,15 @@ router.post('/work-done', async (req, res) => {
     if (!title) return res.status(400).json({ error: 'Title is required' });
     const created = await dataService.createWorkDone({ teamId, title, details, date });
     res.status(201).json(created);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/work-done/:id', async (req, res) => {
+  try {
+    await dataService.deleteWorkDone(req.params.id);
+    res.json({ success: true, message: 'Work done deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -20,14 +20,26 @@ interface AppContextType {
   setTeamSubTab: (tab: string) => void;
   loading: boolean;
   refreshAll: () => Promise<void>;
-
-  // Modals
+  
+  // Modals & Editing
   isAddDeptOpen: boolean;
   setIsAddDeptOpen: (open: boolean) => void;
+  editingDept: Department | null;
+  setEditingDept: (dept: Department | null) => void;
+  openEditDepartment: (dept: Department) => void;
+
   isAddTeamOpen: boolean;
   setIsAddTeamOpen: (open: boolean) => void;
+  editingTeam: Team | null;
+  setEditingTeam: (team: Team | null) => void;
+  openEditTeam: (team: Team) => void;
+
   isAddMemberOpen: boolean;
   setIsAddMemberOpen: (open: boolean) => void;
+  editingMember: Member | null;
+  setEditingMember: (member: Member | null) => void;
+  openEditMember: (member: Member) => void;
+
   isAddTaskOpen: boolean;
   setIsAddTaskOpen: (open: boolean) => void;
   isAddWorkDoneOpen: boolean;
@@ -35,9 +47,15 @@ interface AppContextType {
 
   // Actions
   handleToggleTask: (id: string) => Promise<void>;
+  handleDeleteTask: (id: string) => Promise<void>;
+  handleDeleteWorkDone: (id: string) => Promise<void>;
+  handleDeleteAssignment: (id: string) => Promise<void>;
   handleDeleteMember: (id: string) => Promise<void>;
   handleDeleteDepartment: (id: string) => Promise<void>;
   handleDeleteTeam: (id: string) => Promise<void>;
+
+  // Redirect / Scroll helper
+  scrollToSection: (sectionId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -56,12 +74,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teamSubTab, setTeamSubTab] = useState<string>('Members');
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Modals
+  // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
+  const [editingDept, setEditingDept] = useState<Department | null>(null);
+
   const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<Member | null>(null);
+
   const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
   const [isAddWorkDoneOpen, setIsAddWorkDoneOpen] = useState(false);
+
+  const scrollToSection = (sectionId: string) => {
+    const el = document.getElementById(sectionId);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -77,7 +108,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const data = await api.getDepartments();
       setDepartments(data);
       if (data.length > 0 && !selectedDepartment) {
-        // Default to Engineering if available
         const eng = data.find(d => d.name.toLowerCase().includes('engineer')) || data[0];
         setSelectedDepartment(eng);
       }
@@ -91,9 +121,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const data = await api.getTeams(deptId);
       setTeams(data);
       if (data.length > 0) {
-        // Default to Backend Team if available
-        const backend = data.find(t => t.name.toLowerCase().includes('backend')) || data[0];
-        setSelectedTeam(backend);
+        // Keep existing selectedTeam if it belongs to this department, otherwise pick first
+        setSelectedTeam(prev => (prev && data.some(t => t.id === prev.id) ? prev : data[0]));
       } else {
         setSelectedTeam(null);
       }
@@ -157,6 +186,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [selectedTeam]);
 
+  // Edit triggers
+  const openEditDepartment = (dept: Department) => {
+    setEditingDept(dept);
+    setIsAddDeptOpen(true);
+  };
+
+  const openEditTeam = (team: Team) => {
+    setEditingTeam(team);
+    setIsAddTeamOpen(true);
+  };
+
+  const openEditMember = (member: Member) => {
+    setEditingMember(member);
+    setIsAddMemberOpen(true);
+  };
+
+  // Task actions
   const handleToggleTask = async (id: string) => {
     try {
       await api.toggleTask(id);
@@ -164,25 +210,70 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const updated = await api.getTasks(selectedTeam.id);
         setTasks(updated);
       }
+      fetchStats();
     } catch (err) {
       console.error(err);
     }
   };
 
-  const handleDeleteMember = async (id: string) => {
+  const handleDeleteTask = async (id: string) => {
     try {
-      await api.deleteMember(id);
+      await api.deleteTask(id);
       if (selectedTeam) {
-        const updated = await api.getMembers(selectedTeam.id);
-        setMembers(updated);
-        fetchStats();
+        const updated = await api.getTasks(selectedTeam.id);
+        setTasks(updated);
+      }
+      fetchStats();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // WorkDone actions
+  const handleDeleteWorkDone = async (id: string) => {
+    try {
+      await api.deleteWorkDone(id);
+      if (selectedTeam) {
+        const updated = await api.getWorkDone(selectedTeam.id);
+        setWorkDone(updated);
+      }
+      fetchStats();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Assignment actions
+  const handleDeleteAssignment = async (id: string) => {
+    try {
+      await api.deleteAssignment(id);
+      if (selectedTeam) {
+        const updated = await api.getAssignments(selectedTeam.id);
+        setAssignments(updated);
       }
     } catch (err) {
       console.error(err);
     }
   };
 
+  // Member actions
+  const handleDeleteMember = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this team member?')) return;
+    try {
+      await api.deleteMember(id);
+      if (selectedTeam) {
+        const updated = await api.getMembers(selectedTeam.id);
+        setMembers(updated);
+      }
+      fetchStats();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  // Department actions
   const handleDeleteDepartment = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this department and its teams?')) return;
     try {
       await api.deleteDepartment(id);
       const remaining = departments.filter(d => d.id !== id);
@@ -198,7 +289,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  // Team actions
   const handleDeleteTeam = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this team?')) return;
     try {
       await api.deleteTeam(id);
       if (selectedDepartment) {
@@ -238,18 +331,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshAll,
         isAddDeptOpen,
         setIsAddDeptOpen,
+        editingDept,
+        setEditingDept,
+        openEditDepartment,
         isAddTeamOpen,
         setIsAddTeamOpen,
+        editingTeam,
+        setEditingTeam,
+        openEditTeam,
         isAddMemberOpen,
         setIsAddMemberOpen,
+        editingMember,
+        setEditingMember,
+        openEditMember,
         isAddTaskOpen,
         setIsAddTaskOpen,
         isAddWorkDoneOpen,
         setIsAddWorkDoneOpen,
         handleToggleTask,
+        handleDeleteTask,
+        handleDeleteWorkDone,
+        handleDeleteAssignment,
         handleDeleteMember,
         handleDeleteDepartment,
-        handleDeleteTeam
+        handleDeleteTeam,
+        scrollToSection
       }}
     >
       {children}

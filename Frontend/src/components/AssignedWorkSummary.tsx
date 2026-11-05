@@ -1,9 +1,9 @@
 import React from 'react';
-import { Layers, Calendar } from 'lucide-react';
+import { Layers, Calendar, Trash2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const AssignedWorkSummary: React.FC = () => {
-  const { selectedTeam, assignments, members } = useApp();
+  const { selectedTeam, assignments, members, handleDeleteAssignment } = useApp();
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -77,14 +77,14 @@ export const AssignedWorkSummary: React.FC = () => {
 
   const getAvatarColor = (name: string) => {
     const char = (name || 'A').charAt(0).toUpperCase();
-    if (['R', 'V'].includes(char)) return 'bg-purple-100 text-purple-700 ring-purple-200';
-    if (['P', 'K'].includes(char)) return 'bg-blue-100 text-blue-700 ring-blue-200';
-    if (['A'].includes(char)) return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
+    if (['R', 'V', 'H'].includes(char)) return 'bg-purple-100 text-purple-700 ring-purple-200';
+    if (['P', 'K', 'G'].includes(char)) return 'bg-blue-100 text-blue-700 ring-blue-200';
+    if (['A', 'T'].includes(char)) return 'bg-emerald-100 text-emerald-700 ring-emerald-200';
     return 'bg-pink-100 text-pink-700 ring-pink-200';
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm flex-1 flex flex-col">
+    <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col">
       <div className="flex items-center gap-2.5 mb-1">
         <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
           <Layers className="w-4 h-4" />
@@ -92,7 +92,7 @@ export const AssignedWorkSummary: React.FC = () => {
         <h3 className="font-bold text-slate-900 text-base">Assigned Work Summary</h3>
       </div>
       <p className="text-xs text-slate-500 mb-4">
-        Recently assigned work for {selectedTeam?.name || 'Backend Team'} ({members.length} members).
+        Recently assigned work for {selectedTeam?.name || 'Selected Team'} ({members.length} members).
       </p>
 
       <div className="space-y-3 overflow-y-auto flex-1 max-h-[380px] pr-1">
@@ -110,7 +110,7 @@ export const AssignedWorkSummary: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="p-3.5 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50/50 transition-all flex items-center justify-between gap-3"
+                className="p-3.5 rounded-xl border border-slate-100 hover:border-indigo-100 hover:bg-slate-50/50 transition-all flex items-center justify-between gap-3 group"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -137,6 +137,13 @@ export const AssignedWorkSummary: React.FC = () => {
                     <span>{item.dueDate || 'Jan 31, 2026'}</span>
                   </div>
                   <div>{getStatusBadge(item.status)}</div>
+                  <button
+                    onClick={() => handleDeleteAssignment(item.id)}
+                    title="Delete assignment"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             );

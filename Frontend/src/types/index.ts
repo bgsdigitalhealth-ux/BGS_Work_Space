@@ -61,3 +61,4 @@ export interface DashboardStats {
   workDoneTodayCount: number;
   databaseMode?: string;
 }
+

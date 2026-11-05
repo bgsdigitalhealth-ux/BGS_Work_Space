@@ -117,6 +117,10 @@ export const api = {
     if (!res.ok) throw new Error('Failed to create assignment');
     return res.json();
   },
+  deleteAssignment: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/assignments/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete assignment');
+  },
 
   // Tasks
   getTasks: async (teamId?: string): Promise<Task[]> => {
@@ -132,6 +136,15 @@ export const api = {
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create task');
+    return res.json();
+  },
+  updateTask: async (id: string, data: Partial<Task>): Promise<Task> => {
+    const res = await fetch(`${API_BASE}/tasks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update task');
     return res.json();
   },
   toggleTask: async (id: string): Promise<Task> => {
@@ -159,5 +172,9 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to create work done');
     return res.json();
+  },
+  deleteWorkDone: async (id: string): Promise<void> => {
+    const res = await fetch(`${API_BASE}/work-done/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete work done');
   }
 };

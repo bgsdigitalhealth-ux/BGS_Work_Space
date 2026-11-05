@@ -23,3 +23,4 @@ const connectDB = async () => {
 const getStatus = () => isConnected;
 
 module.exports = { connectDB, getStatus };
+
