@@ -13,20 +13,42 @@ const apiRoutes = require('./routes/api');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const HOST = '0.0.0.0';
 
-// Middleware
-app.use(cors());
+// Production & Development CORS Configuration
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow non-browser requests (e.g. Render health checks, curl, cron)
+    if (!origin) return callback(null, true);
+    // Dynamically allow Vercel production/preview deployments and local dev
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 app.use(express.json());
 
 // Routes
-
 app.use('/api', apiRoutes);
+
+// Health Check Endpoint (For Render, Uptime Robot, etc.)
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    service: 'Worker Space API',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString()
+  });
+});
 
 app.get('/', (req, res) => {
   res.json({
     message: 'Worker Space Admin Dashboard API is running',
     version: '1.0.0',
     endpoints: {
+      health: '/health',
       stats: '/api/stats',
       departments: '/api/departments',
       teams: '/api/teams',
@@ -45,8 +67,8 @@ const startServer = async () => {
     await initMongoSeed();
   }
 
-  app.listen(PORT, () => {
-    console.log(`[Server] Worker Space Backend running on http://localhost:${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`[Server] Worker Space Backend running on http://${HOST}:${PORT}`);
   });
 };
 

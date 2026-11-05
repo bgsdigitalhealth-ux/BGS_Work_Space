@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Configure DNS resolution for SRV records
+// Prefer IPv4 for DNS resolution in Node.js
 try {
   if (dns.setDefaultResultOrder) {
     dns.setDefaultResultOrder('ipv4first');
   }
-  dns.setServers(['8.8.8.8', '8.8.4.4', '1.1.1.1']);
 } catch (e) {
   // ignore
 }
@@ -18,9 +17,9 @@ mongoose.connection.on('connected', async () => {
   isConnected = true;
   console.log(`[Database] MongoDB Atlas connection established successfully.`);
   try {
-    const { syncToMongo } = require('../seed/dataService');
-    if (typeof syncToMongo === 'function') {
-      await syncToMongo();
+    const { initMongoSeed } = require('../seed/dataService');
+    if (typeof initMongoSeed === 'function') {
+      await initMongoSeed();
     }
   } catch (e) {
     console.warn('[Database] Post-connect sync notice:', e.message);
@@ -34,12 +33,13 @@ mongoose.connection.on('disconnected', () => {
 
 mongoose.connection.on('error', (err) => {
   isConnected = false;
+  console.warn(`[Database] MongoDB connection notice: ${err.message}`);
 });
 
 const connectDB = async () => {
   const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/worker_space';
 
-  const tryConnect = async (timeout = 6000) => {
+  const tryConnect = async (timeout = 8000) => {
     try {
       const conn = await mongoose.connect(mongoURI, {
         serverSelectionTimeoutMS: timeout,
@@ -56,7 +56,7 @@ const connectDB = async () => {
     }
   };
 
-  const initialConn = await tryConnect(5000);
+  const initialConn = await tryConnect(6000);
   if (initialConn) {
     console.log(`[Database] MongoDB Atlas connected on startup: ${initialConn.connection.host}`);
   } else {
@@ -67,7 +67,7 @@ const connectDB = async () => {
   // Continuous background auto-reconnect every 10s until Atlas connects
   setInterval(async () => {
     if (!isConnected) {
-      await tryConnect(4000);
+      await tryConnect(5000);
     }
   }, 10000);
 

@@ -1,0 +1,18 @@
+{
+  "name": "bgs-work-space",
+  "version": "1.0.0",
+  "private": true,
+  "description": "BGS Work Space - Production Team & Work Management System",
+  "main": "Backend/src/server.js",
+  "scripts": {
+    "start": "node Backend/src/server.js",
+    "build": "cd Frontend && npm install && npm run build",
+    "backend:start": "cd Backend && npm start",
+    "backend:dev": "cd Backend && npm run dev",
+    "frontend:dev": "cd Frontend && npm run dev",
+    "frontend:build": "cd Frontend && npm run build"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

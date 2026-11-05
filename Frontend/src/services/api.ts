@@ -1,6 +1,8 @@
 import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats } from '../types';
 
-const API_BASE = '/api';
+// Support production backend on Render via VITE_API_URL or fallback to local proxy /api
+const rawBase = (import.meta.env.VITE_API_URL || '').trim();
+export const API_BASE = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api';
 
 export const api = {
   // Stats

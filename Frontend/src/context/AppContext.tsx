@@ -15,7 +15,7 @@ import {
   User,
   Notification
 } from '../types';
-import { api } from '../services/api';
+import { api, API_BASE } from '../services/api';
 
 interface AppContextType {
   // Authentication & Session
@@ -540,7 +540,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     let es: EventSource | null = null;
     try {
-      es = new EventSource('/api/events');
+      es = new EventSource(`${API_BASE}/events`);
       es.onmessage = (e) => {
         try {
           const event = JSON.parse(e.data);

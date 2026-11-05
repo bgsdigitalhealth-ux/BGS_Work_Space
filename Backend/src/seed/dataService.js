@@ -116,11 +116,77 @@ const clearAllData = async () => {
   return { success: true, message: 'All dummy data purged completely. Workspace is 100% clean and dynamic.' };
 };
 
+// Bidirectional load: read existing MongoDB Atlas records into local store
+const loadFromMongo = async () => {
+  if (!getStatus()) return;
+  try {
+    const depts = await Department.find().lean();
+    if (depts && depts.length > 0) {
+      for (const d of depts) {
+        if (!memoryStore.departments.some(x => x.name.toLowerCase() === d.name.toLowerCase())) {
+          memoryStore.departments.push({ ...d, id: d.customId || d._id.toString() });
+        }
+      }
+    }
+    const tms = await Team.find().lean();
+    if (tms && tms.length > 0) {
+      for (const t of tms) {
+        if (!memoryStore.teams.some(x => x.name.toLowerCase() === t.name.toLowerCase())) {
+          memoryStore.teams.push({ ...t, id: t.customId || t._id.toString() });
+        }
+      }
+    }
+    const mems = await Member.find().lean();
+    if (mems && mems.length > 0) {
+      for (const m of mems) {
+        if (!memoryStore.members.some(x => x.email.toLowerCase() === m.email.toLowerCase())) {
+          memoryStore.members.push({ ...m, id: m.customId || m._id.toString() });
+        }
+      }
+    }
+    const usrs = await User.find().lean();
+    if (usrs && usrs.length > 0) {
+      for (const u of usrs) {
+        const idx = memoryStore.users.findIndex(x => x.email.toLowerCase() === u.email.toLowerCase());
+        if (idx === -1) {
+          memoryStore.users.push({ ...u, id: u.customId || u._id.toString() });
+        } else if (u.hasPassword && !memoryStore.users[idx].hasPassword) {
+          memoryStore.users[idx].password = u.password;
+          memoryStore.users[idx].hasPassword = true;
+        }
+      }
+    }
+    const asgs = await Assignment.find().lean();
+    if (asgs && asgs.length > 0) {
+      for (const a of asgs) {
+        if (!memoryStore.assignments.some(x => x.id === (a.customId || a._id.toString()))) {
+          memoryStore.assignments.push({ ...a, id: a.customId || a._id.toString() });
+        }
+      }
+    }
+    const tsks = await Task.find().lean();
+    if (tsks && tsks.length > 0) {
+      for (const tk of tsks) {
+        if (!memoryStore.tasks.some(x => x.title === tk.title && x.teamId === tk.teamId)) {
+          memoryStore.tasks.push({ ...tk, id: tk.customId || tk._id.toString() });
+        }
+      }
+    }
+    saveStore();
+    console.log('[Storage] Bidirectional sync: MongoDB Atlas records loaded into local store.');
+  } catch (err) {
+    console.warn('[Storage] Load from Mongo notice:', err.message);
+  }
+};
+
 // Seed MongoDB if connected and ensure base authentication accounts exist
 const initMongoSeed = async () => {
   if (!getStatus()) return;
   try {
-    // Ensure base login accounts (admin@company.com and user@company.com) exist
+    // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
+    await loadFromMongo();
+
+    // 2. Ensure base login accounts (dynamicsajjan@gamil.com, etc.) exist
     for (const u of initialData.users) {
       const exists = await User.findOne({ email: u.email.toLowerCase() });
       if (!exists) {
@@ -129,6 +195,7 @@ const initMongoSeed = async () => {
           name: u.name,
           email: u.email,
           password: u.password,
+          hasPassword: Boolean(u.hasPassword),
           role: u.role,
           memberId: u.memberId || '',
           department: u.department || '',
