@@ -12,8 +12,54 @@ const UserTask = require('../models/UserTask');
 const WorkHistory = require('../models/WorkHistory');
 const initialData = require('./seedData');
 
-// In-Memory store initialized with deep copy of clean seed data
+const fs = require('fs');
+const path = require('path');
+
+const DATA_FILE = path.join(__dirname, '../../data/db.json');
+
+// Persistent Disk Store engine
 let memoryStore = JSON.parse(JSON.stringify(initialData));
+
+const saveStore = () => {
+  try {
+    const dir = path.dirname(DATA_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(DATA_FILE, JSON.stringify(memoryStore, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('[Storage] Error persisting to disk:', e.message);
+  }
+};
+
+const loadStore = () => {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, 'utf8');
+      const parsed = JSON.parse(raw);
+      if (parsed) {
+        memoryStore = { ...initialData, ...parsed };
+        if (!memoryStore.users || memoryStore.users.length === 0) {
+          memoryStore.users = JSON.parse(JSON.stringify(initialData.users));
+        } else {
+          for (const u of initialData.users) {
+            if (!memoryStore.users.some(x => x.email.toLowerCase() === u.email.toLowerCase())) {
+              memoryStore.users.unshift(u);
+            }
+          }
+        }
+        console.log('[Storage] Persistent database state loaded from disk successfully.');
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('[Storage] Disk read error, initializing default store:', e.message);
+  }
+  memoryStore = JSON.parse(JSON.stringify(initialData));
+  saveStore();
+};
+
+loadStore();
 
 // Helper for generating unique ID for operations
 const generateId = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -94,8 +140,103 @@ const initMongoSeed = async () => {
       }
     }
     console.log('[Seed] Base authorized users verified in MongoDB Atlas.');
+    await syncToMongo();
   } catch (err) {
     console.error('[Seed Error] Failed to verify base accounts in Atlas:', err);
+  }
+};
+
+// Seamless synchronization from persistent store into MongoDB Atlas
+const syncToMongo = async () => {
+  if (!getStatus()) return;
+  try {
+    // 1. Departments
+    for (const d of (memoryStore.departments || [])) {
+      const exists = await Department.findOne({ name: d.name });
+      if (!exists) {
+        await Department.create({
+          customId: d.id,
+          name: d.name,
+          icon: d.icon,
+          description: d.description
+        });
+      }
+    }
+    // 2. Teams
+    for (const t of (memoryStore.teams || [])) {
+      const exists = await Team.findOne({ name: t.name });
+      if (!exists) {
+        await Team.create({
+          customId: t.id,
+          name: t.name,
+          departmentId: t.departmentId
+        });
+      }
+    }
+    // 3. Members
+    for (const m of (memoryStore.members || [])) {
+      const exists = await Member.findOne({ email: m.email.toLowerCase() });
+      if (!exists) {
+        await Member.create({
+          customId: m.id,
+          name: m.name,
+          email: m.email,
+          phone: m.phone,
+          role: m.role,
+          assignedWork: m.assignedWork,
+          teamId: m.teamId,
+          departmentId: m.departmentId,
+          avatar: m.avatar
+        });
+      }
+    }
+    // 4. Users (Members and Admins)
+    for (const u of (memoryStore.users || [])) {
+      const exists = await User.findOne({ email: u.email.toLowerCase() });
+      if (!exists) {
+        await User.create({
+          customId: u.id,
+          name: u.name,
+          email: u.email,
+          password: u.password,
+          hasPassword: Boolean(u.hasPassword),
+          role: u.role,
+          memberId: u.memberId,
+          department: u.department,
+          team: u.team,
+          teamRole: u.teamRole,
+          avatar: u.avatar,
+          title: u.title
+        });
+      } else if (u.hasPassword && !exists.hasPassword) {
+        exists.password = u.password;
+        exists.hasPassword = true;
+        await exists.save();
+      }
+    }
+    // 5. Assignments
+    for (const a of (memoryStore.assignments || [])) {
+      const exists = await Assignment.findOne({ workTitle: a.workTitle, teamId: a.teamId });
+      if (!exists) await Assignment.create(a);
+    }
+    // 6. Tasks
+    for (const tk of (memoryStore.tasks || [])) {
+      const exists = await Task.findOne({ title: tk.title, teamId: tk.teamId });
+      if (!exists) await Task.create(tk);
+    }
+    // 7. Work Done
+    for (const wd of (memoryStore.workDone || [])) {
+      const exists = await WorkDone.findOne({ title: wd.title, teamId: wd.teamId });
+      if (!exists) await WorkDone.create(wd);
+    }
+    // 8. Appointments
+    for (const apt of (memoryStore.appointments || [])) {
+      const exists = await Appointment.findOne({ title: apt.title, date: apt.date });
+      if (!exists) await Appointment.create(apt);
+    }
+    console.log('[Storage] Seamless synchronization with MongoDB Atlas complete.');
+  } catch (err) {
+    console.warn('[Storage] Sync notice:', err.message);
   }
 };
 
@@ -120,6 +261,7 @@ const createDepartment = async (data) => {
     description: data.description || 'Manage teams, members, roles and work.'
   };
   memoryStore.departments.push(newDept);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -136,6 +278,7 @@ const updateDepartment = async (id, data) => {
   const index = memoryStore.departments.findIndex(d => d.id === id);
   if (index !== -1) {
     memoryStore.departments[index] = { ...memoryStore.departments[index], ...data };
+    saveStore();
   }
 
   if (getStatus()) {
@@ -153,6 +296,7 @@ const deleteDepartment = async (id) => {
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
   memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -191,6 +335,7 @@ const createTeam = async (data) => {
     description: data.description || 'Team responsible for department objectives.'
   };
   memoryStore.teams.push(newTeam);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -207,6 +352,7 @@ const updateTeam = async (id, data) => {
   const index = memoryStore.teams.findIndex(t => t.id === id);
   if (index !== -1) {
     memoryStore.teams[index] = { ...memoryStore.teams[index], ...data };
+    saveStore();
   }
 
   if (getStatus()) {
@@ -223,6 +369,7 @@ const updateTeam = async (id, data) => {
 const deleteTeam = async (id) => {
   memoryStore.teams = memoryStore.teams.filter(t => t.id !== id);
   memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -288,6 +435,7 @@ const createMember = async (data) => {
     };
     memoryStore.users.push(existingUser);
   }
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -321,6 +469,7 @@ const updateMember = async (id, data) => {
   const index = memoryStore.members.findIndex(m => m.id === id);
   if (index !== -1) {
     memoryStore.members[index] = { ...memoryStore.members[index], ...data };
+    saveStore();
   }
 
   if (getStatus()) {
@@ -341,6 +490,7 @@ const deleteMember = async (id) => {
   }
   memoryStore.members = memoryStore.members.filter(m => m.id !== id);
   memoryStore.assignments = memoryStore.assignments.filter(a => a.memberId !== id);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -452,6 +602,7 @@ const createAssignment = async (data) => {
     userId: dbMember ? (dbMember.userId || dbMember._id.toString()) : (member ? member.id : 'usr-user')
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
+  saveStore();
 
   // Create Notification for User
   createNotification({
@@ -505,6 +656,7 @@ const createAssignment = async (data) => {
 
 const deleteAssignment = async (id) => {
   memoryStore.assignments = memoryStore.assignments.filter(a => a.id !== id);
+  saveStore();
   if (getStatus()) {
     try {
       await Assignment.findByIdAndDelete(id);
@@ -542,6 +694,7 @@ const createTask = async (data) => {
     date: data.date || new Date().toISOString().split('T')[0]
   };
   memoryStore.tasks.push(newTask);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -558,6 +711,7 @@ const updateTask = async (id, data) => {
   const index = memoryStore.tasks.findIndex(t => t.id === id);
   if (index !== -1) {
     memoryStore.tasks[index] = { ...memoryStore.tasks[index], ...data };
+    saveStore();
   }
 
   if (getStatus()) {
@@ -575,6 +729,7 @@ const toggleTask = async (id) => {
   const index = memoryStore.tasks.findIndex(t => t.id === id);
   if (index !== -1) {
     memoryStore.tasks[index].completed = !memoryStore.tasks[index].completed;
+    saveStore();
   }
 
   if (getStatus()) {
@@ -594,6 +749,7 @@ const toggleTask = async (id) => {
 
 const deleteTask = async (id) => {
   memoryStore.tasks = memoryStore.tasks.filter(t => t.id !== id);
+  saveStore();
   if (getStatus()) {
     try {
       await Task.findByIdAndDelete(id);
@@ -630,6 +786,7 @@ const createWorkDone = async (data) => {
     date: data.date || new Date().toISOString().split('T')[0]
   };
   memoryStore.workDone.unshift(newWork);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -644,6 +801,7 @@ const createWorkDone = async (data) => {
 
 const deleteWorkDone = async (id) => {
   memoryStore.workDone = memoryStore.workDone.filter(w => w.id !== id);
+  saveStore();
   if (getStatus()) {
     try {
       await WorkDone.findByIdAndDelete(id);
@@ -758,6 +916,7 @@ const submitUserWork = async (data) => {
     title: `Submitted: ${task ? task.title : 'Work Item'}`,
     date: 'Just now'
   });
+  saveStore();
 
   // Create Notification for Admin
   createNotification({
@@ -769,7 +928,7 @@ const submitUserWork = async (data) => {
 
   // Auto-check and complete corresponding Task in "Today's Tasks"
   const taskTitle = task ? task.title : '';
-  const matchingTasks = (memoryStore.tasks || []).filter(t => 
+  const matchingTasks = (memoryStore.tasks || []).filter(t =>
     (taskTitle && t.title && t.title.trim().toLowerCase() === taskTitle.trim().toLowerCase()) ||
     (t.assignmentId && (t.assignmentId === taskId || (task && t.assignmentId === task.id)))
   );
@@ -782,7 +941,7 @@ const submitUserWork = async (data) => {
   // Auto-log into "Today's Work Done"
   const teamObj = (memoryStore.teams || []).find(tm => task && tm.name === task.team);
   const completedTeamId = teamObj ? teamObj.id : (matchingTasks[0] ? matchingTasks[0].teamId : null);
-  
+
   if (completedTeamId) {
     const alreadyLogged = (memoryStore.workDone || []).some(w => w.taskId === taskId || (taskTitle && w.title === taskTitle));
     if (!alreadyLogged) {
@@ -799,6 +958,7 @@ const submitUserWork = async (data) => {
       memoryStore.workDone.unshift(newWorkDone);
     }
   }
+  saveStore();
 
   // Persist into MongoDB Atlas if connected
   if (getStatus()) {
@@ -889,7 +1049,7 @@ const approveWork = async (taskId, comment) => {
 
   // Ensure matching task in Today's Tasks is marked completed
   const taskTitle = task ? task.title : '';
-  const matchingTasks = (memoryStore.tasks || []).filter(t => 
+  const matchingTasks = (memoryStore.tasks || []).filter(t =>
     (taskTitle && t.title && t.title.trim().toLowerCase() === taskTitle.trim().toLowerCase()) ||
     (t.assignmentId && (t.assignmentId === taskId || (task && t.assignmentId === task.id)))
   );
@@ -917,6 +1077,7 @@ const approveWork = async (taskId, comment) => {
       memoryStore.workDone.unshift(newWorkDone);
     }
   }
+  saveStore();
 
   // Persist into MongoDB Atlas if connected
   if (getStatus()) {
@@ -943,7 +1104,7 @@ const approveWork = async (taskId, comment) => {
       }
       await WorkHistory.findOneAndUpdate(
         { $or: [{ customId: taskId }, { taskId: taskId }] },
-        { 
+        {
           status: 'Approved',
           reviewerFeedback: comment || 'Approved by Admin. Work completed successfully.',
           $push: {
@@ -1032,6 +1193,7 @@ const requestRework = async (taskId, feedback) => {
     }
   }
 
+  saveStore();
   return { success: true, task, historyItem };
 };
 
@@ -1136,6 +1298,7 @@ const createPassword = async (email, password) => {
     user.password = password;
     user.hasPassword = true;
   }
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1294,10 +1457,10 @@ const getUsers = async () => {
 // --- Admin Management & Profile Settings ---
 const updateAdminProfile = async (identifier, { name, email, newPassword }) => {
   const cleanEmail = (email || '').trim().toLowerCase();
-  
-  const user = (memoryStore.users || []).find(u => 
-    u.id === identifier || 
-    (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
+
+  const user = (memoryStore.users || []).find(u =>
+    u.id === identifier ||
+    (u.email && u.email.toLowerCase() === identifier.toLowerCase()) ||
     (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)
   );
 
@@ -1308,6 +1471,7 @@ const updateAdminProfile = async (identifier, { name, email, newPassword }) => {
       user.password = newPassword;
       user.hasPassword = true;
     }
+    saveStore();
   }
 
   if (getStatus()) {
@@ -1383,6 +1547,7 @@ const createAdmin = async ({ name, email, password }) => {
   };
 
   memoryStore.users.push(newAdmin);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1414,6 +1579,7 @@ const deleteAdmin = async (id) => {
   }
 
   memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email !== id);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1470,6 +1636,7 @@ const createNotification = (data) => {
     memoryStore.notifications = [];
   }
   memoryStore.notifications.unshift(newNotif);
+  saveStore();
 
   if (getStatus()) {
     Notification.create({
@@ -1492,7 +1659,10 @@ const markNotificationRead = async (id) => {
     memoryStore.notifications = [];
   }
   const notif = memoryStore.notifications.find(n => n.id === id);
-  if (notif) notif.read = true;
+  if (notif) {
+    notif.read = true;
+    saveStore();
+  }
 
   if (getStatus()) {
     try {
@@ -1517,6 +1687,7 @@ const markAllNotificationsRead = async (role) => {
       n.read = true;
     }
   });
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1561,6 +1732,7 @@ const addUserComment = async (taskId, data) => {
     if (!historyItem.reviewerComments) historyItem.reviewerComments = [];
     historyItem.reviewerComments.push(newComment);
   }
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1604,6 +1776,7 @@ const updateUserWorkStatus = async (taskId, status) => {
     title: `Work Started: ${task.title}`,
     date: 'Just now'
   });
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1665,7 +1838,7 @@ const getAppointments = async (filter = {}) => {
   }
   if (filter.search) {
     const q = filter.search.toLowerCase();
-    list = list.filter(a => 
+    list = list.filter(a =>
       a.title.toLowerCase().includes(q) ||
       a.requestedBy.toLowerCase().includes(q) ||
       (a.department && a.department.toLowerCase().includes(q)) ||
@@ -1704,6 +1877,7 @@ const createAppointment = async (data) => {
     memoryStore.appointments = [];
   }
   memoryStore.appointments.unshift(newApt);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1742,6 +1916,7 @@ const updateAppointment = async (id, data) => {
       ...memoryStore.appointments[index],
       ...data
     };
+    saveStore();
   }
 
   if (getStatus()) {
@@ -1765,6 +1940,7 @@ const deleteAppointment = async (id) => {
     memoryStore.appointments = [];
   }
   memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
+  saveStore();
 
   if (getStatus()) {
     try {
@@ -1832,6 +2008,7 @@ const getStats = async () => {
 module.exports = {
   clearAllData,
   initMongoSeed,
+  syncToMongo,
   getDepartments,
   createDepartment,
   updateDepartment,

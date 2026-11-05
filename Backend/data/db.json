@@ -1,0 +1,111 @@
+{
+  "departments": [
+    {
+      "id": "dept-1793883008547-55",
+      "name": "Digital AI",
+      "icon": "code",
+      "description": "Manage teams, members, roles and work."
+    }
+  ],
+  "teams": [
+    {
+      "id": "team-1793883026560-20",
+      "name": "AI team",
+      "departmentId": "dept-1793883008547-55",
+      "description": "Team responsible for department objectives."
+    }
+  ],
+  "members": [
+    {
+      "id": "mem-1793883051504-277",
+      "name": "BGS",
+      "email": "bgsmchhospitalnagarur@gmail.com",
+      "phone": "9630258741",
+      "role": "Developer",
+      "assignedWork": "",
+      "teamId": "team-1793883026560-20",
+      "departmentId": "dept-1793883008547-55",
+      "avatar": "B"
+    }
+  ],
+  "assignments": [],
+  "tasks": [],
+  "workDone": [],
+  "appointments": [],
+  "notifications": [],
+  "userWorkspace": {
+    "stats": {
+      "totalAssigned": 0,
+      "inProgress": 0,
+      "upcomingWork": 0,
+      "completedWork": 0,
+      "completionRate": 0,
+      "completionPercentage": 0,
+      "completedCount": 0,
+      "totalCount": 0,
+      "completedFractionText": "0 of 0 Tasks"
+    },
+    "assignedWork": [],
+    "history": [],
+    "recentActivities": []
+  },
+  "users": [
+    {
+      "id": "usr-admin",
+      "name": "Admin",
+      "email": "dynamicsajjan@gamil.com",
+      "password": "Apple9844?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "A",
+      "title": "Administrator"
+    },
+    {
+      "id": "usr-admin-alias",
+      "name": "Admin",
+      "email": "dynamicsajjan@gmail.com",
+      "password": "Apple9844?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "A",
+      "title": "Administrator"
+    },
+    {
+      "id": "usr-admin-backup",
+      "name": "Admin",
+      "email": "admin@company.com",
+      "password": "Apple9844?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "A",
+      "title": "Administrator"
+    },
+    {
+      "id": "usr-user",
+      "name": "Team Member",
+      "email": "user@company.com",
+      "password": "user123",
+      "role": "user",
+      "memberId": "",
+      "department": "",
+      "team": "",
+      "teamRole": "Team Member",
+      "avatar": "TM",
+      "title": "Team Member"
+    },
+    {
+      "id": "usr-1793883051504-379",
+      "name": "BGS",
+      "email": "bgsmchhospitalnagarur@gmail.com",
+      "password": "Apple2026?",
+      "hasPassword": true,
+      "role": "user",
+      "memberId": "mem-1793883051504-277",
+      "department": "dept-1793883008547-55",
+      "team": "team-1793883026560-20",
+      "teamRole": "Developer",
+      "avatar": "B",
+      "title": "Developer"
+    }
+  ]
+}
