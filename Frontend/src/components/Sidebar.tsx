@@ -15,7 +15,7 @@ import {
 import { useApp } from '../context/AppContext';
 
 export const Sidebar: React.FC = () => {
-  const { stats, activeTab, setActiveTab, scrollToSection } = useApp();
+  const { stats, activeTab, setActiveTab, teamSubTab, setTeamSubTab, scrollToSection } = useApp();
   const [orgOpen, setOrgOpen] = useState(true);
   const [workOpen, setWorkOpen] = useState(true);
 
@@ -34,14 +34,15 @@ export const Sidebar: React.FC = () => {
 
       {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
-        {/* Dashboard Active */}
+        {/* Dashboard Link */}
         <button 
           onClick={() => {
             setActiveTab('Teams');
+            setTeamSubTab('Members');
             scrollToSection('stats-overview');
           }}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left ${
-            activeTab === 'Teams'
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${
+            activeTab === 'Teams' && teamSubTab === 'Members'
               ? 'text-white bg-indigo-600 shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
           }`}
@@ -54,7 +55,7 @@ export const Sidebar: React.FC = () => {
         <div className="pt-2">
           <button
             onClick={() => setOrgOpen(!orgOpen)}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
               <Building2 className="w-4 h-4 text-slate-400" />
@@ -69,7 +70,7 @@ export const Sidebar: React.FC = () => {
                 onClick={() => {
                   scrollToSection('departments-section');
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
               >
                 <Building2 className="w-3.5 h-3.5 text-slate-400" />
                 <span>Departments</span>
@@ -77,9 +78,10 @@ export const Sidebar: React.FC = () => {
               <button 
                 onClick={() => {
                   setActiveTab('Teams');
+                  setTeamSubTab('Members');
                   scrollToSection('department-detail');
                 }}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
               >
                 <Users className="w-3.5 h-3.5 text-slate-400" />
                 <span>Teams</span>
@@ -89,7 +91,7 @@ export const Sidebar: React.FC = () => {
                   setActiveTab('Members');
                   scrollToSection('department-detail');
                 }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
                   activeTab === 'Members' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                 }`}
               >
@@ -104,7 +106,7 @@ export const Sidebar: React.FC = () => {
         <div className="pt-2">
           <button
             onClick={() => setWorkOpen(!workOpen)}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer"
           >
             <div className="flex items-center gap-2.5">
               <CheckSquare className="w-4 h-4 text-slate-400" />
@@ -116,15 +118,27 @@ export const Sidebar: React.FC = () => {
           {workOpen && (
             <div className="mt-1 ml-4 pl-3 border-l border-indigo-950/70 space-y-1">
               <button 
-                onClick={() => scrollToSection('todays-tasks-section')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                onClick={() => {
+                  setActiveTab('Teams');
+                  setTeamSubTab('Tasks');
+                  scrollToSection('department-detail');
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
+                  teamSubTab === 'Tasks' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
               >
                 <CheckSquare className="w-3.5 h-3.5 text-slate-400" />
                 <span>Today's Tasks</span>
               </button>
               <button 
-                onClick={() => scrollToSection('todays-workdone-section')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                onClick={() => {
+                  setActiveTab('Teams');
+                  setTeamSubTab('WorkDone');
+                  scrollToSection('department-detail');
+                }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${
+                  teamSubTab === 'WorkDone' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                }`}
               >
                 <ClipboardCheck className="w-3.5 h-3.5 text-slate-400" />
                 <span>Today's Work Done</span>
@@ -136,15 +150,16 @@ export const Sidebar: React.FC = () => {
         {/* Reports / Assign Work */}
         <button 
           onClick={() => {
-            setActiveTab('Assign Work');
+            setActiveTab('Teams');
+            setTeamSubTab('Roles');
             scrollToSection('department-detail');
           }}
-          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left ${
-            activeTab === 'Assign Work' ? 'text-white bg-indigo-600/80' : 'text-slate-300 hover:text-white hover:bg-white/5'
+          className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${
+            teamSubTab === 'Roles' ? 'text-white bg-indigo-600/80' : 'text-slate-300 hover:text-white hover:bg-white/5'
           }`}
         >
           <FileBarChart className="w-4 h-4 text-slate-400" />
-          <span>Reports & Assignments</span>
+          <span>Roles & Assignments</span>
         </button>
       </nav>
 

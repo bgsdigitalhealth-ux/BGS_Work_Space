@@ -3,7 +3,17 @@ import { Building2, Users, UserCheck, ClipboardList, CheckCircle2, ArrowUpRight 
 import { useApp } from '../context/AppContext';
 
 export const StatsOverview: React.FC = () => {
-  const { stats, departments, teams, members, tasks, workDone, setActiveTab, scrollToSection } = useApp();
+  const { 
+    stats, 
+    departments, 
+    teams, 
+    members, 
+    tasks, 
+    workDone, 
+    setActiveTab, 
+    setTeamSubTab, 
+    scrollToSection 
+  } = useApp();
 
   const cards = [
     {
@@ -25,6 +35,7 @@ export const StatsOverview: React.FC = () => {
       iconColor: 'text-blue-600',
       action: () => {
         setActiveTab('Teams');
+        setTeamSubTab('Members');
         scrollToSection('department-detail');
       },
       hint: 'Manage Teams'
@@ -48,7 +59,9 @@ export const StatsOverview: React.FC = () => {
       bgColor: 'bg-purple-50/80',
       iconColor: 'text-purple-600',
       action: () => {
-        scrollToSection('todays-tasks-section');
+        setActiveTab('Teams');
+        setTeamSubTab('Tasks');
+        scrollToSection('department-detail');
       },
       hint: "Jump to Today's Tasks"
     },
@@ -59,7 +72,9 @@ export const StatsOverview: React.FC = () => {
       bgColor: 'bg-emerald-50/80',
       iconColor: 'text-emerald-600',
       action: () => {
-        scrollToSection('todays-workdone-section');
+        setActiveTab('Teams');
+        setTeamSubTab('WorkDone');
+        scrollToSection('department-detail');
       },
       hint: 'Jump to Completed Work'
     },

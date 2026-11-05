@@ -17,8 +17,6 @@ import {
 import { useApp } from '../context/AppContext';
 import { TeamList } from './TeamList';
 import { MembersTable } from './MembersTable';
-import { AssignWorkForm } from './AssignWorkForm';
-import { AssignedWorkSummary } from './AssignedWorkSummary';
 import { Member } from '../types';
 
 export const DepartmentDetail: React.FC = () => {
@@ -26,6 +24,8 @@ export const DepartmentDetail: React.FC = () => {
     selectedDepartment, 
     activeTab, 
     setActiveTab, 
+    teamSubTab,
+    setTeamSubTab,
     openEditDepartment, 
     handleDeleteDepartment,
     members,
@@ -60,18 +60,20 @@ export const DepartmentDetail: React.FC = () => {
   };
 
   const getRoleBadge = (role: string) => {
-    switch (role.toLowerCase()) {
-      case 'team lead':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">Team Lead</span>;
-      case 'developer':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">Developer</span>;
-      case 'tester':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">Tester</span>;
-      case 'designer':
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-100 text-pink-700">Designer</span>;
-      default:
-        return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{role}</span>;
+    const r = (role || 'Developer').toLowerCase();
+    if (r.includes('lead') || r.includes('manager')) {
+      return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700">{role}</span>;
     }
+    if (r.includes('dev') || r.includes('engineer')) {
+      return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-100 text-blue-700">{role}</span>;
+    }
+    if (r.includes('test') || r.includes('qa')) {
+      return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{role}</span>;
+    }
+    if (r.includes('design') || r.includes('ui') || r.includes('ux')) {
+      return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-pink-100 text-pink-700">{role}</span>;
+    }
+    return <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">{role}</span>;
   };
 
   const tabs = [
@@ -82,6 +84,35 @@ export const DepartmentDetail: React.FC = () => {
     { id: "Today's Work Done", label: "Today's Work Done", icon: CheckCircle2 },
   ];
 
+  const isTabActive = (tabId: string) => {
+    if (tabId === 'Members') return activeTab === 'Members';
+    if (activeTab === 'Teams') {
+      if (tabId === 'Teams') return teamSubTab === 'Members';
+      if (tabId === 'Assign Work') return teamSubTab === 'Roles';
+      if (tabId === "Today's Work") return teamSubTab === 'Tasks';
+      if (tabId === "Today's Work Done") return teamSubTab === 'WorkDone';
+    }
+    return false;
+  };
+
+  const handleTabClick = (tabId: string) => {
+    if (tabId === 'Members') {
+      setActiveTab('Members');
+    } else if (tabId === 'Teams') {
+      setActiveTab('Teams');
+      setTeamSubTab('Members');
+    } else if (tabId === 'Assign Work') {
+      setActiveTab('Teams');
+      setTeamSubTab('Roles');
+    } else if (tabId === "Today's Work") {
+      setActiveTab('Teams');
+      setTeamSubTab('Tasks');
+    } else if (tabId === "Today's Work Done") {
+      setActiveTab('Teams');
+      setTeamSubTab('WorkDone');
+    }
+  };
+
   const filteredMembers = members.filter(m => 
     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.email.toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -89,7 +120,7 @@ export const DepartmentDetail: React.FC = () => {
   );
 
   return (
-    <div id="department-detail" className="flex-1 flex flex-col space-y-4">
+    <div id="department-detail" className="flex-1 flex flex-col space-y-4 min-w-0">
       {/* Top Department Header Card */}
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -110,7 +141,7 @@ export const DepartmentDetail: React.FC = () => {
           <div className="flex items-center gap-2.5">
             <button 
               onClick={() => openEditDepartment(selectedDepartment)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5 text-slate-500" />
               <span>Edit Department</span>
@@ -118,7 +149,7 @@ export const DepartmentDetail: React.FC = () => {
             <button
               onClick={() => handleDeleteDepartment(selectedDepartment.id)}
               title="Delete Department"
-              className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs"
+              className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -126,21 +157,21 @@ export const DepartmentDetail: React.FC = () => {
         </div>
 
         {/* Navigation Tabs */}
-        <div className="flex flex-wrap items-center gap-6 mt-6 border-b border-slate-100 text-xs font-bold text-slate-500">
+        <div className="flex flex-wrap items-center gap-6 mt-6 border-b border-slate-100 text-xs font-bold text-slate-500 overflow-x-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
+            const active = isTabActive(tab.id);
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 flex items-center gap-2 transition-colors relative cursor-pointer ${
-                  isActive ? 'text-indigo-600 font-bold' : 'hover:text-slate-800'
+                onClick={() => handleTabClick(tab.id)}
+                className={`pb-3 flex items-center gap-2 transition-colors relative cursor-pointer whitespace-nowrap ${
+                  active ? 'text-indigo-600 font-bold' : 'hover:text-slate-800'
                 }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>
-                {isActive && (
+                {active && (
                   <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
                 )}
               </button>
@@ -149,7 +180,7 @@ export const DepartmentDetail: React.FC = () => {
         </div>
       </div>
 
-      {/* Tab Content Display */}
+      {/* Main Tab Content Display */}
       {activeTab === 'Teams' && (
         <div className="flex flex-col lg:flex-row gap-4 items-stretch flex-1">
           <TeamList />
@@ -157,15 +188,8 @@ export const DepartmentDetail: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'Assign Work' && (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch flex-1">
-          <AssignWorkForm />
-          <AssignedWorkSummary />
-        </div>
-      )}
-
       {activeTab === 'Members' && (
-        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col">
+        <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
             <div>
               <h3 className="font-bold text-slate-900 text-base">
@@ -188,7 +212,7 @@ export const DepartmentDetail: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsAddMemberOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm shrink-0"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm shrink-0 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Member</span>
@@ -243,14 +267,14 @@ export const DepartmentDetail: React.FC = () => {
                             <button
                               onClick={() => openEditMember(member)}
                               title="Edit Member"
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
                               onClick={() => handleDeleteMember(member.id)}
                               title="Delete Member"
-                              className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors"
+                              className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -262,35 +286,6 @@ export const DepartmentDetail: React.FC = () => {
                 )}
               </tbody>
             </table>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "Today's Work" && (
-        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-xs">
-          <h3 className="font-bold text-slate-900 text-base mb-2">Today's Active Tasks</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Manage and check off today's priority deliverables.
-          </p>
-          <div className="max-w-xl">
-            {/* Embedded tasks view */}
-            <p className="text-xs text-slate-600">
-              Scroll down to the <strong>Today's Tasks</strong> checklist below to interactively mark items completed or add new tasks.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {activeTab === "Today's Work Done" && (
-        <div className="bg-white rounded-2xl border border-slate-200/60 p-6 shadow-xs">
-          <h3 className="font-bold text-slate-900 text-base mb-2">Today's Completed Accomplishments</h3>
-          <p className="text-xs text-slate-500 mb-4">
-            Completed tasks and delivered PRs for today.
-          </p>
-          <div className="max-w-xl">
-            <p className="text-xs text-slate-600">
-              Scroll down to the <strong>Today's Work Done</strong> section below to review accomplishments or log new completed work.
-            </p>
           </div>
         </div>
       )}

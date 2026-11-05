@@ -147,16 +147,14 @@ export const AssignWorkForm: React.FC = () => {
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Assigned Role <span className="text-red-500">*</span>
             </label>
-            <select
+            <input
+              type="text"
+              required
               value={role}
               onChange={(e) => setRole(e.target.value)}
+              placeholder="e.g. Team Lead, Developer, Tester..."
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-            >
-              <option value="Team Lead">Team Lead</option>
-              <option value="Developer">Developer</option>
-              <option value="Tester">Tester</option>
-              <option value="Designer">Designer</option>
-            </select>
+            />
           </div>
 
           <div>

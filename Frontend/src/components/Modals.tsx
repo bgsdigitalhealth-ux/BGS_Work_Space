@@ -400,17 +400,15 @@ export const Modals: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Role</label>
-                <select
+                <label className="block font-bold text-slate-700 mb-1">Role *</label>
+                <input
+                  type="text"
+                  required
                   value={memRole}
                   onChange={(e) => setMemRole(e.target.value)}
+                  placeholder="e.g. Team Lead, Developer, QA Engineer..."
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  <option value="Team Lead">Team Lead</option>
-                  <option value="Developer">Developer</option>
-                  <option value="Tester">Tester</option>
-                  <option value="Designer">Designer</option>
-                </select>
+                />
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Assigned Work</label>
