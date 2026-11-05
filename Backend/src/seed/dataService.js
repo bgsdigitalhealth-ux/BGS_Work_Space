@@ -2423,14 +2423,20 @@ const createMessage = async (data) => {
     throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
   }
 
+  const senderUser = allEligible.find(u => u.id === senderId || u.email === (senderEmail || '').toLowerCase().trim());
+  const resolvedSenderName = (senderName && senderName !== 'User' && senderName.trim()) 
+    ? senderName.trim() 
+    : (senderUser?.name || senderEmail.split('@')[0]);
+  const resolvedSenderRole = senderRole || (senderUser?.role || 'user');
+
   const newMsg = {
     id: generateId('msg'),
     customId: generateId('msg'),
     conversationId,
     senderId,
     senderEmail: senderEmail.toLowerCase().trim(),
-    senderName: senderName || 'User',
-    senderRole: senderRole || 'user',
+    senderName: resolvedSenderName,
+    senderRole: resolvedSenderRole,
     recipientId: recipient.id,
     recipientEmail: recipient.email.toLowerCase().trim(),
     recipientName: recipient.name,

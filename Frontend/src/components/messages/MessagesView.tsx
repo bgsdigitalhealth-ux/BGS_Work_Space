@@ -83,6 +83,34 @@ export const MessagesView: React.FC = () => {
     return colors[Math.abs(hash) % colors.length];
   };
 
+  // WhatsApp Group Chat Sender Name Color Generator
+  const getSenderColor = (identifier: string) => {
+    const colors = [
+      'text-[#e26ab6]', // WhatsApp Pink
+      'text-[#00a884]', // WhatsApp Green
+      'text-[#53bdeb]', // WhatsApp Cyan
+      'text-[#7c5cdb]', // WhatsApp Purple
+      'text-[#f19a38]', // WhatsApp Orange
+      'text-[#20c6b6]', // WhatsApp Teal
+      'text-[#df4759]', // WhatsApp Coral
+      'text-[#8b5cf6]'  // WhatsApp Violet
+    ];
+    let hash = 0;
+    for (let i = 0; i < identifier.length; i++) {
+      hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
+  // Helper to test if a message is purely emoji
+  const isOnlyEmoji = (text?: string) => {
+    if (!text) return false;
+    const trimmed = text.trim();
+    if (!trimmed || trimmed.length > 8) return false;
+    const emojiRegex = /^(\p{Extended_Pictographic}|\u200d|\ufe0f|\s)+$/u;
+    return emojiRegex.test(trimmed);
+  };
+
   const getInitials = (name?: string, email?: string) => {
     if (name && name.trim()) {
       const parts = name.trim().split(' ');
@@ -363,11 +391,29 @@ export const MessagesView: React.FC = () => {
     e.target.value = '';
   };
 
-  const quickEmojis = ['😊', '😂', '❤️', '👍', '🙏', '🎉', '🔥', '👏', '✅', '✨', '👋', '☕', '🎂', '😍'];
+  const quickEmojis = ['👍', '❤️', '😂', '🎉', '🔥', '🙏', '👏', '✅', '✨', '👋', '😊', '☕', '🎂', '😍'];
 
-  const addEmoji = (emoji: string) => {
-    setInputText(prev => prev + emoji);
+  // Direct Emoji Send: Sends the emoji immediately without placing it in the input column
+  const handleDirectSendEmoji = (emoji: string) => {
+    handleSendMessage(emoji);
     setShowEmojiPicker(false);
+  };
+
+  // Helper to get resolved display name for WhatsApp Group Chatting
+  const getDisplayName = (msg: ChatMessage) => {
+    if (msg.senderName && msg.senderName !== 'User' && msg.senderName.trim()) {
+      return msg.senderName.trim();
+    }
+    const match = eligibleUsers.find(u => 
+      u.id === msg.senderId || 
+      (msg.senderEmail && u.email.toLowerCase() === msg.senderEmail.toLowerCase())
+    );
+    if (match && match.name) return match.name;
+    if (msg.senderEmail) {
+      const prefix = msg.senderEmail.split('@')[0];
+      return prefix.charAt(0).toUpperCase() + prefix.slice(1);
+    }
+    return 'Team Member';
   };
 
   // "+ New Chat" Action & Modal
@@ -857,78 +903,119 @@ export const MessagesView: React.FC = () => {
                 </div>
               </div>
             ) : (
-              messages.map(msg => {
+              messages.map((msg, index) => {
                 const isMe = msg.senderId === currentUser?.id || msg.senderEmail.toLowerCase() === currentUser?.email.toLowerCase();
+                const displayName = getDisplayName(msg);
+                const senderColorClass = getSenderColor(msg.senderEmail || displayName);
+                const isPureEmoji = isOnlyEmoji(msg.text);
+
+                // Group messages from the same sender in sequence (WhatsApp style)
+                const prevMsg = index > 0 ? messages[index - 1] : null;
+                const isSameSenderAsPrev = prevMsg && (
+                  (prevMsg.senderId && prevMsg.senderId === msg.senderId) ||
+                  (prevMsg.senderEmail && prevMsg.senderEmail.toLowerCase() === msg.senderEmail.toLowerCase())
+                );
+                const showSenderHeader = !isMe && !isSameSenderAsPrev;
 
                 return (
                   <div 
                     key={msg.id} 
-                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+                    className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'}`}
                   >
-                    <div 
-                      className={`relative max-w-[85%] sm:max-w-md px-3.5 py-2 rounded-lg shadow-2xs text-[13px] leading-relaxed break-words ${
-                        isMe 
-                          ? 'bg-[#d9fdd3] text-[#111b21] rounded-tr-none' 
-                          : 'bg-white text-[#111b21] rounded-tl-none border border-gray-100/50'
-                      }`}
-                    >
-                      {/* Group/Contact Sender Title if incoming */}
+                    <div className={`flex items-end gap-2 max-w-[85%] sm:max-w-md ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      {/* Avatar on the left for incoming team messages (WhatsApp Group style) */}
                       {!isMe && (
-                        <div className="font-semibold text-xs text-[#53bdeb] mb-0.5">
-                          {msg.senderName || msg.senderEmail.split('@')[0]}
-                        </div>
-                      )}
-
-                      {/* Photo / Attachment Card */}
-                      {msg.attachment && (
-                        <div className="mb-1.5 p-2 rounded-lg bg-black/5 flex items-center gap-3">
-                          {msg.attachment.type === 'image' || msg.attachment.url?.startsWith('data:image') ? (
-                            <img 
-                              src={msg.attachment.url} 
-                              alt={msg.attachment.name} 
-                              className="w-14 h-14 rounded-md object-cover border border-white" 
-                            />
-                          ) : (
-                            <div className="w-10 h-10 rounded-md bg-[#00a884] text-white flex items-center justify-center">
-                              <FileText className="w-5 h-5" />
-                            </div>
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-xs text-gray-900 truncate">{msg.attachment.name}</p>
-                            <p className="text-[10px] text-gray-500">{msg.attachment.size || 'Attachment'}</p>
+                        !isSameSenderAsPrev ? (
+                          <div 
+                            className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mb-0.5 shadow-2xs ${getAvatarBg(msg.senderEmail || displayName)}`}
+                            title={`${displayName} (${msg.senderEmail})`}
+                          >
+                            {getInitials(displayName, msg.senderEmail)}
                           </div>
-                          {msg.attachment.url && (
-                            <a 
-                              href={msg.attachment.url} 
-                              download={msg.attachment.name} 
-                              className="p-1.5 rounded-full hover:bg-white text-gray-700 transition-colors"
-                              title="Download"
-                            >
-                              <Download className="w-4 h-4" />
-                            </a>
+                        ) : (
+                          <div className="w-7 shrink-0" />
+                        )
+                      )}
+
+                      {/* Chat Bubble */}
+                      <div 
+                        className={`relative px-3.5 py-2 rounded-lg shadow-2xs leading-relaxed break-words ${
+                          isMe 
+                            ? 'bg-[#d9fdd3] text-[#111b21] ' + (isSameSenderAsPrev ? 'rounded-tr-lg' : 'rounded-tr-none')
+                            : 'bg-white text-[#111b21] border border-gray-100/60 ' + (isSameSenderAsPrev ? 'rounded-tl-lg' : 'rounded-tl-none')
+                        }`}
+                      >
+                        {/* WhatsApp Group Sender Name with distinct member color & role badge */}
+                        {showSenderHeader && (
+                          <div className="flex items-center gap-1.5 mb-1 select-none">
+                            <span className={`font-bold text-[12px] leading-tight tracking-tight ${senderColorClass}`}>
+                              {displayName}
+                            </span>
+                            {msg.senderRole === 'admin' ? (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-semibold bg-purple-100 text-purple-700">
+                                Admin
+                              </span>
+                            ) : (
+                              <span className="text-[10px] text-gray-400 font-normal">
+                                ~{msg.senderEmail.split('@')[0]}
+                              </span>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Photo / Attachment Card */}
+                        {msg.attachment && (
+                          <div className="mb-2 p-2 rounded-lg bg-black/5 flex items-center gap-3">
+                            {msg.attachment.type === 'image' || msg.attachment.url?.startsWith('data:image') ? (
+                              <img 
+                                src={msg.attachment.url} 
+                                alt={msg.attachment.name} 
+                                className="w-16 h-16 rounded-md object-cover border border-white" 
+                              />
+                            ) : (
+                              <div className="w-10 h-10 rounded-md bg-[#00a884] text-white flex items-center justify-center">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-xs text-gray-900 truncate">{msg.attachment.name}</p>
+                              <p className="text-[10px] text-gray-500">{msg.attachment.size || 'Attachment'}</p>
+                            </div>
+                            {msg.attachment.url && (
+                              <a 
+                                href={msg.attachment.url} 
+                                download={msg.attachment.name} 
+                                className="p-1.5 rounded-full hover:bg-white text-gray-700 transition-colors"
+                                title="Download"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Message Text / Big Emoji */}
+                        {msg.text && (
+                          <div className={isPureEmoji ? 'text-3xl sm:text-4xl py-0.5 select-none text-center' : 'text-[13px] whitespace-pre-wrap'}>
+                            {msg.text}
+                          </div>
+                        )}
+
+                        {/* Timestamp & Status Checkmarks */}
+                        <div className="flex items-center justify-end gap-1 mt-1 text-[11px] text-[#667781] select-none">
+                          <span>{formatTime(msg.createdAt)}</span>
+                          {isMe && (
+                            <span title={msg.status === 'read' ? 'Read' : 'Delivered'}>
+                              {msg.status === 'read' ? (
+                                <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
+                              ) : msg.status === 'delivered' ? (
+                                <CheckCheck className="w-4 h-4 text-gray-400" />
+                              ) : (
+                                <Check className="w-4 h-4 text-gray-400" />
+                              )}
+                            </span>
                           )}
                         </div>
-                      )}
-
-                      {/* Message Text */}
-                      {msg.text && (
-                        <p className="whitespace-pre-wrap">{msg.text}</p>
-                      )}
-
-                      {/* Timestamp & Status Checkmarks */}
-                      <div className="flex items-center justify-end gap-1 mt-1 text-[11px] text-[#667781]">
-                        <span>{formatTime(msg.createdAt)}</span>
-                        {isMe && (
-                          <span title={msg.status === 'read' ? 'Read' : 'Delivered'}>
-                            {msg.status === 'read' ? (
-                              <CheckCheck className="w-4 h-4 text-[#53bdeb]" />
-                            ) : msg.status === 'delivered' ? (
-                              <CheckCheck className="w-4 h-4 text-gray-400" />
-                            ) : (
-                              <Check className="w-4 h-4 text-gray-400" />
-                            )}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -965,18 +1052,33 @@ export const MessagesView: React.FC = () => {
             </div>
           )}
 
-          {/* Emoji Popover */}
+          {/* Emoji Reaction Bar - Direct Send on Click without populating input column */}
           {showEmojiPicker && (
-            <div className="px-4 py-2 bg-white border-t border-[#e9edef] flex items-center gap-2 overflow-x-auto z-20 shadow-md">
-              {quickEmojis.map(emoji => (
-                <button
-                  key={emoji}
-                  onClick={() => addEmoji(emoji)}
-                  className="p-1.5 text-xl hover:bg-gray-100 rounded-lg transition-transform hover:scale-125 cursor-pointer"
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div className="px-4 py-2.5 bg-white border-t border-[#e9edef] flex items-center gap-2 overflow-x-auto z-20 shadow-xs animate-in fade-in slide-in-from-bottom-1 duration-150">
+              <span className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider select-none shrink-0 mr-1">
+                Direct Send:
+              </span>
+              <div className="flex items-center gap-1 sm:gap-2">
+                {quickEmojis.map(emoji => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleDirectSendEmoji(emoji)}
+                    className="p-1.5 text-2xl hover:bg-gray-100 rounded-xl transition-transform hover:scale-125 active:scale-95 cursor-pointer shrink-0"
+                    title={`Send ${emoji} directly`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEmojiPicker(false)}
+                className="ml-auto p-1.5 text-gray-400 hover:text-gray-700 rounded-lg cursor-pointer"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
           )}
 
