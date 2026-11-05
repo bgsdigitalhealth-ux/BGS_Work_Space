@@ -20,14 +20,14 @@ import { LoginPage } from './components/auth/LoginPage';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { currentUser, portalMode, userNav, adminNav } = useApp();
+  const { currentUser, userNav, adminNav, members, userWorkspace } = useApp();
 
   // If no user is logged in, show Common Login Page (ONLY TWO ROLES: admin, user)
   if (!currentUser) {
     return <LoginPage />;
   }
 
-  if (portalMode === 'user') {
+  if (currentUser.role === 'user') {
     return (
       <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased">
         {/* WorkHub Sidebar */}
@@ -44,47 +44,28 @@ export const App: React.FC = () => {
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'team' && (
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Events & Design Team</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">My Department & Team</h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                Connected to 4 active team members in Design & Creative Media.
+                Connected team members in your department.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
-                  <div className="w-12 h-12 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
-                    PV
+                {members.slice(0, 4).map((m) => (
+                  <div key={m.id} className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
+                    <div className="w-12 h-12 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
+                      {m.avatar || m.name.charAt(0)}
+                    </div>
+                    <h4 className="font-bold text-sm text-gray-900">{m.name}</h4>
+                    <p className="text-xs text-gray-500">{m.role}</p>
                   </div>
-                  <h4 className="font-bold text-sm text-gray-900">Priya Verma</h4>
-                  <p className="text-xs text-gray-500">Team Lead</p>
-                </div>
-                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
-                  <div className="w-12 h-12 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
-                    RS
-                  </div>
-                  <h4 className="font-bold text-sm text-gray-900">Rahul Sharma (You)</h4>
-                  <p className="text-xs text-gray-500">Team Member</p>
-                </div>
-                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
-                  <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
-                    AS
-                  </div>
-                  <h4 className="font-bold text-sm text-gray-900">Amit Singh</h4>
-                  <p className="text-xs text-gray-500">UI Designer</p>
-                </div>
-                <div className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
-                  <div className="w-12 h-12 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
-                    SM
-                  </div>
-                  <h4 className="font-bold text-sm text-gray-900">Sneha Mehta</h4>
-                  <p className="text-xs text-gray-500">Content Specialist</p>
-                </div>
+                ))}
               </div>
             </div>
           )}
           {userNav === 'reports' && (
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Performance & Sprint Velocity</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Performance & Work Reports</h3>
               <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                All sprint deliverables tracked against deadlines. 82% task completion on schedule.
+                All sprint deliverables tracked against live database records. {userWorkspace?.stats?.completionPercentage ?? 0}% task completion on schedule.
               </p>
             </div>
           )}

@@ -3,19 +3,19 @@ import {
   Shield, 
   LayoutDashboard, 
   Briefcase, 
-  Calendar as CalendarIcon,
+  Calendar as CalendarIcon, 
   CalendarCheck,
   ClipboardList, 
   Send, 
   History, 
   Users, 
   FileText,
-  ArrowRightLeft
+  LogOut
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
-  const { userNav, setUserNav, setPortalMode, openSubmitWorkDrawer, userWorkspace, currentUser } = useApp();
+  const { userNav, setUserNav, logout, openSubmitWorkDrawer, userWorkspace, currentUser } = useApp();
 
   const assignedCount = userWorkspace?.assignedWork?.length || 0;
 
@@ -86,16 +86,19 @@ export const UserSidebar: React.FC = () => {
         </nav>
       </div>
 
-      {/* Bottom Switcher Card & Wave Graphics */}
+      {/* Bottom User Card */}
       <div className="p-5 relative z-10">
-        <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-4 text-center shadow-lg">
-          <p className="text-xs text-[#a2a0c4] mb-2 font-medium">Logged in as {currentUser?.name || 'Rahul Sharma'}</p>
+        <div className="bg-[#1f1b45] border border-white/10 rounded-2xl p-3.5 shadow-lg flex items-center justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Rahul Sharma'}</p>
+            <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'User'}</p>
+          </div>
           <button
-            onClick={() => setPortalMode('admin')}
-            className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#2e2960] hover:bg-[#3d367d] text-white text-xs font-semibold transition border border-white/10 shadow-sm"
+            onClick={logout}
+            className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 transition shrink-0 cursor-pointer"
+            title="Sign Out"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5 text-[#a855f7]" />
-            Switch to Admin Dashboard
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
       </div>

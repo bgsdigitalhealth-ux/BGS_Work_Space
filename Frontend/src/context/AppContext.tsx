@@ -24,9 +24,8 @@ interface AppContextType {
   login: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 
-  // Portal Toggle ('admin' | 'user')
+  // Portal ('admin' | 'user') derived from logged-in user role
   portalMode: 'admin' | 'user';
-  setPortalMode: (mode: 'admin' | 'user') => void;
 
   // Admin Navigation: 'dashboard' | 'appointments'
   adminNav: string;
@@ -141,7 +140,7 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Session / Authentication state: default to logged-in user or stored user
+  // Session / Authentication state: default to stored user or null (Login Page)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     try {
       const saved = localStorage.getItem('workhub_user');
@@ -149,21 +148,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     } catch (e) {
       // fallback
     }
-    // Default demo session: User (Rahul Sharma) or Admin
-    return {
-      id: 'usr-admin',
-      name: 'Admin',
-      email: 'admin@company.com',
-      role: 'admin',
-      avatar: 'A',
-      title: 'Admin'
-    };
+    return null;
   });
 
-  // Portal mode matches logged in user's role: 'admin' or 'user'
-  const [portalMode, setPortalMode] = useState<'admin' | 'user'>(() => {
-    return currentUser?.role === 'user' ? 'user' : 'admin';
-  });
+  // Portal mode strictly derived from logged in user's role: 'admin' or 'user'
+  const portalMode: 'admin' | 'user' = currentUser?.role === 'user' ? 'user' : 'admin';
 
   // Admin navigation
   const [adminNav, setAdminNav] = useState<string>('dashboard');
@@ -230,7 +219,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const res = await api.login(email, pass);
       if (res.success && res.user) {
         setCurrentUser(res.user);
-        setPortalMode(res.user.role);
         try {
           localStorage.setItem('workhub_user', JSON.stringify(res.user));
         } catch (e) {
@@ -660,7 +648,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         login,
         logout,
         portalMode,
-        setPortalMode,
         adminNav,
         setAdminNav,
         departments,

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, ArrowRightLeft, User, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, ArrowLeft, User, LogOut } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
-  const { userNav, setUserNav, setPortalMode, currentUser, logout, unreadNotificationCount } = useApp();
+  const { userNav, setUserNav, currentUser, logout, unreadNotificationCount } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
 
@@ -15,7 +15,7 @@ export const UserHeader: React.FC = () => {
         {userNav === 'dashboard' && (
           <div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-              Hello, Rahul Sharma <span className="animate-pulse">👋</span>
+              Hello, {currentUser?.name || 'Rahul Sharma'} <span className="animate-pulse">👋</span>
             </h1>
             <p className="text-sm text-[#6b7280] font-medium mt-1">
               Here is your assigned work and progress.
@@ -99,15 +99,6 @@ export const UserHeader: React.FC = () => {
 
       {/* Right Controls */}
       <div className="flex items-center gap-3 relative">
-        {/* Portal Switcher Button */}
-        <button
-          onClick={() => setPortalMode('admin')}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-[#5a36e6] hover:bg-indigo-100 text-xs font-semibold transition shadow-sm"
-        >
-          <ArrowRightLeft className="w-3.5 h-3.5" />
-          <span className="hidden md:inline">Switch to</span> Admin Dashboard
-        </button>
-
         {/* Notification Bell */}
         <div className="relative">
           <button 
@@ -153,15 +144,6 @@ export const UserHeader: React.FC = () => {
                 className="w-full text-left px-4 py-2 text-xs text-gray-700 hover:bg-gray-50 flex items-center gap-2"
               >
                 <User className="w-3.5 h-3.5 text-gray-400" /> My Profile
-              </button>
-              <button
-                onClick={() => {
-                  setPortalMode('admin');
-                  setShowDropdown(false);
-                }}
-                className="w-full text-left px-4 py-2 text-xs text-[#5a36e6] font-semibold hover:bg-indigo-50 flex items-center gap-2"
-              >
-                <ArrowRightLeft className="w-3.5 h-3.5" /> Switch to Admin Portal
               </button>
               <button
                 onClick={() => {

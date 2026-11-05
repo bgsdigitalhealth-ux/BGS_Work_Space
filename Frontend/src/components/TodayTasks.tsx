@@ -62,23 +62,21 @@ export const TodayTasks: React.FC = () => {
               key={task.id}
               className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all group"
             >
-              <div 
+              <div
                 onClick={() => handleToggleTask(task.id)}
                 className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
               >
                 <div
-                  className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${
-                    task.completed
-                      ? 'bg-indigo-600 border-indigo-600 text-white'
-                      : 'border-slate-300 group-hover:border-indigo-400 bg-white'
-                  }`}
+                  className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${task.completed
+                    ? 'bg-indigo-600 border-indigo-600 text-white'
+                    : 'border-slate-300 group-hover:border-indigo-400 bg-white'
+                    }`}
                 >
                   {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
                 <span
-                  className={`text-xs font-medium truncate ${
-                    task.completed ? 'line-through text-slate-400' : 'text-slate-800'
-                  }`}
+                  className={`text-xs font-medium truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                    }`}
                 >
                   {task.title}
                 </span>

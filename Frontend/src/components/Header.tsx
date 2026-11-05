@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, RefreshCw, ArrowRightLeft, LogOut } from 'lucide-react';
+import { Bell, ChevronDown, RefreshCw, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { NotificationDropdown } from './NotificationDropdown';
 
 export const Header: React.FC = () => {
-  const { refreshAll, setPortalMode, currentUser, logout, unreadNotificationCount } = useApp();
+  const { refreshAll, currentUser, logout, unreadNotificationCount } = useApp();
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
 
@@ -20,16 +20,6 @@ export const Header: React.FC = () => {
       </div>
 
       <div className="flex items-center gap-3 relative">
-        {/* Switch to User Portal (Rahul Sharma) */}
-        <button
-          onClick={() => setPortalMode('user')}
-          className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#5a36e6] border border-purple-200 text-xs font-bold transition shadow-sm"
-          title="Switch to User Portal (Rahul Sharma)"
-        >
-          <ArrowRightLeft className="w-3.5 h-3.5" />
-          <span>Switch to User Portal</span>
-        </button>
-
         {/* Refresh button */}
         <button
           onClick={() => refreshAll()}

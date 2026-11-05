@@ -103,35 +103,42 @@ export const LoginPage: React.FC = () => {
           </button>
         </form>
 
-        {/* Role Demo Quick Sign-in */}
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center mb-3">
-            Quick Demo Accounts (2 Roles Only)
+        {/* Login Credentials Box */}
+        <div className="mt-8 pt-6 border-t border-white/10 space-y-3">
+          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider text-center">
+            Authorized Login Accounts (2 Roles Only)
           </p>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Admin Credentials Card */}
+            <div 
               onClick={() => handleQuickLogin('admin@company.com', 'admin123')}
-              className="p-3 rounded-xl bg-[#232050] hover:bg-[#2d2966] border border-white/10 text-left transition group cursor-pointer"
+              className="p-3.5 rounded-2xl bg-[#232050] hover:bg-[#2b2763] border border-purple-500/30 transition cursor-pointer group"
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-white group-hover:text-indigo-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#a855f7]" />
-                Admin
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-white group-hover:text-purple-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-purple-400" /> Admin
+                </span>
+                <span className="text-[10px] text-purple-300 font-semibold bg-purple-500/20 px-2 py-0.5 rounded-full">Auto-fill</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">Full Management</p>
-            </button>
+              <p className="text-[11px] text-gray-300 font-mono">ID: <span className="text-white font-bold">admin@company.com</span></p>
+              <p className="text-[11px] text-gray-300 font-mono">Pass: <span className="text-white font-bold">admin123</span></p>
+            </div>
 
-            <button
-              type="button"
+            {/* User Credentials Card */}
+            <div 
               onClick={() => handleQuickLogin('rahul@company.com', 'user123')}
-              className="p-3 rounded-xl bg-[#232050] hover:bg-[#2d2966] border border-white/10 text-left transition group cursor-pointer"
+              className="p-3.5 rounded-2xl bg-[#232050] hover:bg-[#2b2763] border border-emerald-500/30 transition cursor-pointer group"
             >
-              <div className="flex items-center gap-1.5 text-xs font-bold text-white group-hover:text-indigo-300">
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                Team Member
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-bold text-white group-hover:text-emerald-300 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> User (Member)
+                </span>
+                <span className="text-[10px] text-emerald-300 font-semibold bg-emerald-500/20 px-2 py-0.5 rounded-full">Auto-fill</span>
               </div>
-              <p className="text-[10px] text-gray-400 mt-1">Rahul Sharma</p>
-            </button>
+              <p className="text-[11px] text-gray-300 font-mono">ID: <span className="text-white font-bold">rahul@company.com</span></p>
+              <p className="text-[11px] text-gray-300 font-mono">Pass: <span className="text-white font-bold">user123</span></p>
+            </div>
           </div>
         </div>
       </div>

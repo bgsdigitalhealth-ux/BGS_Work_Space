@@ -4,15 +4,14 @@ import {
   LayoutDashboard, 
   Building2, 
   Users, 
-  UserCheck, 
-  CheckSquare, 
-  ClipboardCheck, 
+  UserCheck,
+  CheckSquare,
   Calendar as CalendarIcon,
+  ClipboardCheck,
   FileBarChart, 
   ChevronDown, 
   ChevronRight,
   Database,
-  ArrowRightLeft,
   Settings
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -26,8 +25,7 @@ export const Sidebar: React.FC = () => {
     setTeamSubTab, 
     scrollToSection, 
     adminNav, 
-    setAdminNav,
-    setPortalMode 
+    setAdminNav
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
@@ -206,17 +204,6 @@ export const Sidebar: React.FC = () => {
           <span>Settings</span>
         </button>
       </nav>
-
-      {/* Switch to User Portal Button */}
-      <div className="p-3 border-t border-indigo-950/60">
-        <button
-          onClick={() => setPortalMode('user')}
-          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-indigo-900/50 hover:bg-indigo-900 text-indigo-200 hover:text-white text-xs font-semibold transition border border-indigo-800/40"
-        >
-          <ArrowRightLeft className="w-3.5 h-3.5 text-purple-400" />
-          <span>User Portal (WorkHub)</span>
-        </button>
-      </div>
 
       {/* Database Mode pill at bottom */}
       <div className="px-4 py-3 border-t border-indigo-950/60 text-xs">

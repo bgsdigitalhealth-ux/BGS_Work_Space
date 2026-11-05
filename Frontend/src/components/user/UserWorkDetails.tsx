@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  Image as ImageIcon, 
-  Calendar, 
-  Clock, 
-  CheckCircle2, 
-  FileText, 
-  Send, 
-  Plus, 
-  Download, 
-  MoreHorizontal, 
-  Paperclip, 
-  Settings, 
-  Info, 
-  HelpCircle, 
+import {
+  Image as ImageIcon,
+  Calendar,
+  Clock,
+  CheckCircle2,
+  FileText,
+  Send,
+  Plus,
+  Download,
+  MoreHorizontal,
+  Paperclip,
+  Settings,
+  Info,
+  HelpCircle,
   CalendarPlus,
   MessageSquare
 } from 'lucide-react';
@@ -85,9 +85,9 @@ export const UserWorkDetails: React.FC = () => {
                 {task.title}
               </h2>
               <p className="text-xs text-gray-500 font-medium mt-1">
-                Department: <span className="font-semibold text-gray-800">{task.department}</span> &nbsp;|&nbsp; 
-                Team: <span className="font-semibold text-gray-800">{task.team}</span> &nbsp;|&nbsp; 
-                Assigned by: <span className="font-semibold text-gray-800">{task.assignedBy || 'Priya Verma'}</span>
+                Department: <span className="font-semibold text-gray-800">{task.department}</span> &nbsp;|&nbsp;
+                Team: <span className="font-semibold text-gray-800">{task.team}</span> &nbsp;|&nbsp;
+                Assigned by: <span className="font-semibold text-gray-800">{task.assignedBy || 'Admin'}</span>
               </p>
             </div>
           </div>
@@ -108,41 +108,37 @@ export const UserWorkDetails: React.FC = () => {
         <div className="flex items-center gap-8 pt-4 overflow-x-auto text-xs font-bold">
           <button
             onClick={() => setActiveTab('overview')}
-            className={`pb-3 relative transition ${
-              activeTab === 'overview'
+            className={`pb-3 relative transition ${activeTab === 'overview'
                 ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
                 : 'text-gray-500 hover:text-gray-900'
-            }`}
+              }`}
           >
             Work Overview
           </button>
           <button
             onClick={() => setActiveTab('updates')}
-            className={`pb-3 relative transition ${
-              activeTab === 'updates'
+            className={`pb-3 relative transition ${activeTab === 'updates'
                 ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
                 : 'text-gray-500 hover:text-gray-900'
-            }`}
+              }`}
           >
             Work Updates ({comments.length})
           </button>
           <button
             onClick={() => setActiveTab('attachments')}
-            className={`pb-3 relative transition ${
-              activeTab === 'attachments'
+            className={`pb-3 relative transition ${activeTab === 'attachments'
                 ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
                 : 'text-gray-500 hover:text-gray-900'
-            }`}
+              }`}
           >
             Attachments ({attachments.length})
           </button>
           <button
             onClick={() => setActiveTab('activity')}
-            className={`pb-3 relative transition ${
-              activeTab === 'activity'
+            className={`pb-3 relative transition ${activeTab === 'activity'
                 ? 'text-[#5a36e6] border-b-2 border-[#5a36e6]'
                 : 'text-gray-500 hover:text-gray-900'
-            }`}
+              }`}
           >
             Activity Log
           </button>
@@ -162,7 +158,7 @@ export const UserWorkDetails: React.FC = () => {
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Description</h3>
               </div>
               <p className="text-xs text-gray-600 leading-relaxed">
-                {task.description || 'Design an event poster for the upcoming CME on "Anaesthesia Awareness Programme" with institutional branding, date, venue and resource faculty details.'}
+                {task.description || 'No detailed instructions added for this work assignment.'}
               </p>
             </div>
 
@@ -175,16 +171,16 @@ export const UserWorkDetails: React.FC = () => {
               <div className="space-y-2 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Assigned On</span>
-                  <span className="font-semibold text-gray-900">{task.assignedOn || '03 Nov 2026, 10:30 AM'}</span>
+                  <span className="font-semibold text-gray-900">{task.assignedOn || 'Assigned'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Due Date</span>
-                  <span className="font-semibold text-gray-900">{task.dueDate || '06 Nov 2026'}</span>
+                  <span className="font-semibold text-gray-900">{task.dueDate || 'Pending'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-gray-500">Time Left</span>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5a36e6] border border-purple-200">
-                    2 Days
+                    {task.status === 'Completed' ? 'Completed' : 'Active'}
                   </span>
                 </div>
               </div>
@@ -202,7 +198,10 @@ export const UserWorkDetails: React.FC = () => {
             <div className="relative mb-8">
               {/* Connector Line */}
               <div className="absolute top-4 left-6 right-6 h-0.5 bg-gray-200 -z-0" />
-              <div className="absolute top-4 left-6 w-[50%] h-0.5 bg-emerald-500 -z-0" />
+              <div 
+                className="absolute top-4 left-6 h-0.5 bg-emerald-500 -z-0 transition-all duration-500" 
+                style={{ width: `${task.status === 'Completed' ? 100 : task.status === 'Under Review' ? 75 : task.status === 'In Progress' ? 50 : 25}%` }}
+              />
 
               <div className="flex justify-between items-start relative z-10">
                 {/* Step 1: Assigned */}
@@ -211,41 +210,51 @@ export const UserWorkDetails: React.FC = () => {
                     <CheckCircle2 className="w-4 h-4" />
                   </div>
                   <span className="text-xs font-bold text-gray-900 mt-2">Assigned</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">03 Nov, 10:30 AM</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5">{task.assignedOn || 'Assigned'}</span>
                 </div>
 
                 {/* Step 2: Work Started */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm">
-                    <CheckCircle2 className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white shadow-sm ${
+                    task.status !== 'Not Started' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {task.status !== 'Not Started' ? <CheckCircle2 className="w-4 h-4" /> : '2'}
                   </div>
                   <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
-                  <span className="text-[10px] text-gray-400 mt-0.5">03 Nov, 11:10 AM</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status !== 'Not Started' ? 'Started' : '-'}</span>
                 </div>
 
                 {/* Step 3: In Progress (Current) */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs ring-4 ring-purple-100 shadow-md animate-pulse">
-                    <MoreHorizontal className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-purple-100 shadow-md ${
+                    task.status === 'In Progress' ? 'bg-[#5a36e6] text-white animate-pulse' : (task.status === 'Under Review' || task.status === 'Completed') ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {task.status === 'In Progress' ? <MoreHorizontal className="w-4 h-4" /> : (task.status === 'Under Review' || task.status === 'Completed') ? <CheckCircle2 className="w-4 h-4" /> : '3'}
                   </div>
                   <span className="text-xs font-bold text-[#5a36e6] mt-2">In Progress</span>
-                  <span className="text-[10px] text-purple-600 font-semibold mt-0.5">(Current)</span>
+                  <span className="text-[10px] text-purple-600 font-semibold mt-0.5">{task.status === 'In Progress' ? '(Current)' : '-'}</span>
                 </div>
 
                 {/* Step 4: Submitted */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-xs ring-4 ring-white">
-                    4
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${
+                    task.status === 'Under Review' ? 'bg-amber-500 text-white animate-pulse' : task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '4'}
                   </div>
                   <span className="text-xs font-semibold text-gray-400 mt-2">Submitted</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status === 'Under Review' ? '(Under Review)' : '-'}</span>
                 </div>
 
                 {/* Step 5: Completed */}
                 <div className="flex flex-col items-center text-center">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold text-xs ring-4 ring-white">
-                    5
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ring-4 ring-white ${
+                    task.status === 'Completed' ? 'bg-emerald-500 text-white' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                    {task.status === 'Completed' ? <CheckCircle2 className="w-4 h-4" /> : '5'}
                   </div>
                   <span className="text-xs font-semibold text-gray-400 mt-2">Completed</span>
+                  <span className="text-[10px] text-gray-400 mt-0.5">{task.status === 'Completed' ? 'Approved' : '-'}</span>
                 </div>
               </div>
             </div>
@@ -254,12 +263,12 @@ export const UserWorkDetails: React.FC = () => {
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-semibold text-gray-600">
                 <span>Overall Completion</span>
-                <span className="font-bold text-gray-900">{task.progress || 60}%</span>
+                <span className="font-bold text-gray-900">{task.progress || 0}%</span>
               </div>
               <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                <div 
+                <div
                   className="bg-gradient-to-r from-emerald-500 to-[#5a36e6] h-full rounded-full transition-all duration-500"
-                  style={{ width: `${task.progress || 60}%` }}
+                  style={{ width: `${task.progress || 0}%` }}
                 />
               </div>
             </div>
@@ -292,11 +301,10 @@ export const UserWorkDetails: React.FC = () => {
                       key={b}
                       type="button"
                       onClick={() => setNewCommentBadge(b)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${
-                        newCommentBadge === b 
-                          ? 'bg-[#5a36e6] text-white' 
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition ${newCommentBadge === b
+                          ? 'bg-[#5a36e6] text-white'
                           : 'bg-white border border-gray-200 text-gray-600'
-                      }`}
+                        }`}
                     >
                       {b}
                     </button>
@@ -330,43 +338,48 @@ export const UserWorkDetails: React.FC = () => {
 
             {/* Comments Thread */}
             <div className="space-y-5">
-              {comments.map((c) => {
-                const isLead = c.role.includes('Lead');
-                return (
-                  <div key={c.id} className="flex items-start gap-3.5 group">
-                    {/* Avatar */}
-                    <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm ${
-                      isLead 
-                        ? 'bg-amber-100 text-amber-700' 
-                        : 'bg-purple-100 text-[#5a36e6]'
-                    }`}>
-                      {c.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 bg-gray-50/70 group-hover:bg-gray-50 rounded-2xl p-4 border border-gray-100 transition">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-bold text-xs text-gray-900">{c.author}</span>
-                          <span className="text-[11px] text-gray-400 font-medium">{c.date}</span>
-                          {c.badge && (
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getCommentBadgeStyle(c.badge)}`}>
-                              {c.badge}
-                            </span>
-                          )}
-                        </div>
-                        <button className="text-gray-400 hover:text-gray-600 p-1">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
+              {comments.length === 0 ? (
+                <p className="text-gray-400 text-xs py-4 text-center font-medium">
+                  No comments or work updates posted yet. Use "+ Add Comment / Update" above to communicate.
+                </p>
+              ) : (
+                comments.map((c) => {
+                  const isLead = c.role.includes('Lead');
+                  return (
+                    <div key={c.id} className="flex items-start gap-3.5 group">
+                      {/* Avatar */}
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs shrink-0 shadow-sm ${isLead
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-purple-100 text-[#5a36e6]'
+                        }`}>
+                        {c.author.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
 
-                      <p className="text-xs text-gray-700 leading-relaxed font-normal">
-                        {c.text}
-                      </p>
+                      {/* Content */}
+                      <div className="flex-1 bg-gray-50/70 group-hover:bg-gray-50 rounded-2xl p-4 border border-gray-100 transition">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-xs text-gray-900">{c.author}</span>
+                            <span className="text-[11px] text-gray-400 font-medium">{c.date}</span>
+                            {c.badge && (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${getCommentBadgeStyle(c.badge)}`}>
+                                {c.badge}
+                              </span>
+                            )}
+                          </div>
+                          <button className="text-gray-400 hover:text-gray-600 p-1">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-gray-700 leading-relaxed font-normal">
+                          {c.text}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
@@ -467,10 +480,14 @@ export const UserWorkDetails: React.FC = () => {
                     <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center font-bold text-[10px]">
                       {file.name.endsWith('.pdf') ? 'PDF' : 'ZIP'}
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-gray-900 line-clamp-1">{file.name}</p>
-                      <p className="text-[10px] text-gray-400 font-medium">{file.size} | {file.date}</p>
-                    </div>
+
+                    <button
+                      onClick={() => alert(`Downloading attachment: ${file.name}`)}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-white transition"
+                      title="Download Attachment"
+                    >
+                      <Download className="w-4 h-4" />
+                    </button>
                   </div>
 
                   <button 

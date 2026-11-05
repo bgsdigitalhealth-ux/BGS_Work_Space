@@ -228,7 +228,7 @@ export const UserWorkHistory: React.FC = () => {
                 Your Submission Note:
               </p>
               <p className="text-xs text-gray-700 leading-relaxed font-medium">
-                {activeItem.submittedComment || 'Work completed and submitted according to the sprint deliverables.'}
+                {activeItem.submittedComment || 'No submission comment provided.'}
               </p>
             </div>
 
@@ -239,7 +239,7 @@ export const UserWorkHistory: React.FC = () => {
                 <p className="text-xs font-bold">Reviewer Feedback</p>
               </div>
               <p className="text-xs text-gray-800 font-semibold leading-relaxed">
-                "{activeItem.reviewerFeedback}"
+                "{activeItem.reviewerFeedback || 'Pending review'}"
               </p>
             </div>
 
