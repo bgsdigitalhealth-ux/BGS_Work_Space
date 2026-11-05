@@ -21,7 +21,8 @@ interface AppContextType {
   // Authentication & Session
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<{ success: boolean; requiresPasswordSetup?: boolean; name?: string; error?: string }>;
+  createPassword: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
 
   // Portal ('admin' | 'user') derived from logged-in user role
@@ -214,9 +215,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   // Auth Functions
-  const login = async (email: string, pass: string): Promise<boolean> => {
+  const login = async (email: string, pass: string): Promise<{ success: boolean; requiresPasswordSetup?: boolean; name?: string; error?: string }> => {
     try {
       const res = await api.login(email, pass);
+      if (res.success && res.user) {
+        setCurrentUser(res.user);
+        try {
+          localStorage.setItem('workhub_user', JSON.stringify(res.user));
+        } catch (e) {
+          // ignore
+        }
+        await refreshAll();
+        return { success: true };
+      }
+      if (res.requiresPasswordSetup) {
+        return { success: false, requiresPasswordSetup: true, name: res.name || 'Team Member' };
+      }
+      return { success: false, error: res.error || 'Invalid credentials' };
+    } catch (e: any) {
+      return { success: false, error: e.message || 'Login failed' };
+    }
+  };
+
+  const createPassword = async (email: string, pass: string): Promise<boolean> => {
+    try {
+      const res = await api.createPassword(email, pass);
       if (res.success && res.user) {
         setCurrentUser(res.user);
         try {
@@ -229,7 +252,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       return false;
     } catch (e: any) {
-      alert(e.message || 'Login failed');
+      alert(e.message || 'Failed to create password');
       return false;
     }
   };
@@ -656,6 +679,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         currentUser,
         setCurrentUser,
         login,
+        createPassword,
         logout,
         portalMode,
         adminNav,

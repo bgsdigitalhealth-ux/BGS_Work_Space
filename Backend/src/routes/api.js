@@ -34,15 +34,45 @@ const broadcast = (type, payload = {}) => {
 };
 
 // --- Authentication (ONLY TWO ROLES: admin and user) ---
-router.post('/auth/login', async (req, res) => {
+router.post('/auth/check-email', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await dataService.checkEmail(email);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/auth/create-password', async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
+    const result = await dataService.createPassword(email, password);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('USER_PASSWORD_SET', { email });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
     const result = await dataService.loginUser(email, password);
     if (!result.success) {
-      return res.status(401).json({ error: result.error });
+      if (result.requiresPasswordSetup) {
+        return res.status(200).json(result);
+      }
+      return res.status(401).json({ error: result.error, requiresPasswordSetup: false });
     }
     res.json(result);
   } catch (err) {

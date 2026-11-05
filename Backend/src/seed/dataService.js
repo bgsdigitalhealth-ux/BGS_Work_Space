@@ -268,15 +268,16 @@ const createMember = async (data) => {
   };
   memoryStore.members.push(newMember);
 
-  // Automatically register a dynamic user login account for this member so they can log in
+  // Automatically register a dynamic user login account for this member (password to be set by member on first login)
   const cleanEmail = (data.email || '').trim().toLowerCase();
-  const existingUser = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
+  let existingUser = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
   if (!existingUser) {
-    const newUser = {
+    existingUser = {
       id: generateId('usr'),
       name: data.name,
       email: cleanEmail,
-      password: 'user123',
+      password: '',
+      hasPassword: false,
       role: 'user',
       memberId: newMember.id,
       department: data.departmentId,
@@ -285,7 +286,7 @@ const createMember = async (data) => {
       avatar: newMember.avatar,
       title: data.role || 'Team Member'
     };
-    memoryStore.users.push(newUser);
+    memoryStore.users.push(existingUser);
   }
 
   if (getStatus()) {
@@ -294,10 +295,11 @@ const createMember = async (data) => {
       const dbUser = await User.findOne({ email: cleanEmail });
       if (!dbUser) {
         await User.create({
-          customId: generateId('usr'),
+          customId: existingUser.id,
           name: data.name,
           email: cleanEmail,
-          password: 'user123',
+          password: '',
+          hasPassword: false,
           role: 'user',
           memberId: created._id.toString(),
           department: data.departmentId,
@@ -896,6 +898,161 @@ const requestRework = async (taskId, feedback) => {
 };
 
 // --- Authentication & User Accounts (ONLY TWO ROLES: admin, user) ---
+const checkEmail = async (email) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return { exists: false, error: 'Please enter an email address.' };
+  }
+
+  // 1. Check MongoDB Atlas first if connected
+  if (getStatus()) {
+    try {
+      const dbUser = await User.findOne({ email: cleanEmail }).lean();
+      if (dbUser) {
+        return {
+          exists: true,
+          hasPassword: Boolean(dbUser.hasPassword && dbUser.password),
+          name: dbUser.name,
+          role: dbUser.role
+        };
+      }
+      const dbMember = await Member.findOne({ email: cleanEmail }).lean();
+      if (dbMember) {
+        return {
+          exists: true,
+          hasPassword: false,
+          name: dbMember.name,
+          role: 'user'
+        };
+      }
+    } catch (e) {
+      console.warn('Mongo checkEmail error:', e.message);
+    }
+  }
+
+  // 2. Check memoryStore
+  const user = (memoryStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+  if (user) {
+    return {
+      exists: true,
+      hasPassword: Boolean(user.hasPassword && user.password),
+      name: user.name,
+      role: user.role
+    };
+  }
+
+  const member = (memoryStore.members || []).find(m => m.email.toLowerCase() === cleanEmail);
+  if (member) {
+    return {
+      exists: true,
+      hasPassword: false,
+      name: member.name,
+      role: 'user'
+    };
+  }
+
+  return {
+    exists: false,
+    error: 'Your email is invalid or not registered by Admin.'
+  };
+};
+
+const createPassword = async (email, password) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail || !password) {
+    return { success: false, error: 'Email and new password are required.' };
+  }
+
+  let user = (memoryStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
+  let member = (memoryStore.members || []).find(m => m.email.toLowerCase() === cleanEmail);
+
+  if (!user && !member) {
+    if (getStatus()) {
+      const dbU = await User.findOne({ email: cleanEmail });
+      const dbM = await Member.findOne({ email: cleanEmail });
+      if (!dbU && !dbM) {
+        return { success: false, error: 'Your email is invalid or not registered by Admin.' };
+      }
+    } else {
+      return { success: false, error: 'Your email is invalid or not registered by Admin.' };
+    }
+  }
+
+  if (!user && member) {
+    user = {
+      id: generateId('usr'),
+      name: member.name,
+      email: cleanEmail,
+      password: password,
+      hasPassword: true,
+      role: 'user',
+      memberId: member.id,
+      department: member.departmentId,
+      team: member.teamId,
+      teamRole: member.role || 'Team Member',
+      avatar: member.avatar,
+      title: member.role || 'Team Member'
+    };
+    memoryStore.users.push(user);
+  } else if (user) {
+    user.password = password;
+    user.hasPassword = true;
+  }
+
+  if (getStatus()) {
+    try {
+      let dbUser = await User.findOne({ email: cleanEmail });
+      if (dbUser) {
+        dbUser.password = password;
+        dbUser.hasPassword = true;
+        await dbUser.save();
+      } else {
+        const dbMember = await Member.findOne({ email: cleanEmail });
+        dbUser = await User.create({
+          customId: generateId('usr'),
+          name: dbMember ? dbMember.name : (user ? user.name : 'Team Member'),
+          email: cleanEmail,
+          password: password,
+          hasPassword: true,
+          role: 'user',
+          memberId: dbMember ? dbMember._id.toString() : '',
+          department: dbMember ? dbMember.departmentId : '',
+          team: dbMember ? dbMember.teamId : '',
+          teamRole: dbMember ? dbMember.role : 'Team Member',
+          avatar: dbMember ? dbMember.avatar : 'U',
+          title: dbMember ? dbMember.role : 'Team Member'
+        });
+      }
+      const safe = {
+        id: dbUser.customId || dbUser._id.toString(),
+        name: dbUser.name,
+        email: dbUser.email,
+        role: dbUser.role,
+        memberId: dbUser.memberId,
+        department: dbUser.department,
+        team: dbUser.team,
+        teamRole: dbUser.teamRole,
+        avatar: dbUser.avatar,
+        title: dbUser.title
+      };
+      return {
+        success: true,
+        user: safe,
+        token: `token-${dbUser.role}-${Date.now()}`
+      };
+    } catch (e) {
+      console.warn('Mongo createPassword error:', e.message);
+    }
+  }
+
+  const { password: _, ...safeUser } = user;
+  return {
+    success: true,
+    user: safeUser,
+    token: `token-${user.role}-${Date.now()}`
+  };
+};
+
 const loginUser = async (email, password) => {
   const cleanEmail = (email || '').trim().toLowerCase();
 
@@ -904,14 +1061,33 @@ const loginUser = async (email, password) => {
     try {
       const dbUser = await User.findOne({ email: cleanEmail }).lean();
       if (dbUser) {
+        if (!dbUser.hasPassword || !dbUser.password) {
+          return {
+            success: false,
+            requiresPasswordSetup: true,
+            name: dbUser.name,
+            error: 'Please create a password for your account first.'
+          };
+        }
         if (dbUser.password !== password) {
-          return { success: false, error: 'Invalid email or password' };
+          return { success: false, error: 'Invalid password. Please check your credentials.' };
         }
         const { password: _, ...safeUser } = dbUser;
         return {
           success: true,
           user: { ...safeUser, id: dbUser.customId || dbUser._id.toString() },
           token: `token-${dbUser.role}-${Date.now()}`
+        };
+      }
+
+      // Check if email belongs to registered Member
+      const dbMember = await Member.findOne({ email: cleanEmail }).lean();
+      if (dbMember) {
+        return {
+          success: false,
+          requiresPasswordSetup: true,
+          name: dbMember.name,
+          error: 'Please create a password for your account first.'
         };
       }
     } catch (e) {
@@ -924,8 +1100,31 @@ const loginUser = async (email, password) => {
   }
   const user = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
 
-  if (!user || user.password !== password) {
-    return { success: false, error: 'Invalid email or password' };
+  if (!user) {
+    // Check if email exists in members
+    const member = (memoryStore.members || []).find(m => m.email.toLowerCase() === cleanEmail);
+    if (member) {
+      return {
+        success: false,
+        requiresPasswordSetup: true,
+        name: member.name,
+        error: 'Please create a password for your account first.'
+      };
+    }
+    return { success: false, error: 'Your email is invalid or not registered by Admin.' };
+  }
+
+  if (!user.hasPassword || !user.password) {
+    return {
+      success: false,
+      requiresPasswordSetup: true,
+      name: user.name,
+      error: 'Please create a password for your account first.'
+    };
+  }
+
+  if (user.password !== password) {
+    return { success: false, error: 'Invalid password. Please check your credentials.' };
   }
 
   const { password: _, ...safeUser } = user;
@@ -1391,6 +1590,8 @@ module.exports = {
   addUserComment,
   updateUserWorkStatus,
   loginUser,
+  checkEmail,
+  createPassword,
   getUsers,
   getNotifications,
   createNotification,

@@ -252,6 +252,26 @@ export const api = {
   },
 
   // Authentication (ONLY TWO ROLES: admin, user)
+  checkEmail: async (email: string): Promise<{ exists: boolean; hasPassword?: boolean; name?: string; role?: string; error?: string }> => {
+    const res = await fetch(`${API_BASE}/auth/check-email`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    return res.json();
+  },
+  createPassword: async (email: string, password: string): Promise<import('../types').AuthResponse> => {
+    const res = await fetch(`${API_BASE}/auth/create-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create password' }));
+      throw new Error(err.error || 'Failed to create password');
+    }
+    return res.json();
+  },
   login: async (email: string, password: string): Promise<import('../types').AuthResponse> => {
     const res = await fetch(`${API_BASE}/auth/login`, {
       method: 'POST',

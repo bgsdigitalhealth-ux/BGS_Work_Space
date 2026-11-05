@@ -183,9 +183,11 @@ export interface User {
 
 export interface AuthResponse {
   success: boolean;
-  user: User;
-  token: string;
+  user?: User;
+  token?: string;
   error?: string;
+  requiresPasswordSetup?: boolean;
+  name?: string;
 }
 
 export interface Notification {
