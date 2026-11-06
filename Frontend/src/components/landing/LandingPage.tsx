@@ -517,9 +517,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             <h5 className="font-bold text-xs sm:text-sm text-gray-900 group-hover:text-emerald-700 leading-tight">
                               {item.title}
                             </h5>
-                            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">
-                              {item.desc}
-                            </p>
                           </div>
                           <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#00a884] group-hover:translate-x-0.5 transition-all shrink-0" />
                         </div>
