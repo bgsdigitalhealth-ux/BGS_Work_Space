@@ -20,7 +20,8 @@ import {
   Menu,
   Info,
   CheckCircle2,
-  Send
+  Send,
+  Clock
 } from 'lucide-react';
 import { api } from '../../services/api';
 
@@ -64,6 +65,50 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [reqTimeSlot, setReqTimeSlot] = useState('Morning (10:00 AM - 12:00 PM)');
   const [reqDetails, setReqDetails] = useState('');
   const [reqPriority, setReqPriority] = useState<'Normal' | 'Urgent' | 'Low'>('Normal');
+
+  // Meeting Form Specific State (Playfair / Inter ivory-to-sage specification)
+  const [meetingSenderName, setMeetingSenderName] = useState('');
+  const [meetingSenderEmail, setMeetingSenderEmail] = useState('');
+  const [meetingReceiverName, setMeetingReceiverName] = useState('');
+  const [meetingReceiverEmail, setMeetingReceiverEmail] = useState('');
+  const [meetingMode, setMeetingMode] = useState<'Online' | 'Offline'>('Online');
+  const [meetingUrl, setMeetingUrl] = useState('');
+  const [meetingPlace, setMeetingPlace] = useState('');
+  const [meetingTime, setMeetingTime] = useState('');
+  const [meetingPurpose, setMeetingPurpose] = useState('');
+  const [meetingMockupView, setMeetingMockupView] = useState<'website' | 'mockup'>('website');
+
+  const handleMeetingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!meetingSenderName.trim() || !meetingSenderEmail.trim()) {
+      alert('Please enter Sender Name and Sender Email ID.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newRef = `MEET-${meetingMode.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      await api.createAppointment({
+        title: `Meeting: ${meetingPurpose ? meetingPurpose.substring(0, 35) : 'Scheduled Meeting'}`,
+        requestedBy: `${meetingSenderName} (${meetingSenderEmail})`,
+        department: 'Dean Administration',
+        team: meetingReceiverName ? `To: ${meetingReceiverName}` : 'Administration Office',
+        date: reqDate,
+        time: meetingTime || '10:00 AM',
+        dateTimeDisplay: `${reqDate} • ${meetingTime || 'TBD'}`,
+        location: meetingMode === 'Online' ? (meetingUrl || 'Online Meeting URL') : (meetingPlace || 'Dean Conference Hall'),
+        purpose: `[Meeting Request]\nMode: ${meetingMode}\nLocation/URL: ${meetingMode === 'Online' ? meetingUrl : meetingPlace}\nSender: ${meetingSenderName} (${meetingSenderEmail})\nReceiver: ${meetingReceiverName} (${meetingReceiverEmail})\n\nPurpose:\n${meetingPurpose}`,
+        status: 'Scheduled'
+      });
+    } catch (err) {
+      console.warn('API submission fallback:', err);
+    } finally {
+      setIsSubmitting(false);
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
+    }
+  };
 
   // Work Request Categories matching user's chip reference screenshot verbatim
   const requestTypes = [
@@ -141,6 +186,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setReqSubject('');
     setReqDetails('');
     setReferenceId('');
+    setMeetingSenderName('');
+    setMeetingSenderEmail('');
+    setMeetingReceiverName('');
+    setMeetingReceiverEmail('');
+    setMeetingUrl('');
+    setMeetingPlace('');
+    setMeetingTime('');
+    setMeetingPurpose('');
   };
 
   // Departments List matching Screenshot 2
@@ -651,299 +704,871 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
       {/* ---------------- MODAL 5: Work Request Submission Modal (Chip Selection & Direct Form) ---------------- */}
       {selectedRequestType && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-100 shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
-            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/70 to-teal-50/30 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${selectedRequestType.color} shadow-xs`}>
-                  <selectedRequestType.icon className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-base text-gray-900 leading-tight">
-                      {selectedRequestType.title}
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
-                      {selectedRequestType.badge}
-                    </span>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5 truncate">
-                    {selectedRequestType.desc}
-                  </p>
-                </div>
-              </div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-200 overflow-y-auto">
+          {selectedRequestType.id === 'meeting' ? (
+            /* ============================================================== */
+            /* DEDICATED PROFESSIONAL "MEETING" FORM (Playfair / Inter)       */
+            /* Soft Ivory-to-Sage Background with Architectural Linework       */
+            /* ============================================================== */
+            <div className={`w-full ${meetingMockupView === 'mockup' ? 'max-w-5xl' : 'max-w-xl'} my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all`}>
+              
+              {/* Classical Architectural Neoclassical Column Linework (Left & Right) */}
+              <svg className="hidden md:block absolute left-2 top-3 bottom-3 w-8 text-[#98af93]/40 pointer-events-none select-none h-[calc(100%-24px)]" viewBox="0 0 32 600" fill="none" preserveAspectRatio="none">
+                <rect x="2" y="4" width="28" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <path d="M4 8 C6 14 8 18 8 22 H24 C24 18 26 14 28 8" stroke="currentColor" strokeWidth="1" fill="none" />
+                <line x1="2" y1="22" x2="30" y2="22" stroke="currentColor" strokeWidth="1" />
+                <line x1="6" y1="22" x2="6" y2="570" stroke="currentColor" strokeWidth="0.8" />
+                <line x1="12" y1="22" x2="12" y2="570" stroke="currentColor" strokeWidth="1" />
+                <line x1="20" y1="22" x2="20" y2="570" stroke="currentColor" strokeWidth="1" />
+                <line x1="26" y1="22" x2="26" y2="570" stroke="currentColor" strokeWidth="0.8" />
+                <line x1="2" y1="570" x2="30" y2="570" stroke="currentColor" strokeWidth="1" />
+                <rect x="4" y="570" width="24" height="6" stroke="currentColor" strokeWidth="1" fill="none" />
+                <rect x="2" y="576" width="28" height="6" stroke="currentColor" strokeWidth="1.2" fill="none" />
+              </svg>
 
-              <button 
-                type="button"
-                onClick={resetRequestForm}
-                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer"
-                title="Close"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+              <svg className="hidden md:block absolute right-2 top-3 bottom-3 w-8 text-[#98af93]/40 pointer-events-none select-none h-[calc(100%-24px)]" viewBox="0 0 32 600" fill="none" preserveAspectRatio="none">
+                <rect x="2" y="4" width="28" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <path d="M4 8 C6 14 8 18 8 22 H24 C24 18 26 14 28 8" stroke="currentColor" strokeWidth="1" fill="none" />
+                <line x1="2" y1="22" x2="30" y2="22" stroke="currentColor" strokeWidth="1" />
+                <line x1="6" y1="22" x2="6" y2="570" stroke="currentColor" strokeWidth="0.8" />
+                <line x1="12" y1="22" x2="12" y2="570" stroke="currentColor" strokeWidth="1" />
+                <line x1="20" y1="22" x2="20" y2="570" stroke="currentColor" strokeWidth="1" />
+                <line x1="26" y1="22" x2="26" y2="570" stroke="currentColor" strokeWidth="0.8" />
+                <line x1="2" y1="570" x2="30" y2="570" stroke="currentColor" strokeWidth="1" />
+                <rect x="4" y="570" width="24" height="6" stroke="currentColor" strokeWidth="1" fill="none" />
+                <rect x="2" y="576" width="28" height="6" stroke="currentColor" strokeWidth="1.2" fill="none" />
+              </svg>
 
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-4">
-              {requestFormSubmitted ? (
-                /* Success View */
-                <div className="py-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
-                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00a884] flex items-center justify-center mx-auto shadow-sm">
-                    <CheckCircle2 className="w-9 h-9" />
-                  </div>
+              {/* Architectural Top Arch Line */}
+              <div className="hidden md:block absolute top-3 left-10 right-10 h-3 border-t border-b border-[#98af93]/30 pointer-events-none" />
 
-                  <div>
-                    <h4 className="text-xl font-bold text-gray-900">
-                      Work Request Submitted!
-                    </h4>
-                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                      Your request has been logged and forwarded directly to the Dean & Administrative Office.
-                    </p>
-                  </div>
-
-                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 max-w-sm mx-auto text-left text-xs space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-medium">Reference Code:</span>
-                      <span className="font-mono font-bold text-[#00a884] text-sm">{referenceId}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-medium">Category:</span>
-                      <span className="font-semibold text-gray-800">{selectedRequestType.title}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-medium">Requester:</span>
-                      <span className="font-semibold text-gray-800 truncate max-w-[180px]">{reqName}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-gray-500 font-medium">Status:</span>
-                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
-                        Under Review
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2">
+              {/* Top View Mode Switcher & Close Button */}
+              <div className="relative z-20 flex items-center justify-between pb-3 mb-3 border-b border-[#c8d6c4]/60">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold text-[#133926] uppercase tracking-wider font-inter">View Mode:</span>
+                  <div className="flex items-center p-0.5 rounded-xl bg-[#dbe5d8] border border-[#c4d4c0]">
                     <button
                       type="button"
-                      onClick={resetRequestForm}
-                      className="px-6 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                      onClick={() => setMeetingMockupView('website')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${
+                        meetingMockupView === 'website' 
+                          ? 'bg-white text-[#133926] shadow-xs' 
+                          : 'text-[#2e4738] hover:text-[#133926]'
+                      }`}
                     >
-                      Done
+                      Website Form
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setMeetingMockupView('mockup')}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${
+                        meetingMockupView === 'mockup' 
+                          ? 'bg-white text-[#133926] shadow-xs' 
+                          : 'text-[#2e4738] hover:text-[#133926]'
+                      }`}
+                    >
+                      Side-by-Side Mockup
                     </button>
                   </div>
                 </div>
-              ) : (
-                /* Request Submission Form */
-                <form onSubmit={handleRequestSubmit} className="space-y-4">
-                  {/* Category Switcher Chips inside Modal */}
+
+                <button 
+                  type="button"
+                  onClick={resetRequestForm}
+                  className="p-1.5 rounded-xl hover:bg-black/5 text-[#2e4738] hover:text-[#133926] transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {requestFormSubmitted ? (
+                /* Success Confirmation View */
+                <div className="bg-white rounded-3xl p-8 shadow-xl border border-[#d2ded0] text-center space-y-4 my-2 relative z-10 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-full bg-[#eaf3e8] text-[#133926] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
-                      Request Type (Chip Style)
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {requestTypes.map((t) => {
-                        const isCurrent = t.id === selectedRequestType.id;
-                        const Icon = t.icon;
-                        return (
-                          <button
-                            type="button"
-                            key={t.id}
-                            onClick={() => setSelectedRequestType(t)}
-                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                              isCurrent
-                                ? 'border-[#00a884] bg-emerald-50/60 ring-2 ring-[#00a884]/20'
-                                : 'border-gray-200 hover:border-gray-300 bg-white'
-                            }`}
-                          >
-                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#00a884] text-white' : 'bg-gray-100 text-gray-600'}`}>
-                              <Icon className="w-3.5 h-3.5" />
+                    <h3 className="font-serif text-2xl font-bold text-[#133926]">
+                      Meeting Request Scheduled
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
+                      Your meeting request has been recorded and submitted to the Dean's Office.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#f7f9f6] border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Reference Code:</span>
+                      <span className="font-mono font-bold text-[#133926]">{referenceId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Mode:</span>
+                      <span className="font-semibold text-gray-800">{meetingMode}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Time:</span>
+                      <span className="font-semibold text-gray-800">{meetingTime || 'As scheduled'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sender:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingSenderName}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetRequestForm}
+                    className="px-6 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-inter text-xs font-semibold cursor-pointer transition-all shadow-xs"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : meetingMockupView === 'mockup' ? (
+                /* ============================================================ */
+                /* SIDE-BY-SIDE DESIGN MOCKUP (Exact replica of user screenshot) */
+                /* ============================================================ */
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+                  {/* Mockup Card 1: ONLINE MEETING */}
+                  <div className="flex flex-col">
+                    <div className="text-center mb-2">
+                      <span className="text-xs font-semibold tracking-widest text-[#244b36] uppercase font-inter">
+                        — ONLINE MEETING —
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#d2ded0] flex flex-col justify-between flex-1">
+                      <div>
+                        <h2 className="text-3xl font-serif font-bold text-[#133926] tracking-tight mb-4">
+                          Meeting
+                        </h2>
+
+                        {/* Section 1: Sender Details */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Sender Details</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingSenderName}
+                                placeholder="Enter sender name"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
                             </div>
-                            <span className="font-bold text-xs text-gray-800 truncate">
-                              {t.title}
-                            </span>
-                          </button>
-                        );
-                      })}
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
+                              <input 
+                                type="email"
+                                readOnly
+                                value={meetingSenderEmail}
+                                placeholder="Enter sender email"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 2: Receiver Details */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Receiver Details</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingReceiverName}
+                                placeholder="Enter receiver name"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
+                              <input 
+                                type="email"
+                                readOnly
+                                value={meetingReceiverEmail}
+                                placeholder="Enter receiver email"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 3: Mode of Meeting (Online) */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Mode of Meeting</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div>
+                            <div className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] font-inter flex items-center justify-between">
+                              <span>Online</span>
+                              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Meeting URL</label>
+                            <input 
+                              type="text"
+                              readOnly
+                              value={meetingUrl}
+                              placeholder="Enter meeting URL"
+                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
+                            <div className="relative">
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingTime}
+                                placeholder="Select time"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none pr-8"
+                              />
+                              <Clock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
+                            <textarea 
+                              rows={3}
+                              readOnly
+                              value={meetingPurpose}
+                              placeholder="Enter meeting purpose or description"
+                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-4 mt-2">
+                        <button type="button" className="px-5 py-2 rounded-xl bg-[#133926] text-white font-inter text-xs font-medium">Submit</button>
+                        <button type="button" onClick={resetRequestForm} className="px-5 py-2 rounded-xl border border-[#9cb298] text-[#133926] font-inter text-xs font-medium">Cancel</button>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Requester Name & Department */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Your Name *
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={reqName}
-                        onChange={(e) => setReqName(e.target.value)}
-                        placeholder="e.g. Dr. Arvind Kumar"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
-                      />
+                  {/* Mockup Card 2: OFFLINE MEETING */}
+                  <div className="flex flex-col">
+                    <div className="text-center mb-2">
+                      <span className="text-xs font-semibold tracking-widest text-[#244b36] uppercase font-inter">
+                        — OFFLINE MEETING —
+                      </span>
+                    </div>
+                    <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#d2ded0] flex flex-col justify-between flex-1">
+                      <div>
+                        <h2 className="text-3xl font-serif font-bold text-[#133926] tracking-tight mb-4">
+                          Meeting
+                        </h2>
+
+                        {/* Section 1: Sender Details */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Sender Details</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingSenderName}
+                                placeholder="Enter sender name"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
+                              <input 
+                                type="email"
+                                readOnly
+                                value={meetingSenderEmail}
+                                placeholder="Enter sender email"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 2: Receiver Details */}
+                        <div className="space-y-2 mb-4">
+                          <div className="flex items-center gap-2 mb-1.5">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Receiver Details</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingReceiverName}
+                                placeholder="Enter receiver name"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
+                              <input 
+                                type="email"
+                                readOnly
+                                value={meetingReceiverEmail}
+                                placeholder="Enter receiver email"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 3: Mode of Meeting (Offline) */}
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Mode of Meeting</span>
+                            <div className="h-px bg-[#c6d4c2] flex-1" />
+                          </div>
+                          <div>
+                            <div className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] font-inter flex items-center justify-between">
+                              <span>Offline</span>
+                              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Place of Meeting</label>
+                            <input 
+                              type="text"
+                              readOnly
+                              value={meetingPlace}
+                              placeholder="Enter meeting location"
+                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
+                            <div className="relative">
+                              <input 
+                                type="text"
+                                readOnly
+                                value={meetingTime}
+                                placeholder="Select time"
+                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none pr-8"
+                              />
+                              <Clock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
+                            <textarea 
+                              rows={3}
+                              readOnly
+                              value={meetingPurpose}
+                              placeholder="Enter meeting purpose or description"
+                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none resize-none"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 pt-4 mt-2">
+                        <button type="button" className="px-5 py-2 rounded-xl bg-[#133926] text-white font-inter text-xs font-medium">Submit</button>
+                        <button type="button" onClick={resetRequestForm} className="px-5 py-2 rounded-xl border border-[#9cb298] text-[#133926] font-inter text-xs font-medium">Cancel</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* ============================================================ */
+                /* WEBSITE LIVE INTERACTIVE FORM (Single responsive form)      */
+                /* ============================================================ */
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#d2ded0] relative z-10">
+                  <form onSubmit={handleMeetingSubmit} className="space-y-5">
+                    <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#133926] tracking-tight mb-2">
+                      Meeting
+                    </h2>
+
+                    {/* Section 1: Sender Details */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-serif text-sm sm:text-base font-bold text-[#133926] whitespace-nowrap">
+                          Sender Details
+                        </span>
+                        <div className="h-px bg-[#c6d4c2] flex-1" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Sender Name
+                          </label>
+                          <input 
+                            type="text" 
+                            required
+                            value={meetingSenderName} 
+                            onChange={(e) => setMeetingSenderName(e.target.value)} 
+                            placeholder="Enter sender name"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Sender Email ID
+                          </label>
+                          <input 
+                            type="email" 
+                            required
+                            value={meetingSenderEmail} 
+                            onChange={(e) => setMeetingSenderEmail(e.target.value)} 
+                            placeholder="Enter sender email"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      </div>
                     </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Department / Organization
-                      </label>
-                      <select
-                        value={reqDepartment}
-                        onChange={(e) => setReqDepartment(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                    {/* Section 2: Receiver Details */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-serif text-sm sm:text-base font-bold text-[#133926] whitespace-nowrap">
+                          Receiver Details
+                        </span>
+                        <div className="h-px bg-[#c6d4c2] flex-1" />
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Receiver Name
+                          </label>
+                          <input 
+                            type="text" 
+                            value={meetingReceiverName} 
+                            onChange={(e) => setMeetingReceiverName(e.target.value)} 
+                            placeholder="Enter receiver name"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Receiver Email ID
+                          </label>
+                          <input 
+                            type="email" 
+                            value={meetingReceiverEmail} 
+                            onChange={(e) => setMeetingReceiverEmail(e.target.value)} 
+                            placeholder="Enter receiver email"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 3: Mode of Meeting */}
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <span className="font-serif text-sm sm:text-base font-bold text-[#133926] whitespace-nowrap">
+                          Mode of Meeting
+                        </span>
+                        <div className="h-px bg-[#c6d4c2] flex-1" />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                          Mode of Meeting
+                        </label>
+                        <div className="relative">
+                          <select
+                            value={meetingMode}
+                            onChange={(e) => setMeetingMode(e.target.value as 'Online' | 'Offline')}
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter appearance-none cursor-pointer pr-10"
+                          >
+                            <option value="" disabled>Select mode</option>
+                            <option value="Online">Online</option>
+                            <option value="Offline">Offline</option>
+                          </select>
+                          <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Dynamic Field: Meeting URL if Online, Place of Meeting if Offline */}
+                      {meetingMode === 'Online' ? (
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Meeting URL
+                          </label>
+                          <input 
+                            type="url" 
+                            value={meetingUrl} 
+                            onChange={(e) => setMeetingUrl(e.target.value)} 
+                            placeholder="Enter meeting URL"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Place of Meeting
+                          </label>
+                          <input 
+                            type="text" 
+                            value={meetingPlace} 
+                            onChange={(e) => setMeetingPlace(e.target.value)} 
+                            placeholder="Enter meeting location"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      )}
+
+                      {/* Time (Preserved across mode switches) */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                          Time
+                        </label>
+                        <div className="relative">
+                          <input 
+                            type="text" 
+                            value={meetingTime} 
+                            onChange={(e) => setMeetingTime(e.target.value)} 
+                            placeholder="Select time"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter pr-10"
+                          />
+                          <Clock className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                        </div>
+                      </div>
+
+                      {/* Purpose / Description (Preserved across mode switches) */}
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                          Purpose / Description
+                        </label>
+                        <textarea 
+                          rows={4}
+                          value={meetingPurpose} 
+                          onChange={(e) => setMeetingPurpose(e.target.value)} 
+                          placeholder="Enter meeting purpose or description"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter resize-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Bottom Buttons: Solid Forest Green Submit & Outlined Cancel */}
+                    <div className="flex items-center gap-3 pt-3">
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="px-6 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer shadow-xs disabled:opacity-50"
                       >
-                        {departments.filter(d => d.id !== 'all').map((d) => (
-                          <option key={d.id} value={d.title}>{d.title}</option>
-                        ))}
-                        <option value="Dean Administration Office">Dean Administration Office</option>
-                        <option value="External / Visiting Faculty">External / Visiting Faculty</option>
-                      </select>
+                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={resetRequestForm}
+                        className="px-6 py-2.5 rounded-xl border border-[#9cb298] text-[#133926] hover:bg-black/5 font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
                     </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Standard Request Modal for Event, General Information, Task / Request */
+            <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-100 shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+              {/* Modal Header */}
+              <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/70 to-teal-50/30 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${selectedRequestType.color} shadow-xs`}>
+                    <selectedRequestType.icon className="w-5 h-5" />
                   </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-bold text-base text-gray-900 leading-tight">
+                        {selectedRequestType.title}
+                      </h3>
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                        {selectedRequestType.badge}
+                      </span>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5 truncate">
+                      {selectedRequestType.desc}
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Email & Phone */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button 
+                  type="button"
+                  onClick={resetRequestForm}
+                  className="text-gray-400 hover:text-gray-700 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto flex-1 space-y-4">
+                {requestFormSubmitted ? (
+                  /* Success View */
+                  <div className="py-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+                    <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00a884] flex items-center justify-center mx-auto shadow-sm">
+                      <CheckCircle2 className="w-9 h-9" />
+                    </div>
+
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Email Address *
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        value={reqEmail}
-                        onChange={(e) => setReqEmail(e.target.value)}
-                        placeholder="e.g. user@bgsdigitalhealth.org"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
-                      />
+                      <h4 className="text-xl font-bold text-gray-900">
+                        Work Request Submitted!
+                      </h4>
+                      <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                        Your request has been logged and forwarded directly to the Dean & Administrative Office.
+                      </p>
                     </div>
 
+                    <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 max-w-sm mx-auto text-left text-xs space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 font-medium">Reference Code:</span>
+                        <span className="font-mono font-bold text-[#00a884] text-sm">{referenceId}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 font-medium">Category:</span>
+                        <span className="font-semibold text-gray-800">{selectedRequestType.title}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 font-medium">Requester:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[180px]">{reqName}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-500 font-medium">Status:</span>
+                        <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                          Under Review
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2">
+                      <button
+                        type="button"
+                        onClick={resetRequestForm}
+                        className="px-6 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                      >
+                        Done
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Request Submission Form */
+                  <form onSubmit={handleRequestSubmit} className="space-y-4">
+                    {/* Category Switcher Chips inside Modal */}
                     <div>
-                      <label className="block text-xs font-semibold text-gray-700 mb-1">
-                        Phone / Contact Number
+                      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                        Request Type (Chip Style)
                       </label>
-                      <input
-                        type="tel"
-                        value={reqPhone}
-                        onChange={(e) => setReqPhone(e.target.value)}
-                        placeholder="e.g. +91 98765 43210"
-                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
-                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        {requestTypes.map((t) => {
+                          const isCurrent = t.id === selectedRequestType.id;
+                          const Icon = t.icon;
+                          return (
+                            <button
+                              type="button"
+                              key={t.id}
+                              onClick={() => setSelectedRequestType(t)}
+                              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                                isCurrent
+                                  ? 'border-[#00a884] bg-emerald-50/60 ring-2 ring-[#00a884]/20'
+                                  : 'border-gray-200 hover:border-gray-300 bg-white'
+                              }`}
+                            >
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#00a884] text-white' : 'bg-gray-100 text-gray-600'}`}>
+                                <Icon className="w-3.5 h-3.5" />
+                              </div>
+                              <span className="font-bold text-xs text-gray-800 truncate">
+                                {t.title}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Subject */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Subject / Purpose of Request *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={reqSubject}
-                      onChange={(e) => setReqSubject(e.target.value)}
-                      placeholder={
-                        selectedRequestType.id === 'meeting'
-                          ? "e.g. Discussion on clinical protocol approvals"
-                          : selectedRequestType.id === 'event'
-                          ? "e.g. Inauguration of Annual Academic Symposium"
-                          : "e.g. Work proposal submission"
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
-                    />
-                  </div>
-
-                  {/* If Meeting or Event: Preferred Date & Time */}
-                  {(selectedRequestType.id === 'meeting' || selectedRequestType.id === 'event') && (
+                    {/* Requester Name & Department */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Preferred Date
+                          Your Name *
                         </label>
                         <input
-                          type="date"
-                          value={reqDate}
-                          onChange={(e) => setReqDate(e.target.value)}
+                          type="text"
+                          required
+                          value={reqName}
+                          onChange={(e) => setReqName(e.target.value)}
+                          placeholder="e.g. Dr. Arvind Kumar"
                           className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
                         />
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold text-gray-700 mb-1">
-                          Preferred Time Slot
+                          Department / Organization
                         </label>
                         <select
-                          value={reqTimeSlot}
-                          onChange={(e) => setReqTimeSlot(e.target.value)}
+                          value={reqDepartment}
+                          onChange={(e) => setReqDepartment(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
                         >
-                          <option value="Morning (10:00 AM - 12:00 PM)">Morning (10:00 AM - 12:00 PM)</option>
-                          <option value="Afternoon (02:00 PM - 04:00 PM)">Afternoon (02:00 PM - 04:00 PM)</option>
-                          <option value="Evening (04:00 PM - 06:00 PM)">Evening (04:00 PM - 06:00 PM)</option>
+                          {departments.filter(d => d.id !== 'all').map((d) => (
+                            <option key={d.id} value={d.title}>{d.title}</option>
+                          ))}
+                          <option value="Dean Administration Office">Dean Administration Office</option>
+                          <option value="External / Visiting Faculty">External / Visiting Faculty</option>
                         </select>
                       </div>
                     </div>
-                  )}
 
-                  {/* Details / Notes */}
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Details / Background Information
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={reqDetails}
-                      onChange={(e) => setReqDetails(e.target.value)}
-                      placeholder="Brief details about the request or agenda..."
-                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884] resize-none"
-                    />
-                  </div>
+                    {/* Email & Phone */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Email Address *
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={reqEmail}
+                          onChange={(e) => setReqEmail(e.target.value)}
+                          placeholder="e.g. user@bgsdigitalhealth.org"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                        />
+                      </div>
 
-                  {/* Priority */}
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="text-xs font-semibold text-gray-700">Urgency Level:</span>
-                    <div className="flex gap-2">
-                      {(['Normal', 'Urgent', 'Low'] as const).map((p) => (
-                        <button
-                          type="button"
-                          key={p}
-                          onClick={() => setReqPriority(p)}
-                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                            reqPriority === p
-                              ? p === 'Urgent'
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Phone / Contact Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={reqPhone}
+                          onChange={(e) => setReqPhone(e.target.value)}
+                          placeholder="e.g. +91 98765 43210"
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Subject */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Subject / Purpose of Request *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={reqSubject}
+                        onChange={(e) => setReqSubject(e.target.value)}
+                        placeholder={
+                          selectedRequestType.id === 'event'
+                            ? "e.g. Inauguration of Annual Academic Symposium"
+                            : "e.g. Work proposal submission"
+                        }
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                      />
+                    </div>
+
+                    {/* If Event: Preferred Date & Time */}
+                    {selectedRequestType.id === 'event' && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Preferred Date
+                          </label>
+                          <input
+                            type="date"
+                            value={reqDate}
+                            onChange={(e) => setReqDate(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">
+                            Preferred Time Slot
+                          </label>
+                          <select
+                            value={reqTimeSlot}
+                            onChange={(e) => setReqTimeSlot(e.target.value)}
+                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                          >
+                            <option value="Morning (10:00 AM - 12:00 PM)">Morning (10:00 AM - 12:00 PM)</option>
+                            <option value="Afternoon (02:00 PM - 04:00 PM)">Afternoon (02:00 PM - 04:00 PM)</option>
+                            <option value="Evening (04:00 PM - 06:00 PM)">Evening (04:00 PM - 06:00 PM)</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Details / Notes */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Details / Background Information
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={reqDetails}
+                        onChange={(e) => setReqDetails(e.target.value)}
+                        placeholder="Brief details about the request or agenda..."
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884] resize-none"
+                      />
+                    </div>
+
+                    {/* Priority */}
+                    <div className="flex items-center justify-between pt-1">
+                      <span className="text-xs font-semibold text-gray-700">Urgency Level:</span>
+                      <div className="flex gap-2">
+                        {(['Normal', 'Urgent', 'Low'] as const).map((p) => (
+                          <button
+                            type="button"
+                            key={p}
+                            onClick={() => setReqPriority(p)}
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                              reqPriority === p
+                                ? p === 'Urgent'
                                 ? 'bg-red-100 text-red-700 ring-1 ring-red-400'
                                 : 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-400'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Action Buttons */}
-                  <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100">
-                    <button
-                      type="button"
-                      onClick={resetRequestForm}
-                      className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="px-5 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                      <span>{isSubmitting ? 'Submitting...' : 'Submit Work Request'}</span>
-                    </button>
-                  </div>
-                </form>
-              )}
+                    {/* Action Buttons */}
+                    <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100">
+                      <button
+                        type="button"
+                        onClick={resetRequestForm}
+                        className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="px-5 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isSubmitting ? 'Submitting...' : 'Submit Work Request'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
       )}
     </div>

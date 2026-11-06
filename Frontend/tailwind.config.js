@@ -6,6 +6,11 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        serif: ['"Playfair Display"', 'Georgia', 'serif'],
+        playfair: ['"Playfair Display"', 'Georgia', 'serif'],
+        inter: ['Inter', 'sans-serif'],
+      },
       colors: {
         brand: {
           50: '#f5f3ff',
