@@ -43,7 +43,7 @@ export const App: React.FC = () => {
     return (
       <LandingPage 
         onLogin={() => setAuthView('login')} 
-        onAssignWork={() => setAuthView('login')} 
+        onAssignWork={() => {}} 
       />
     );
   }

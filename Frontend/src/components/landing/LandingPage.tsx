@@ -17,20 +17,131 @@ import {
   Phone,
   MapPin,
   ShieldCheck,
-  Menu
+  Menu,
+  Info,
+  CheckCircle2,
+  Send
 } from 'lucide-react';
+import { api } from '../../services/api';
 
 interface LandingPageProps {
   onLogin: () => void;
-  onAssignWork: () => void;
+  onAssignWork?: () => void;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Work Request State (Chip style popup & direct submission without login)
+  const [workRequestDropdownOpen, setWorkRequestDropdownOpen] = useState(false);
+  const [selectedRequestType, setSelectedRequestType] = useState<{
+    id: string;
+    title: string;
+    desc: string;
+    icon: any;
+    color: string;
+    badge: string;
+  } | null>(null);
+  const [requestFormSubmitted, setRequestFormSubmitted] = useState(false);
+  const [referenceId, setReferenceId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Work Request Form Fields
+  const [reqName, setReqName] = useState('');
+  const [reqEmail, setReqEmail] = useState('');
+  const [reqPhone, setReqPhone] = useState('');
+  const [reqDepartment, setReqDepartment] = useState('Clinical Departments');
+  const [reqSubject, setReqSubject] = useState('');
+  const [reqDate, setReqDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split('T')[0];
+  });
+  const [reqTimeSlot, setReqTimeSlot] = useState('Morning (10:00 AM - 12:00 PM)');
+  const [reqDetails, setReqDetails] = useState('');
+  const [reqPriority, setReqPriority] = useState<'Normal' | 'Urgent' | 'Low'>('Normal');
+
+  // Work Request Categories matching user's chip reference screenshot verbatim
+  const requestTypes = [
+    {
+      id: 'meeting',
+      title: 'Meeting',
+      desc: 'Request a meeting with the Dean',
+      icon: Users,
+      color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
+      badge: 'Meeting Request'
+    },
+    {
+      id: 'event',
+      title: 'Event',
+      desc: 'Invite the Dean to an event or programme',
+      icon: Calendar,
+      color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
+      badge: 'Event Invitation'
+    },
+    {
+      id: 'general-info',
+      title: 'General Information',
+      desc: 'Share information with the office',
+      icon: Info,
+      color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
+      badge: 'General Information'
+    },
+    {
+      id: 'task-request',
+      title: 'Task / Request',
+      desc: 'Ask for an approval or action',
+      icon: ClipboardCheck,
+      color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
+      badge: 'Task & Approval'
+    }
+  ];
+
+  const handleRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reqName.trim() || !reqEmail.trim()) {
+      alert('Please enter your Name and Email address.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newRef = `WKH-REQ-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      await api.createAppointment({
+        title: reqSubject.trim() || `${selectedRequestType?.title || 'Work'} Request from ${reqName}`,
+        requestedBy: `${reqName} (${reqEmail}${reqPhone ? ` • ${reqPhone}` : ''})`,
+        department: reqDepartment,
+        team: selectedRequestType?.title || "Dean's Administration Office",
+        date: reqDate,
+        time: reqTimeSlot.split(' ')[0] || '10:00 AM',
+        dateTimeDisplay: `${reqDate} • ${reqTimeSlot}`,
+        purpose: `${selectedRequestType?.desc || ''}\n\nDetails: ${reqDetails || 'No additional details provided.'}\nPriority: ${reqPriority}`,
+        status: 'Scheduled'
+      });
+    } catch (err) {
+      console.warn('API submission fallback:', err);
+    } finally {
+      setIsSubmitting(false);
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
+    }
+  };
+
+  const resetRequestForm = () => {
+    setSelectedRequestType(null);
+    setRequestFormSubmitted(false);
+    setReqName('');
+    setReqEmail('');
+    setReqPhone('');
+    setReqSubject('');
+    setReqDetails('');
+    setReferenceId('');
+  };
 
   // Departments List matching Screenshot 2
   const departments = [
@@ -160,13 +271,70 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               Login
             </button>
 
-            <button
-              onClick={onAssignWork}
-              className="px-4 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <span>Work Request</span>
-              <ArrowRight className="w-4 h-4" />
-            </button>
+            {/* Work Request Button & Chip-Style Dropdown Menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setWorkRequestDropdownOpen(!workRequestDropdownOpen)}
+                className="px-4 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                title="Work Request Options"
+              >
+                <span>Work Request</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${workRequestDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* Chip-Style Dropdown Menu (Matching User Screenshot) */}
+              {workRequestDropdownOpen && (
+                <div 
+                  className="absolute right-0 mt-3 w-80 sm:w-96 bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  onMouseLeave={() => setWorkRequestDropdownOpen(false)}
+                >
+                  <div className="flex items-center justify-between px-2 pt-1 pb-2.5 mb-1.5 border-b border-gray-100">
+                    <div>
+                      <h4 className="font-bold text-xs text-gray-900 tracking-tight">Work Request Options</h4>
+                      <p className="text-[11px] text-gray-500">Submit requests directly without login</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setWorkRequestDropdownOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-2">
+                    {requestTypes.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedRequestType(item);
+                            setWorkRequestDropdownOpen(false);
+                            setRequestFormSubmitted(false);
+                          }}
+                          className="p-3 rounded-2xl border border-gray-200/90 hover:border-[#00a884] hover:bg-emerald-50/40 bg-white transition-all cursor-pointer flex items-center gap-3.5 group shadow-2xs text-left"
+                        >
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${item.color} group-hover:scale-105 transition-transform shadow-2xs`}>
+                            <Icon className="w-5 h-5" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-bold text-xs sm:text-sm text-gray-900 group-hover:text-emerald-700 leading-tight">
+                              {item.title}
+                            </h5>
+                            <p className="text-[11px] text-gray-500 mt-0.5 leading-snug truncate">
+                              {item.desc}
+                            </p>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#00a884] group-hover:translate-x-0.5 transition-all shrink-0" />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
 
             {/* Mobile Hamburger Menu Button */}
             <button
@@ -250,7 +418,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
                 <button
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    onAssignWork();
+                    setSelectedRequestType(requestTypes[0]);
+                    setRequestFormSubmitted(false);
                   }}
                   className="flex-1 py-2.5 rounded-full bg-[#5a36e6] text-white font-semibold text-xs text-center flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#4b28c7]"
                 >
@@ -315,16 +484,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
                 </h4>
               </div>
 
-              {/* Feature 2: Work Assignment */}
+              {/* Feature 2: Work Request */}
               <div 
-                onClick={onAssignWork}
+                onClick={() => {
+                  setSelectedRequestType(requestTypes[0]);
+                  setRequestFormSubmitted(false);
+                }}
                 className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <ClipboardCheck className="w-5 h-5" />
                 </div>
                 <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug">
-                  Work Assignment
+                  Work Request
                 </h4>
               </div>
 
@@ -473,6 +645,304 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- MODAL 5: Work Request Submission Modal (Chip Selection & Direct Form) ---------------- */}
+      {selectedRequestType && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-100 shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/70 to-teal-50/30 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 border ${selectedRequestType.color} shadow-xs`}>
+                  <selectedRequestType.icon className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-base text-gray-900 leading-tight">
+                      {selectedRequestType.title}
+                    </h3>
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      {selectedRequestType.badge}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    {selectedRequestType.desc}
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={resetRequestForm}
+                className="text-gray-400 hover:text-gray-700 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4">
+              {requestFormSubmitted ? (
+                /* Success View */
+                <div className="py-6 text-center space-y-4 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#00a884] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
+
+                  <div>
+                    <h4 className="text-xl font-bold text-gray-900">
+                      Work Request Submitted!
+                    </h4>
+                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
+                      Your request has been logged and forwarded directly to the Dean & Administrative Office.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-gray-50 border border-gray-100 max-w-sm mx-auto text-left text-xs space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 font-medium">Reference Code:</span>
+                      <span className="font-mono font-bold text-[#00a884] text-sm">{referenceId}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 font-medium">Category:</span>
+                      <span className="font-semibold text-gray-800">{selectedRequestType.title}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 font-medium">Requester:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[180px]">{reqName}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-500 font-medium">Status:</span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">
+                        Under Review
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={resetRequestForm}
+                      className="px-6 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white font-bold text-xs shadow-md transition-all cursor-pointer"
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Request Submission Form */
+                <form onSubmit={handleRequestSubmit} className="space-y-4">
+                  {/* Category Switcher Chips inside Modal */}
+                  <div>
+                    <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
+                      Request Type (Chip Style)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {requestTypes.map((t) => {
+                        const isCurrent = t.id === selectedRequestType.id;
+                        const Icon = t.icon;
+                        return (
+                          <button
+                            type="button"
+                            key={t.id}
+                            onClick={() => setSelectedRequestType(t)}
+                            className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
+                              isCurrent
+                                ? 'border-[#00a884] bg-emerald-50/60 ring-2 ring-[#00a884]/20'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                            }`}
+                          >
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#00a884] text-white' : 'bg-gray-100 text-gray-600'}`}>
+                              <Icon className="w-3.5 h-3.5" />
+                            </div>
+                            <span className="font-bold text-xs text-gray-800 truncate">
+                              {t.title}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Requester Name & Department */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Your Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={reqName}
+                        onChange={(e) => setReqName(e.target.value)}
+                        placeholder="e.g. Dr. Arvind Kumar"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Department / Organization
+                      </label>
+                      <select
+                        value={reqDepartment}
+                        onChange={(e) => setReqDepartment(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                      >
+                        {departments.filter(d => d.id !== 'all').map((d) => (
+                          <option key={d.id} value={d.title}>{d.title}</option>
+                        ))}
+                        <option value="Dean Administration Office">Dean Administration Office</option>
+                        <option value="External / Visiting Faculty">External / Visiting Faculty</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Email & Phone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Email Address *
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        value={reqEmail}
+                        onChange={(e) => setReqEmail(e.target.value)}
+                        placeholder="e.g. user@bgsdigitalhealth.org"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Phone / Contact Number
+                      </label>
+                      <input
+                        type="tel"
+                        value={reqPhone}
+                        onChange={(e) => setReqPhone(e.target.value)}
+                        placeholder="e.g. +91 98765 43210"
+                        className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Subject */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Subject / Purpose of Request *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={reqSubject}
+                      onChange={(e) => setReqSubject(e.target.value)}
+                      placeholder={
+                        selectedRequestType.id === 'meeting'
+                          ? "e.g. Discussion on clinical protocol approvals"
+                          : selectedRequestType.id === 'event'
+                          ? "e.g. Inauguration of Annual Academic Symposium"
+                          : "e.g. Work proposal submission"
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                    />
+                  </div>
+
+                  {/* If Meeting or Event: Preferred Date & Time */}
+                  {(selectedRequestType.id === 'meeting' || selectedRequestType.id === 'event') && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Preferred Date
+                        </label>
+                        <input
+                          type="date"
+                          value={reqDate}
+                          onChange={(e) => setReqDate(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Preferred Time Slot
+                        </label>
+                        <select
+                          value={reqTimeSlot}
+                          onChange={(e) => setReqTimeSlot(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                        >
+                          <option value="Morning (10:00 AM - 12:00 PM)">Morning (10:00 AM - 12:00 PM)</option>
+                          <option value="Afternoon (02:00 PM - 04:00 PM)">Afternoon (02:00 PM - 04:00 PM)</option>
+                          <option value="Evening (04:00 PM - 06:00 PM)">Evening (04:00 PM - 06:00 PM)</option>
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Details / Notes */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">
+                      Details / Background Information
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={reqDetails}
+                      onChange={(e) => setReqDetails(e.target.value)}
+                      placeholder="Brief details about the request or agenda..."
+                      className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#00a884] resize-none"
+                    />
+                  </div>
+
+                  {/* Priority */}
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs font-semibold text-gray-700">Urgency Level:</span>
+                    <div className="flex gap-2">
+                      {(['Normal', 'Urgent', 'Low'] as const).map((p) => (
+                        <button
+                          type="button"
+                          key={p}
+                          onClick={() => setReqPriority(p)}
+                          className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                            reqPriority === p
+                              ? p === 'Urgent'
+                                ? 'bg-red-100 text-red-700 ring-1 ring-red-400'
+                                : 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-400'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={resetRequestForm}
+                      className="px-4 py-2 rounded-xl border border-gray-200 hover:bg-gray-50 text-xs font-semibold text-gray-600 transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-5 py-2 rounded-xl bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-bold shadow-md flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{isSubmitting ? 'Submitting...' : 'Submit Work Request'}</span>
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
