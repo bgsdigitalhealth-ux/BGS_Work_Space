@@ -164,7 +164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
               onClick={onAssignWork}
               className="px-4 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
             >
-              <span>Assign Work</span>
+              <span>Work Request</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
@@ -254,7 +254,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onAssignWork 
                   }}
                   className="flex-1 py-2.5 rounded-full bg-[#5a36e6] text-white font-semibold text-xs text-center flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#4b28c7]"
                 >
-                  <span>Assign Work</span>
+                  <span>Work Request</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
