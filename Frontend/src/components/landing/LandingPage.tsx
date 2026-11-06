@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  ArrowRight, 
-  ChevronDown, 
-  LayoutGrid, 
-  Stethoscope, 
-  FlaskConical, 
-  GraduationCap, 
-  Users, 
-  Settings, 
-  Building2, 
-  Calendar, 
-  ClipboardCheck, 
-  MessageSquare, 
-  X, 
+import {
+  ArrowRight,
+  ChevronDown,
+  LayoutGrid,
+  Stethoscope,
+  FlaskConical,
+  GraduationCap,
+  Users,
+  Settings,
+  Building2,
+  Calendar,
+  ClipboardCheck,
+  MessageSquare,
+  X,
   Mail,
   Phone,
   MapPin,
@@ -110,6 +110,65 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
+  // Event Organize Specific State (Matching Event Playfair / Inter ivory-to-sage specification)
+  const [eventSenderName, setEventSenderName] = useState('');
+  const [eventSenderEmail, setEventSenderEmail] = useState('');
+  const [eventReceiverName, setEventReceiverName] = useState('');
+  const [eventReceiverEmail, setEventReceiverEmail] = useState('');
+  const [eventTitle, setEventTitle] = useState('');
+  const [eventDepartment, setEventDepartment] = useState('');
+  const [eventTime, setEventTime] = useState('');
+  const [eventPurpose, setEventPurpose] = useState('');
+
+  const handleEventSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!eventSenderName.trim()) {
+      alert('Please enter Sender Name.');
+      return;
+    }
+    if (!emailRegex.test(eventSenderEmail.trim())) {
+      alert('Please enter a valid Sender Email ID.');
+      return;
+    }
+    if (!eventReceiverName.trim()) {
+      alert('Please enter Receiver Name.');
+      return;
+    }
+    if (!emailRegex.test(eventReceiverEmail.trim())) {
+      alert('Please enter a valid Receiver Email ID.');
+      return;
+    }
+    if (!eventTitle.trim()) {
+      alert('Please enter Title of Event.');
+      return;
+    }
+
+    setIsSubmitting(true);
+    const newRef = `EVT-ORG-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      await api.createAppointment({
+        title: `Event: ${eventTitle}`,
+        requestedBy: `${eventSenderName} (${eventSenderEmail})`,
+        department: eventDepartment || 'Institutional Events',
+        team: eventReceiverName ? `To: ${eventReceiverName}` : 'Administration Office',
+        date: reqDate,
+        time: eventTime || '10:00 AM',
+        dateTimeDisplay: `${reqDate} • ${eventTime || 'TBD'}`,
+        location: 'Campus Auditorium / Conference Hall',
+        purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail})\nReceiver: ${eventReceiverName} (${eventReceiverEmail})\n\nPurpose / Description:\n${eventPurpose}`,
+        status: 'Scheduled'
+      });
+    } catch (err) {
+      console.warn('API submission fallback:', err);
+    } finally {
+      setIsSubmitting(false);
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
+    }
+  };
+
   // Work Request Categories matching user's chip reference screenshot verbatim
   const requestTypes = [
     {
@@ -194,6 +253,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setMeetingPlace('');
     setMeetingTime('');
     setMeetingPurpose('');
+    setEventSenderName('');
+    setEventSenderEmail('');
+    setEventReceiverName('');
+    setEventReceiverEmail('');
+    setEventTitle('');
+    setEventDepartment('');
+    setEventTime('');
+    setEventPurpose('');
   };
 
   // Departments List matching Screenshot 2
@@ -214,7 +281,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-[#ede6f9] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-no-repeat bg-right lg:bg-center"
       style={{
         backgroundImage: `url('/landing-bg.jpg')`
@@ -226,7 +293,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* ---------------- TOP NAVIGATION BAR ---------------- */}
       <header className="w-full bg-white/85 backdrop-blur-md border-b border-purple-100/60 sticky top-0 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          
+
           {/* Left Brand Logo & Title */}
           <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             {/* Custom Green Leaf Brand Icon from screenshot */}
@@ -249,8 +316,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
           {/* Center Navigation Links */}
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
-            <button 
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} 
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
               className="text-gray-950 font-semibold relative py-1 cursor-pointer after:content-[''] after:absolute after:-bottom-1.5 after:left-0 after:right-0 after:h-0.5 after:bg-[#5a36e6] after:rounded-full"
             >
               Home
@@ -258,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
             {/* Department Dropdown (Screenshot 2) */}
             <div className="relative">
-              <button 
+              <button
                 onClick={() => setDepartmentDropdownOpen(!departmentDropdownOpen)}
                 onMouseEnter={() => setDepartmentDropdownOpen(true)}
                 className="flex items-center gap-1.5 hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
@@ -269,7 +336,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Floating Dropdown Menu matching Screenshot 2 */}
               {departmentDropdownOpen && (
-                <div 
+                <div
                   onMouseLeave={() => setDepartmentDropdownOpen(false)}
                   className="absolute left-0 mt-3 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-150"
                 >
@@ -282,11 +349,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <button
                           key={dept.id}
                           onClick={() => handleDeptClick(dept)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${
-                            isFirst 
-                              ? 'bg-purple-50 text-[#5a36e6] font-semibold' 
-                              : 'text-gray-700 hover:bg-purple-50/60 hover:text-[#5a36e6]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${isFirst
+                            ? 'bg-purple-50 text-[#5a36e6] font-semibold'
+                            : 'text-gray-700 hover:bg-purple-50/60 hover:text-[#5a36e6]'
+                            }`}
                         >
                           <div className={`p-1 rounded-lg ${isFirst ? 'text-[#5a36e6]' : 'text-gray-500 group-hover:text-[#5a36e6]'}`}>
                             <Icon className="w-4 h-4" />
@@ -300,15 +366,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               )}
             </div>
 
-            <button 
-              onClick={() => setShowAboutModal(true)} 
+            <button
+              onClick={() => setShowAboutModal(true)}
               className="hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
             >
               About
             </button>
 
-            <button 
-              onClick={() => setShowContactModal(true)} 
+            <button
+              onClick={() => setShowContactModal(true)}
               className="hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
             >
               Contact
@@ -338,7 +404,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Chip-Style Dropdown Menu (Matching User Screenshot) */}
               {workRequestDropdownOpen && (
-                <div 
+                <div
                   className="absolute right-0 mt-3 w-80 sm:w-96 bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
                   onMouseLeave={() => setWorkRequestDropdownOpen(false)}
                 >
@@ -488,7 +554,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          
+
           {/* Left Hero Details */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
             {/* Pill Tag */}
@@ -525,7 +591,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             {/* 4 Feature Badges (Matching bottom of Screenshot 1) */}
             <div className="mt-12 sm:mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
-              <div 
+              <div
                 onClick={onLogin}
                 className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
@@ -538,7 +604,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
 
               {/* Feature 2: Work Request */}
-              <div 
+              <div
                 onClick={() => {
                   setSelectedRequestType(requestTypes[0]);
                   setRequestFormSubmitted(false);
@@ -554,7 +620,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
 
               {/* Feature 3: Appointment Scheduling */}
-              <div 
+              <div
                 onClick={onLogin}
                 className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
@@ -567,7 +633,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
 
               {/* Feature 4: Real-time Messaging */}
-              <div 
+              <div
                 onClick={onLogin}
                 className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
@@ -602,7 +668,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {selectedDeptInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md border border-gray-100 shadow-2xl p-6 relative">
-            <button 
+            <button
               onClick={() => setSelectedDeptInfo(null)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
             >
@@ -636,7 +702,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {showAboutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-lg border border-gray-100 shadow-2xl p-6 sm:p-8 relative">
-            <button 
+            <button
               onClick={() => setShowAboutModal(false)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
             >
@@ -669,7 +735,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl w-full max-w-md border border-gray-100 shadow-2xl p-6 sm:p-8 relative">
-            <button 
+            <button
               onClick={() => setShowContactModal(false)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
             >
@@ -1268,6 +1334,300 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         type="button" 
                         onClick={resetRequestForm}
                         className="px-6 py-2.5 rounded-xl border border-[#9cb298] text-[#133926] hover:bg-black/5 font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
+          ) : selectedRequestType.id === 'event' ? (
+            /* ============================================================== */
+            /* DEDICATED PROFESSIONAL "EVENT ORGANIZE" FORM (Playfair / Inter) */
+            /* Soft Ivory-to-Sage Background with Architectural Linework       */
+            /* ============================================================== */
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
+              
+              {/* Classical Architectural Neoclassical Colonnade & Archway SVGs (Left & Right) */}
+              {/* Left Architectural Background Illustration (Arches & Campus Tower) */}
+              <svg 
+                className="hidden md:block absolute -left-2 top-0 bottom-0 w-32 text-[#8ea88a]/35 pointer-events-none select-none h-full" 
+                viewBox="0 0 140 700" 
+                fill="none" 
+                preserveAspectRatio="none"
+              >
+                {/* Archway & Pillar */}
+                <path d="M 0 0 L 70 0 C 70 90, 110 140, 110 220 L 110 700 L 0 700 Z" fill="currentColor" fillOpacity="0.08" />
+                <path d="M 70 0 C 70 90, 110 140, 110 220 L 110 700" stroke="currentColor" strokeWidth="1.5" />
+                {/* Capital & Column detail */}
+                <rect x="96" y="215" width="28" height="6" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <line x1="102" y1="221" x2="102" y2="690" stroke="currentColor" strokeWidth="1" />
+                <line x1="110" y1="221" x2="110" y2="690" stroke="currentColor" strokeWidth="1" />
+                <line x1="118" y1="221" x2="118" y2="690" stroke="currentColor" strokeWidth="1" />
+                {/* Background Tower / Campus Building Silhouette */}
+                <path d="M 15 320 L 15 250 L 25 230 L 35 250 L 35 320 Z" stroke="currentColor" strokeWidth="1" fill="none" />
+                <line x1="25" y1="215" x2="25" y2="230" stroke="currentColor" strokeWidth="1" />
+                <circle cx="25" cy="270" r="4" stroke="currentColor" strokeWidth="1" fill="none" />
+                {/* Lower Arches */}
+                <path d="M 5 360 C 5 340, 35 340, 35 360 L 35 410 L 5 410 Z" stroke="currentColor" strokeWidth="0.8" fill="none" />
+                <path d="M 40 360 C 40 340, 70 340, 70 360 L 70 410 L 40 410 Z" stroke="currentColor" strokeWidth="0.8" fill="none" />
+              </svg>
+
+              {/* Right Architectural Background Illustration (Vaulted Arches & Colonnade) */}
+              <svg 
+                className="hidden md:block absolute -right-2 top-0 bottom-0 w-32 text-[#8ea88a]/35 pointer-events-none select-none h-full" 
+                viewBox="0 0 140 700" 
+                fill="none" 
+                preserveAspectRatio="none"
+              >
+                {/* Grand Arch Frame */}
+                <path d="M 140 0 L 70 0 C 70 90, 30 140, 30 220 L 30 700 L 140 700 Z" fill="currentColor" fillOpacity="0.08" />
+                <path d="M 70 0 C 70 90, 30 140, 30 220 L 30 700" stroke="currentColor" strokeWidth="1.5" />
+                {/* Column details */}
+                <rect x="16" y="215" width="28" height="6" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                <line x1="22" y1="221" x2="22" y2="690" stroke="currentColor" strokeWidth="1" />
+                <line x1="30" y1="221" x2="30" y2="690" stroke="currentColor" strokeWidth="1" />
+                <line x1="38" y1="221" x2="38" y2="690" stroke="currentColor" strokeWidth="1" />
+                {/* Receding Gallery Arches */}
+                <path d="M 65 370 C 65 345, 95 345, 95 370 L 95 440 L 65 440 Z" stroke="currentColor" strokeWidth="0.8" fill="none" />
+                <path d="M 98 375 C 98 355, 125 355, 125 375 L 125 440 L 98 440 Z" stroke="currentColor" strokeWidth="0.8" fill="none" />
+              </svg>
+
+              {/* Architectural Top Arch Line */}
+              <div className="hidden md:block absolute top-3 left-10 right-10 h-3 border-t border-b border-[#98af93]/30 pointer-events-none" />
+
+              {/* Close Button */}
+              <div className="flex justify-end mb-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={resetRequestForm}
+                  className="p-1.5 rounded-full text-[#133926]/60 hover:text-[#133926] hover:bg-black/5 transition-colors cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {requestFormSubmitted ? (
+                /* Success Confirmation View */
+                <div className="bg-white rounded-3xl p-8 shadow-xl border border-[#d2ded0] text-center space-y-4 my-2 relative z-10 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-full bg-[#eaf3e8] text-[#133926] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-2xl font-bold text-[#133926]">
+                      Event Organize Submitted
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
+                      Your event details and invitation have been recorded and sent to the Dean's Office.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-[#f7f9f6] border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Reference Code:</span>
+                      <span className="font-mono font-bold text-[#133926]">{referenceId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Title of Event:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventTitle}</span>
+                    </div>
+                    {eventDepartment && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Department:</span>
+                        <span className="font-semibold text-gray-800">{eventDepartment}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Time:</span>
+                      <span className="font-semibold text-gray-800">{eventTime || 'As scheduled'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sender:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventSenderName}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Receiver:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventReceiverName}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetRequestForm}
+                    className="px-6 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-inter text-xs font-semibold cursor-pointer transition-all shadow-xs"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                /* Centered White Card */
+                <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-[#d2ded0] relative z-10">
+                  <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#133926] tracking-tight mb-6 text-center">
+                    Event Organize
+                  </h2>
+
+                  <form onSubmit={handleEventSubmit} className="space-y-5">
+                    {/* 1. Sender Details */}
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-sm sm:text-base font-serif font-bold text-[#133926] shrink-0">
+                          Sender Details
+                        </h3>
+                        <div className="h-px bg-[#c4d4c0] flex-1" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Sender Name
+                          </label>
+                          <input 
+                            type="text" 
+                            required
+                            value={eventSenderName} 
+                            onChange={(e) => setEventSenderName(e.target.value)} 
+                            placeholder="Enter sender name"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Sender Email ID
+                          </label>
+                          <input 
+                            type="email" 
+                            required
+                            value={eventSenderEmail} 
+                            onChange={(e) => setEventSenderEmail(e.target.value)} 
+                            placeholder="Enter sender email ID"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 2. Receiver Details */}
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-sm sm:text-base font-serif font-bold text-[#133926] shrink-0">
+                          Receiver Details
+                        </h3>
+                        <div className="h-px bg-[#c4d4c0] flex-1" />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Receiver Name
+                          </label>
+                          <input 
+                            type="text" 
+                            required
+                            value={eventReceiverName} 
+                            onChange={(e) => setEventReceiverName(e.target.value)} 
+                            placeholder="Enter receiver name"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Receiver Email ID
+                          </label>
+                          <input 
+                            type="email" 
+                            required
+                            value={eventReceiverEmail} 
+                            onChange={(e) => setEventReceiverEmail(e.target.value)} 
+                            placeholder="Enter receiver email ID"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* 3. Event Details */}
+                    <div>
+                      <div className="flex items-center gap-3 mb-3">
+                        <h3 className="text-sm sm:text-base font-serif font-bold text-[#133926] shrink-0">
+                          Event Details
+                        </h3>
+                        <div className="h-px bg-[#c4d4c0] flex-1" />
+                      </div>
+
+                      <div className="space-y-3.5">
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Title of Event
+                          </label>
+                          <input 
+                            type="text" 
+                            required
+                            value={eventTitle} 
+                            onChange={(e) => setEventTitle(e.target.value)} 
+                            placeholder="Enter event title"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Department
+                          </label>
+                          <input 
+                            type="text" 
+                            value={eventDepartment} 
+                            onChange={(e) => setEventDepartment(e.target.value)} 
+                            placeholder="Enter department name"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Time
+                          </label>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              value={eventTime} 
+                              onChange={(e) => setEventTime(e.target.value)} 
+                              placeholder="Select time"
+                              className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter pr-10"
+                            />
+                            <Clock className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Purpose / Description
+                          </label>
+                          <textarea 
+                            rows={4}
+                            value={eventPurpose} 
+                            onChange={(e) => setEventPurpose(e.target.value)} 
+                            placeholder="Describe the purpose of the event"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter resize-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bottom Buttons: Solid Forest Green Submit & Outlined Cancel */}
+                    <div className="flex items-center gap-3 pt-3">
+                      <button 
+                        type="submit" 
+                        disabled={isSubmitting}
+                        className="px-8 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        {isSubmitting ? 'Submitting...' : 'Submit'}
+                      </button>
+                      <button 
+                        type="button" 
+                        onClick={resetRequestForm}
+                        className="px-8 py-2.5 rounded-xl border border-[#133926] text-[#133926] hover:bg-black/5 font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer"
                       >
                         Cancel
                       </button>
