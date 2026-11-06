@@ -76,7 +76,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [meetingPlace, setMeetingPlace] = useState('');
   const [meetingTime, setMeetingTime] = useState('');
   const [meetingPurpose, setMeetingPurpose] = useState('');
-  const [meetingMockupView, setMeetingMockupView] = useState<'website' | 'mockup'>('website');
 
   const handleMeetingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -169,7 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
-  // General Information Specific State (Matching General Information Specification & Mockup)
+  // General Information Specific State (Matching General Information Specification)
   const [infoSenderName, setInfoSenderName] = useState('');
   const [infoSenderEmail, setInfoSenderEmail] = useState('');
   const [infoReceiverName, setInfoReceiverName] = useState('');
@@ -852,7 +851,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             /* DEDICATED PROFESSIONAL "MEETING" FORM (Playfair / Inter)       */
             /* Soft Ivory-to-Sage Background with Architectural Linework       */
             /* ============================================================== */
-            <div className={`w-full ${meetingMockupView === 'mockup' ? 'max-w-5xl' : 'max-w-xl'} my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all`}>
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
 
               {/* Classical Architectural Neoclassical Column Linework (Left & Right) */}
               <svg className="hidden md:block absolute left-2 top-3 bottom-3 w-8 text-[#98af93]/40 pointer-events-none select-none h-[calc(100%-24px)]" viewBox="0 0 32 600" fill="none" preserveAspectRatio="none">
@@ -884,38 +883,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {/* Architectural Top Arch Line */}
               <div className="hidden md:block absolute top-3 left-10 right-10 h-3 border-t border-b border-[#98af93]/30 pointer-events-none" />
 
-              {/* Top View Mode Switcher & Close Button */}
-              <div className="relative z-20 flex items-center justify-between pb-3 mb-3 border-b border-[#c8d6c4]/60">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold text-[#133926] uppercase tracking-wider font-inter">View Mode:</span>
-                  <div className="flex items-center p-0.5 rounded-xl bg-[#dbe5d8] border border-[#c4d4c0]">
-                    <button
-                      type="button"
-                      onClick={() => setMeetingMockupView('website')}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${meetingMockupView === 'website'
-                        ? 'bg-white text-[#133926] shadow-xs'
-                        : 'text-[#2e4738] hover:text-[#133926]'
-                        }`}
-                    >
-                      Website Form
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setMeetingMockupView('mockup')}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${meetingMockupView === 'mockup'
-                        ? 'bg-white text-[#133926] shadow-xs'
-                        : 'text-[#2e4738] hover:text-[#133926]'
-                        }`}
-                    >
-                      Side-by-Side Mockup
-                    </button>
-                  </div>
-                </div>
-
+              {/* Close Button */}
+              <div className="flex justify-end mb-2 relative z-10">
                 <button
                   type="button"
                   onClick={resetRequestForm}
-                  className="p-1.5 rounded-xl hover:bg-black/5 text-[#2e4738] hover:text-[#133926] transition-colors cursor-pointer"
+                  className="p-1.5 rounded-full text-[#133926]/60 hover:text-[#133926] hover:bg-black/5 transition-colors cursor-pointer"
                   title="Close"
                 >
                   <X className="w-5 h-5" />
@@ -961,267 +934,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   >
                     Done
                   </button>
-                </div>
-              ) : meetingMockupView === 'mockup' ? (
-                /* ============================================================ */
-                /* SIDE-BY-SIDE DESIGN MOCKUP (Exact replica of user screenshot) */
-                /* ============================================================ */
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
-                  {/* Mockup Card 1: ONLINE MEETING */}
-                  <div className="flex flex-col">
-                    <div className="text-center mb-2">
-                      <span className="text-xs font-semibold tracking-widest text-[#244b36] uppercase font-inter">
-                        — ONLINE MEETING —
-                      </span>
-                    </div>
-                    <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#d2ded0] flex flex-col justify-between flex-1">
-                      <div>
-                        <h2 className="text-3xl font-serif font-bold text-[#133926] tracking-tight mb-4">
-                          Meeting
-                        </h2>
-
-                        {/* Section 1: Sender Details */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Sender Details</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingSenderName}
-                                placeholder="Enter sender name"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
-                              <input
-                                type="email"
-                                readOnly
-                                value={meetingSenderEmail}
-                                placeholder="Enter sender email"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Section 2: Receiver Details */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Receiver Details</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingReceiverName}
-                                placeholder="Enter receiver name"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
-                              <input
-                                type="email"
-                                readOnly
-                                value={meetingReceiverEmail}
-                                placeholder="Enter receiver email"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Section 3: Mode of Meeting (Online) */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Mode of Meeting</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div>
-                            <div className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] font-inter flex items-center justify-between">
-                              <span>Online</span>
-                              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Meeting URL</label>
-                            <input
-                              type="text"
-                              readOnly
-                              value={meetingUrl}
-                              placeholder="Enter meeting URL"
-                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingTime}
-                                placeholder="Select time"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none pr-8"
-                              />
-                              <Clock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
-                            <textarea
-                              rows={3}
-                              readOnly
-                              value={meetingPurpose}
-                              placeholder="Enter meeting purpose or description"
-                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none resize-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 pt-4 mt-2">
-                        <button type="button" className="px-5 py-2 rounded-xl bg-[#133926] text-white font-inter text-xs font-medium">Submit</button>
-                        <button type="button" onClick={resetRequestForm} className="px-5 py-2 rounded-xl border border-[#9cb298] text-[#133926] font-inter text-xs font-medium">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mockup Card 2: OFFLINE MEETING */}
-                  <div className="flex flex-col">
-                    <div className="text-center mb-2">
-                      <span className="text-xs font-semibold tracking-widest text-[#244b36] uppercase font-inter">
-                        — OFFLINE MEETING —
-                      </span>
-                    </div>
-                    <div className="bg-white rounded-3xl p-6 sm:p-7 shadow-xl border border-[#d2ded0] flex flex-col justify-between flex-1">
-                      <div>
-                        <h2 className="text-3xl font-serif font-bold text-[#133926] tracking-tight mb-4">
-                          Meeting
-                        </h2>
-
-                        {/* Section 1: Sender Details */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Sender Details</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingSenderName}
-                                placeholder="Enter sender name"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
-                              <input
-                                type="email"
-                                readOnly
-                                value={meetingSenderEmail}
-                                placeholder="Enter sender email"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Section 2: Receiver Details */}
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center gap-2 mb-1.5">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Receiver Details</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingReceiverName}
-                                placeholder="Enter receiver name"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
-                              <input
-                                type="email"
-                                readOnly
-                                value={meetingReceiverEmail}
-                                placeholder="Enter receiver email"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Section 3: Mode of Meeting (Offline) */}
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="font-serif text-sm font-bold text-[#133926] whitespace-nowrap">Mode of Meeting</span>
-                            <div className="h-px bg-[#c6d4c2] flex-1" />
-                          </div>
-                          <div>
-                            <div className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] font-inter flex items-center justify-between">
-                              <span>Offline</span>
-                              <ChevronDown className="w-3.5 h-3.5 text-gray-400" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Place of Meeting</label>
-                            <input
-                              type="text"
-                              readOnly
-                              value={meetingPlace}
-                              placeholder="Enter meeting location"
-                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
-                            <div className="relative">
-                              <input
-                                type="text"
-                                readOnly
-                                value={meetingTime}
-                                placeholder="Select time"
-                                className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none pr-8"
-                              />
-                              <Clock className="w-3.5 h-3.5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
-                            <textarea
-                              rows={3}
-                              readOnly
-                              value={meetingPurpose}
-                              placeholder="Enter meeting purpose or description"
-                              className="w-full px-3 py-2 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 font-inter focus:outline-none resize-none"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3 pt-4 mt-2">
-                        <button type="button" className="px-5 py-2 rounded-xl bg-[#133926] text-white font-inter text-xs font-medium">Submit</button>
-                        <button type="button" onClick={resetRequestForm} className="px-5 py-2 rounded-xl border border-[#9cb298] text-[#133926] font-inter text-xs font-medium">Cancel</button>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               ) : (
                 /* ============================================================ */
@@ -1713,7 +1425,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           ) : selectedRequestType.id === 'general-info' ? (
             /* ============================================================== */
             /* DEDICATED "SUBMIT GENERAL INFORMATION" FORM                     */
-            /* Matching Mockup & Specification                                */
+            /* Matching Specification                                         */
             /* ============================================================== */
             <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-white p-6 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
               
