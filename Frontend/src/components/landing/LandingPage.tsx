@@ -270,14 +270,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       icon: Info,
       color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
       badge: 'General Information'
-    },
-    {
-      id: 'task-request',
-      title: 'Task / Request',
-      desc: 'Ask for an approval or action',
-      icon: ClipboardCheck,
-      color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
-      badge: 'Task & Approval'
     }
   ];
 
