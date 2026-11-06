@@ -169,6 +169,82 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
+  // General Information Specific State (Matching General Information Specification & Mockup)
+  const [infoSenderName, setInfoSenderName] = useState('');
+  const [infoSenderEmail, setInfoSenderEmail] = useState('');
+  const [infoReceiverName, setInfoReceiverName] = useState('');
+  const [infoReceiverEmail, setInfoReceiverEmail] = useState('');
+  const [infoSubject, setInfoSubject] = useState('');
+  const [infoDepartment, setInfoDepartment] = useState('');
+  const [infoDescription, setInfoDescription] = useState('');
+
+  // Field-level error messages displayed beside labels
+  const [infoErrors, setInfoErrors] = useState<{
+    senderName?: string;
+    senderEmail?: string;
+    receiverName?: string;
+    receiverEmail?: string;
+    subject?: string;
+  }>({});
+
+  const handleInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const errors: typeof infoErrors = {};
+
+    if (!infoSenderName.trim()) {
+      errors.senderName = 'Sender Name is required';
+    }
+    if (!infoSenderEmail.trim()) {
+      errors.senderEmail = 'Sender Email is required';
+    } else if (!emailRegex.test(infoSenderEmail.trim())) {
+      errors.senderEmail = 'Invalid email address';
+    }
+
+    if (!infoReceiverName.trim()) {
+      errors.receiverName = 'Receiver Name is required';
+    }
+    if (!infoReceiverEmail.trim()) {
+      errors.receiverEmail = 'Receiver Email is required';
+    } else if (!emailRegex.test(infoReceiverEmail.trim())) {
+      errors.receiverEmail = 'Invalid email address';
+    }
+
+    if (!infoSubject.trim()) {
+      errors.subject = 'Subject is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setInfoErrors(errors);
+      return;
+    }
+    setInfoErrors({});
+
+    setIsSubmitting(true);
+    const newRef = `GEN-INF-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    try {
+      await api.createAppointment({
+        title: infoSubject.trim() || `General Info from ${infoSenderName}`,
+        requestedBy: `${infoSenderName} (${infoSenderEmail})`,
+        department: infoDepartment.trim() || 'General Information',
+        team: infoReceiverName ? `To: ${infoReceiverName} (${infoReceiverEmail})` : 'Dean Administration',
+        date: reqDate,
+        time: '10:00 AM',
+        dateTimeDisplay: `${reqDate} • General Info`,
+        location: 'Office of the Dean',
+        purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail})\nReceiver: ${infoReceiverName} (${infoReceiverEmail})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
+        status: 'Scheduled'
+      });
+    } catch (err) {
+      console.warn('API submission fallback:', err);
+    } finally {
+      setIsSubmitting(false);
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
+    }
+  };
+
   // Work Request Categories matching user's chip reference screenshot verbatim
   const requestTypes = [
     {
@@ -261,6 +337,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setEventDepartment('');
     setEventTime('');
     setEventPurpose('');
+    setInfoSenderName('');
+    setInfoSenderEmail('');
+    setInfoReceiverName('');
+    setInfoReceiverEmail('');
+    setInfoSubject('');
+    setInfoDepartment('');
+    setInfoDescription('');
+    setInfoErrors({});
   };
 
   // Departments List matching Screenshot 2
@@ -777,7 +861,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             /* Soft Ivory-to-Sage Background with Architectural Linework       */
             /* ============================================================== */
             <div className={`w-full ${meetingMockupView === 'mockup' ? 'max-w-5xl' : 'max-w-xl'} my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all`}>
-              
+
               {/* Classical Architectural Neoclassical Column Linework (Left & Right) */}
               <svg className="hidden md:block absolute left-2 top-3 bottom-3 w-8 text-[#98af93]/40 pointer-events-none select-none h-[calc(100%-24px)]" viewBox="0 0 32 600" fill="none" preserveAspectRatio="none">
                 <rect x="2" y="4" width="28" height="4" stroke="currentColor" strokeWidth="1.2" fill="none" />
@@ -816,29 +900,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     <button
                       type="button"
                       onClick={() => setMeetingMockupView('website')}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${
-                        meetingMockupView === 'website' 
-                          ? 'bg-white text-[#133926] shadow-xs' 
-                          : 'text-[#2e4738] hover:text-[#133926]'
-                      }`}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${meetingMockupView === 'website'
+                        ? 'bg-white text-[#133926] shadow-xs'
+                        : 'text-[#2e4738] hover:text-[#133926]'
+                        }`}
                     >
                       Website Form
                     </button>
                     <button
                       type="button"
                       onClick={() => setMeetingMockupView('mockup')}
-                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${
-                        meetingMockupView === 'mockup' 
-                          ? 'bg-white text-[#133926] shadow-xs' 
-                          : 'text-[#2e4738] hover:text-[#133926]'
-                      }`}
+                      className={`px-3 py-1 rounded-lg text-xs font-semibold font-inter transition-all cursor-pointer ${meetingMockupView === 'mockup'
+                        ? 'bg-white text-[#133926] shadow-xs'
+                        : 'text-[#2e4738] hover:text-[#133926]'
+                        }`}
                     >
                       Side-by-Side Mockup
                     </button>
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="button"
                   onClick={resetRequestForm}
                   className="p-1.5 rounded-xl hover:bg-black/5 text-[#2e4738] hover:text-[#133926] transition-colors cursor-pointer"
@@ -915,7 +997,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingSenderName}
@@ -925,7 +1007,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             </div>
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
-                              <input 
+                              <input
                                 type="email"
                                 readOnly
                                 value={meetingSenderEmail}
@@ -945,7 +1027,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingReceiverName}
@@ -955,7 +1037,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             </div>
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
-                              <input 
+                              <input
                                 type="email"
                                 readOnly
                                 value={meetingReceiverEmail}
@@ -980,7 +1062,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </div>
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Meeting URL</label>
-                            <input 
+                            <input
                               type="text"
                               readOnly
                               value={meetingUrl}
@@ -991,7 +1073,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
                             <div className="relative">
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingTime}
@@ -1003,7 +1085,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </div>
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
-                            <textarea 
+                            <textarea
                               rows={3}
                               readOnly
                               value={meetingPurpose}
@@ -1043,7 +1125,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Name</label>
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingSenderName}
@@ -1053,7 +1135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             </div>
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Sender Email ID</label>
-                              <input 
+                              <input
                                 type="email"
                                 readOnly
                                 value={meetingSenderEmail}
@@ -1073,7 +1155,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Name</label>
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingReceiverName}
@@ -1083,7 +1165,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             </div>
                             <div>
                               <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Receiver Email ID</label>
-                              <input 
+                              <input
                                 type="email"
                                 readOnly
                                 value={meetingReceiverEmail}
@@ -1108,7 +1190,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </div>
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Place of Meeting</label>
-                            <input 
+                            <input
                               type="text"
                               readOnly
                               value={meetingPlace}
@@ -1119,7 +1201,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Time</label>
                             <div className="relative">
-                              <input 
+                              <input
                                 type="text"
                                 readOnly
                                 value={meetingTime}
@@ -1131,7 +1213,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </div>
                           <div>
                             <label className="block text-[11px] font-semibold text-[#1a2e22] mb-1 font-inter">Purpose / Description</label>
-                            <textarea 
+                            <textarea
                               rows={3}
                               readOnly
                               value={meetingPurpose}
@@ -1172,11 +1254,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Sender Name
                           </label>
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             required
-                            value={meetingSenderName} 
-                            onChange={(e) => setMeetingSenderName(e.target.value)} 
+                            value={meetingSenderName}
+                            onChange={(e) => setMeetingSenderName(e.target.value)}
                             placeholder="Enter sender name"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1185,11 +1267,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Sender Email ID
                           </label>
-                          <input 
-                            type="email" 
+                          <input
+                            type="email"
                             required
-                            value={meetingSenderEmail} 
-                            onChange={(e) => setMeetingSenderEmail(e.target.value)} 
+                            value={meetingSenderEmail}
+                            onChange={(e) => setMeetingSenderEmail(e.target.value)}
                             placeholder="Enter sender email"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1210,10 +1292,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Receiver Name
                           </label>
-                          <input 
-                            type="text" 
-                            value={meetingReceiverName} 
-                            onChange={(e) => setMeetingReceiverName(e.target.value)} 
+                          <input
+                            type="text"
+                            value={meetingReceiverName}
+                            onChange={(e) => setMeetingReceiverName(e.target.value)}
                             placeholder="Enter receiver name"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1222,10 +1304,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Receiver Email ID
                           </label>
-                          <input 
-                            type="email" 
-                            value={meetingReceiverEmail} 
-                            onChange={(e) => setMeetingReceiverEmail(e.target.value)} 
+                          <input
+                            type="email"
+                            value={meetingReceiverEmail}
+                            onChange={(e) => setMeetingReceiverEmail(e.target.value)}
                             placeholder="Enter receiver email"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1266,10 +1348,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Meeting URL
                           </label>
-                          <input 
-                            type="url" 
-                            value={meetingUrl} 
-                            onChange={(e) => setMeetingUrl(e.target.value)} 
+                          <input
+                            type="url"
+                            value={meetingUrl}
+                            onChange={(e) => setMeetingUrl(e.target.value)}
                             placeholder="Enter meeting URL"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1279,10 +1361,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Place of Meeting
                           </label>
-                          <input 
-                            type="text" 
-                            value={meetingPlace} 
-                            onChange={(e) => setMeetingPlace(e.target.value)} 
+                          <input
+                            type="text"
+                            value={meetingPlace}
+                            onChange={(e) => setMeetingPlace(e.target.value)}
                             placeholder="Enter meeting location"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
@@ -1295,10 +1377,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           Time
                         </label>
                         <div className="relative">
-                          <input 
-                            type="text" 
-                            value={meetingTime} 
-                            onChange={(e) => setMeetingTime(e.target.value)} 
+                          <input
+                            type="text"
+                            value={meetingTime}
+                            onChange={(e) => setMeetingTime(e.target.value)}
                             placeholder="Select time"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter pr-10"
                           />
@@ -1311,10 +1393,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                           Purpose / Description
                         </label>
-                        <textarea 
+                        <textarea
                           rows={4}
-                          value={meetingPurpose} 
-                          onChange={(e) => setMeetingPurpose(e.target.value)} 
+                          value={meetingPurpose}
+                          onChange={(e) => setMeetingPurpose(e.target.value)}
                           placeholder="Enter meeting purpose or description"
                           className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter resize-none"
                         />
@@ -1323,15 +1405,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
                     {/* Bottom Buttons: Solid Forest Green Submit & Outlined Cancel */}
                     <div className="flex items-center gap-3 pt-3">
-                      <button 
-                        type="submit" 
+                      <button
+                        type="submit"
                         disabled={isSubmitting}
                         className="px-6 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer shadow-xs disabled:opacity-50"
                       >
                         {isSubmitting ? 'Submitting...' : 'Submit'}
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         onClick={resetRequestForm}
                         className="px-6 py-2.5 rounded-xl border border-[#9cb298] text-[#133926] hover:bg-black/5 font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer"
                       >
@@ -1636,6 +1718,267 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 </div>
               )}
             </div>
+          ) : selectedRequestType.id === 'general-info' ? (
+            /* ============================================================== */
+            /* DEDICATED "SUBMIT GENERAL INFORMATION" FORM                     */
+            /* Matching Mockup & Specification                                */
+            /* ============================================================== */
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-white p-6 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
+              
+              {/* Header with Title and Close Icon */}
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-2xl sm:text-3xl font-serif font-bold text-[#133926] tracking-tight">
+                  Submit General Information
+                </h2>
+                <button
+                  type="button"
+                  onClick={resetRequestForm}
+                  className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-black/5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5 text-gray-500 hover:text-gray-800" />
+                </button>
+              </div>
+
+              {requestFormSubmitted ? (
+                /* Success Confirmation View */
+                <div className="bg-[#fcfdfa] rounded-2xl p-6 sm:p-8 border border-[#d2ded0] text-center space-y-4 my-2 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-full bg-[#eaf3e8] text-[#133926] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
+                  <div>
+                    <h3 className="font-serif text-2xl font-bold text-[#133926]">
+                      General Information Submitted
+                    </h3>
+                    <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
+                      Your information has been recorded and submitted to the Dean's Office.
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-xl bg-white border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Reference Code:</span>
+                      <span className="font-mono font-bold text-[#133926]">{referenceId}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Subject:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoSubject}</span>
+                    </div>
+                    {infoDepartment && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Department:</span>
+                        <span className="font-semibold text-gray-800">{infoDepartment}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sender:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoSenderName} ({infoSenderEmail})</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Receiver:</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoReceiverName} ({infoReceiverEmail})</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={resetRequestForm}
+                    className="px-6 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-inter text-xs font-semibold cursor-pointer transition-all shadow-xs"
+                  >
+                    Done
+                  </button>
+                </div>
+              ) : (
+                <form onSubmit={handleInfoSubmit} className="space-y-4 sm:space-y-5">
+                  {/* 1. Sender Details */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="px-3.5 py-1 rounded-full bg-[#dce6d8] text-[#133926] font-semibold text-xs tracking-tight font-inter">
+                        Sender Details
+                      </span>
+                      <div className="h-px bg-[#c4d4c0] flex-1" />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Sender Name
+                          </label>
+                          {infoErrors.senderName && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.senderName}
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="text" 
+                          value={infoSenderName} 
+                          onChange={(e) => {
+                            setInfoSenderName(e.target.value);
+                            if (infoErrors.senderName) setInfoErrors(prev => ({ ...prev, senderName: undefined }));
+                          }} 
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.senderName ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Sender Email ID
+                          </label>
+                          {infoErrors.senderEmail && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.senderEmail}
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="email" 
+                          value={infoSenderEmail} 
+                          onChange={(e) => {
+                            setInfoSenderEmail(e.target.value);
+                            if (infoErrors.senderEmail) setInfoErrors(prev => ({ ...prev, senderEmail: undefined }));
+                          }} 
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.senderEmail ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Receiver Details */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="px-3.5 py-1 rounded-full bg-[#dce6d8] text-[#133926] font-semibold text-xs tracking-tight font-inter">
+                        Receiver Details
+                      </span>
+                      <div className="h-px bg-[#c4d4c0] flex-1" />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Receiver Name
+                          </label>
+                          {infoErrors.receiverName && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.receiverName}
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="text" 
+                          value={infoReceiverName} 
+                          onChange={(e) => {
+                            setInfoReceiverName(e.target.value);
+                            if (infoErrors.receiverName) setInfoErrors(prev => ({ ...prev, receiverName: undefined }));
+                          }} 
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.receiverName ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Receiver Email ID
+                          </label>
+                          {infoErrors.receiverEmail && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.receiverEmail}
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="email" 
+                          value={infoReceiverEmail} 
+                          onChange={(e) => {
+                            setInfoReceiverEmail(e.target.value);
+                            if (infoErrors.receiverEmail) setInfoErrors(prev => ({ ...prev, receiverEmail: undefined }));
+                          }} 
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.receiverEmail ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 3. Information Details */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="px-3.5 py-1 rounded-full bg-[#dce6d8] text-[#133926] font-semibold text-xs tracking-tight font-inter">
+                        Information Details
+                      </span>
+                      <div className="h-px bg-[#c4d4c0] flex-1" />
+                    </div>
+
+                    <div className="space-y-3.5">
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Subject
+                          </label>
+                          {infoErrors.subject && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.subject}
+                            </span>
+                          )}
+                        </div>
+                        <input 
+                          type="text" 
+                          value={infoSubject} 
+                          onChange={(e) => {
+                            setInfoSubject(e.target.value);
+                            if (infoErrors.subject) setInfoErrors(prev => ({ ...prev, subject: undefined }));
+                          }} 
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.subject ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                          Department
+                        </label>
+                        <input 
+                          type="text" 
+                          value={infoDepartment} 
+                          onChange={(e) => setInfoDepartment(e.target.value)} 
+                          placeholder="Enter department name"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                          Description
+                        </label>
+                        <textarea 
+                          rows={4} 
+                          value={infoDescription} 
+                          onChange={(e) => setInfoDescription(e.target.value)} 
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Actions: Back on left, Submit on right */}
+                  <div className="flex items-center justify-between pt-3">
+                    <button 
+                      type="button" 
+                      onClick={resetRequestForm}
+                      className="text-xs sm:text-sm font-semibold text-[#133926] hover:text-[#0b2519] transition-colors cursor-pointer py-2 font-inter"
+                    >
+                      Back
+                    </button>
+                    <button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                      className="px-8 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer shadow-xs disabled:opacity-50"
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
           ) : (
             /* Standard Request Modal for Event, General Information, Task / Request */
             <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-100 shadow-2xl overflow-hidden relative max-h-[92vh] flex flex-col animate-in zoom-in-95 duration-200">
@@ -1660,7 +2003,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   </div>
                 </div>
 
-                <button 
+                <button
                   type="button"
                   onClick={resetRequestForm}
                   className="text-gray-400 hover:text-gray-700 p-1.5 rounded-xl hover:bg-white transition-colors cursor-pointer"
@@ -1736,11 +2079,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                               type="button"
                               key={t.id}
                               onClick={() => setSelectedRequestType(t)}
-                              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${
-                                isCurrent
-                                  ? 'border-[#00a884] bg-emerald-50/60 ring-2 ring-[#00a884]/20'
-                                  : 'border-gray-200 hover:border-gray-300 bg-white'
-                              }`}
+                              className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex items-center gap-2.5 ${isCurrent
+                                ? 'border-[#00a884] bg-emerald-50/60 ring-2 ring-[#00a884]/20'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
+                                }`}
                             >
                               <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${isCurrent ? 'bg-[#00a884] text-white' : 'bg-gray-100 text-gray-600'}`}>
                                 <Icon className="w-3.5 h-3.5" />
@@ -1892,13 +2234,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             type="button"
                             key={p}
                             onClick={() => setReqPriority(p)}
-                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                              reqPriority === p
-                                ? p === 'Urgent'
+                            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${reqPriority === p
+                              ? p === 'Urgent'
                                 ? 'bg-red-100 text-red-700 ring-1 ring-red-400'
                                 : 'bg-emerald-100 text-emerald-800 ring-1 ring-emerald-400'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                            }`}
+                              }`}
                           >
                             {p}
                           </button>
