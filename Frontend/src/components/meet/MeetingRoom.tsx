@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { 
-  Camera, CameraOff, Mic, MicOff, PhoneOff, Share2, Copy, Check, 
-  Users, ShieldAlert, AlertCircle, RefreshCw, MonitorUp, 
+import {
+  Camera, CameraOff, Mic, MicOff, PhoneOff, Share2, Copy, Check,
+  Users, ShieldAlert, AlertCircle, RefreshCw, MonitorUp,
   Lock, Video as VideoIcon, ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -67,9 +67,9 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
     setAuthStatus('verifying');
     try {
       const res = await api.verifyMeetingAccess(
-        meetingId, 
-        currentUser.id, 
-        currentUser.email, 
+        meetingId,
+        currentUser.id,
+        currentUser.email,
         currentUser.role
       );
 
@@ -109,20 +109,20 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
         video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
         audio: { echoCancellation: true, noiseSuppression: true }
       })
-      .then((stream) => {
-        if (!active) {
-          stream.getTracks().forEach(t => t.stop());
-          return;
-        }
-        localStreamRef.current = stream;
-        setLocalStream(stream);
-        if (lobbyVideoRef.current) {
-          lobbyVideoRef.current.srcObject = stream;
-        }
-      })
-      .catch((err) => {
-        console.warn('[Media] Camera/Mic access denied or unavailable:', err.message);
-      });
+        .then((stream) => {
+          if (!active) {
+            stream.getTracks().forEach(t => t.stop());
+            return;
+          }
+          localStreamRef.current = stream;
+          setLocalStream(stream);
+          if (lobbyVideoRef.current) {
+            lobbyVideoRef.current.srcObject = stream;
+          }
+        })
+        .catch((err) => {
+          console.warn('[Media] Camera/Mic access denied or unavailable:', err.message);
+        });
     }
 
     return () => {
@@ -229,7 +229,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
     if (peersRef.current[socketId]) {
       try {
         peersRef.current[socketId].pc.close();
-      } catch (e) {}
+      } catch (e) { }
       delete peersRef.current[socketId];
     }
     setRemotePeers(prev => {
@@ -364,7 +364,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
     Object.keys(peersRef.current).forEach(id => {
       try {
         peersRef.current[id].pc.close();
-      } catch (e) {}
+      } catch (e) { }
     });
     peersRef.current = {};
     setRemotePeers({});
@@ -502,7 +502,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
             </div>
           )}
 
-          <form 
+          <form
             onSubmit={async (e) => {
               e.preventDefault();
               setIsLoggingIn(true);
@@ -639,7 +639,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
         {/* Center Content */}
         <div className="flex-1 flex items-center justify-center p-6">
           <div className="w-full max-w-4xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-            
+
             {/* Left: Camera Preview Window */}
             <div className="lg:col-span-7 flex flex-col items-center">
               <div className="w-full aspect-video rounded-3xl bg-[#131d16] border border-[#26382c] overflow-hidden relative shadow-2xl flex items-center justify-center">
@@ -665,9 +665,8 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10">
                   <button
                     onClick={toggleMic}
-                    className={`p-3 rounded-xl transition-all cursor-pointer ${
-                      isMicOn ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'
-                    }`}
+                    className={`p-3 rounded-xl transition-all cursor-pointer ${isMicOn ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'
+                      }`}
                     title={isMicOn ? 'Mute Microphone' : 'Unmute Microphone'}
                   >
                     {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
@@ -675,9 +674,8 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
 
                   <button
                     onClick={toggleVideo}
-                    className={`p-3 rounded-xl transition-all cursor-pointer ${
-                      isVideoOn ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'
-                    }`}
+                    className={`p-3 rounded-xl transition-all cursor-pointer ${isVideoOn ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-red-600 hover:bg-red-500 text-white'
+                      }`}
                     title={isVideoOn ? 'Turn Off Camera' : 'Turn On Camera'}
                   >
                     {isVideoOn ? <Camera className="w-4 h-4" /> : <CameraOff className="w-4 h-4" />}
@@ -768,7 +766,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
 
   return (
     <div className="min-h-screen bg-[#080d0a] text-white flex flex-col overflow-hidden select-none">
-      
+
       {/* Top Header Bar */}
       <header className="px-6 py-3.5 flex items-center justify-between bg-[#0e1612]/90 backdrop-blur-md border-b border-[#1c2b21] z-20">
         <div className="flex items-center gap-3">
@@ -804,7 +802,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
 
       {/* Main Video Area */}
       <main className="flex-1 relative p-4 flex items-center justify-center overflow-hidden">
-        
+
         {peerCount === 0 ? (
           /* Waiting for other participant to join */
           <div className="w-full h-full max-w-5xl relative rounded-3xl overflow-hidden bg-[#101913] border border-[#203125] flex flex-col items-center justify-center">
@@ -925,13 +923,12 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
       {/* Bottom Floating Call Controls */}
       <footer className="py-4 px-6 flex items-center justify-center bg-[#0d1611]/90 backdrop-blur-md border-t border-[#1d2d22] z-20">
         <div className="flex items-center gap-3 sm:gap-4 bg-[#141f17] px-6 py-2.5 rounded-2xl border border-[#293d30] shadow-2xl">
-          
+
           {/* Mic Toggle */}
           <button
             onClick={toggleMic}
-            className={`p-3.5 rounded-xl transition-all cursor-pointer ${
-              isMicOn ? 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200' : 'bg-red-600 hover:bg-red-500 text-white'
-            }`}
+            className={`p-3.5 rounded-xl transition-all cursor-pointer ${isMicOn ? 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200' : 'bg-red-600 hover:bg-red-500 text-white'
+              }`}
             title={isMicOn ? 'Mute Microphone' : 'Unmute Microphone'}
           >
             {isMicOn ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
@@ -940,9 +937,8 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
           {/* Video Toggle */}
           <button
             onClick={toggleVideo}
-            className={`p-3.5 rounded-xl transition-all cursor-pointer ${
-              isVideoOn ? 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200' : 'bg-red-600 hover:bg-red-500 text-white'
-            }`}
+            className={`p-3.5 rounded-xl transition-all cursor-pointer ${isVideoOn ? 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200' : 'bg-red-600 hover:bg-red-500 text-white'
+              }`}
             title={isVideoOn ? 'Turn Off Camera' : 'Turn On Camera'}
           >
             {isVideoOn ? <Camera className="w-5 h-5" /> : <CameraOff className="w-5 h-5" />}
@@ -951,9 +947,8 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
           {/* Screen Share */}
           <button
             onClick={toggleScreenShare}
-            className={`p-3.5 rounded-xl transition-all cursor-pointer hidden sm:flex ${
-              isScreenSharing ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200'
-            }`}
+            className={`p-3.5 rounded-xl transition-all cursor-pointer hidden sm:flex ${isScreenSharing ? 'bg-emerald-600 hover:bg-emerald-500 text-white' : 'bg-[#1e2e23] hover:bg-[#283e2f] text-gray-200'
+              }`}
             title={isScreenSharing ? 'Stop Screen Sharing' : 'Share Screen'}
           >
             <MonitorUp className="w-5 h-5" />
