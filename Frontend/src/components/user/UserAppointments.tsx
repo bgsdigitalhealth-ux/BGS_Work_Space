@@ -10,7 +10,8 @@ import {
   ChevronRight, 
   MapPin, 
   MoreVertical,
-  CalendarCheck
+  CalendarCheck,
+  Video
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -309,6 +310,14 @@ export const UserAppointments: React.FC = () => {
 
                     {/* Right Badge & Menu */}
                     <div className="flex items-center gap-2 shrink-0">
+                      {(apt.joinUrl || (apt.location && apt.location.startsWith('/meet/'))) && (
+                        <a
+                          href={apt.joinUrl || apt.location}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold flex items-center gap-1.5 transition-all shadow-xs"
+                        >
+                          <Video className="w-3.5 h-3.5" /> Join Call
+                        </a>
+                      )}
                       <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                         isToday 
                           ? 'bg-purple-50 text-[#5a36e6] border border-purple-200' 

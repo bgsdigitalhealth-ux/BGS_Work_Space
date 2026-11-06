@@ -148,11 +148,10 @@ export const AssignWorkForm: React.FC = () => {
           <button
             type="button"
             onClick={() => setAssignMode('admin_to_user')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              assignMode === 'admin_to_user'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_user'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <span>Admin</span>
             <ArrowRight className="w-3 h-3" />
@@ -161,11 +160,10 @@ export const AssignWorkForm: React.FC = () => {
           <button
             type="button"
             onClick={() => setAssignMode('admin_to_admin')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
-              assignMode === 'admin_to_admin'
-                ? 'bg-purple-600 text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_admin'
+              ? 'bg-purple-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
           >
             <span>Admin</span>
             <ArrowRight className="w-3 h-3" />
@@ -281,9 +279,8 @@ export const AssignWorkForm: React.FC = () => {
                   type="button"
                   key={r.name}
                   onClick={() => handleQuickRole(r.name)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${r.color} ${
-                    role === r.name ? 'ring-2 ring-indigo-500' : ''
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${r.color} ${role === r.name ? 'ring-2 ring-indigo-500' : ''
+                    }`}
                 >
                   {r.name}
                 </button>
@@ -380,11 +377,10 @@ export const AssignWorkForm: React.FC = () => {
         <div className="pt-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Format:</span>
-            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${
-              assignMode === 'admin_to_user'
-                ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
-                : 'bg-purple-100 text-purple-700 border border-purple-200'
-            }`}>
+            <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold ${assignMode === 'admin_to_user'
+              ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+              : 'bg-purple-100 text-purple-700 border border-purple-200'
+              }`}>
               {assignMode === 'admin_to_user' ? 'Admin → User' : 'Admin → Admin'}
             </span>
           </div>

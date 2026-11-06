@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { 
-  Code2, 
-  Palette, 
-  Megaphone, 
-  Layers, 
-  Edit3, 
-  Trash2, 
-  Users, 
-  UserCheck, 
-  Send, 
-  ClipboardList, 
+import {
+  Code2,
+  Palette,
+  Megaphone,
+  Layers,
+  Edit3,
+  Trash2,
+  Users,
+  UserCheck,
+  Send,
+  ClipboardList,
   CheckCircle2,
   Search,
   Plus
@@ -20,13 +20,13 @@ import { MembersTable } from './MembersTable';
 import { Member } from '../types';
 
 export const DepartmentDetail: React.FC = () => {
-  const { 
-    selectedDepartment, 
-    activeTab, 
-    setActiveTab, 
+  const {
+    selectedDepartment,
+    activeTab,
+    setActiveTab,
     teamSubTab,
     setTeamSubTab,
-    openEditDepartment, 
+    openEditDepartment,
     handleDeleteDepartment,
     members,
     teams,
@@ -117,7 +117,7 @@ export const DepartmentDetail: React.FC = () => {
     }
   };
 
-  const filteredMembers = members.filter(m => 
+  const filteredMembers = members.filter(m =>
     m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.email.toLowerCase().includes(memberSearch.toLowerCase()) ||
     m.role.toLowerCase().includes(memberSearch.toLowerCase())
@@ -143,7 +143,7 @@ export const DepartmentDetail: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2.5">
-            <button 
+            <button
               onClick={() => openEditDepartment(selectedDepartment)}
               className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
             >
@@ -169,9 +169,8 @@ export const DepartmentDetail: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
-                className={`pb-3 flex items-center gap-2 transition-colors relative cursor-pointer whitespace-nowrap ${
-                  active ? 'text-indigo-600 font-bold' : 'hover:text-slate-800'
-                }`}
+                className={`pb-3 flex items-center gap-2 transition-colors relative cursor-pointer whitespace-nowrap ${active ? 'text-indigo-600 font-bold' : 'hover:text-slate-800'
+                  }`}
               >
                 <Icon className="w-4 h-4" />
                 <span>{tab.label}</span>

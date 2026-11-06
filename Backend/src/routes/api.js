@@ -727,4 +727,80 @@ router.get('/messages/unread-count', async (req, res) => {
   }
 });
 
+// --- Video Meetings & WebRTC Endpoints ---
+
+router.get('/meetings', async (req, res) => {
+  try {
+    const { userId, email, role } = req.query;
+    const user = { id: userId, email, role: role || 'user' };
+    const meetings = await dataService.getMeetingsForUser(user);
+    res.json(meetings);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/meetings/turn-credentials', (req, res) => {
+  try {
+    const { userId } = req.query;
+    const creds = dataService.getTurnCredentials(userId);
+    res.json(creds);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/meetings/:meetingId', async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const meeting = await dataService.getMeetingById(meetingId);
+    if (!meeting) {
+      return res.status(404).json({ error: 'Meeting not found' });
+    }
+    res.json(meeting);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/meetings', async (req, res) => {
+  try {
+    const meeting = await dataService.createMeeting(req.body);
+    broadcast('MEETINGS_UPDATED', { meetingId: meeting.meetingId });
+    res.status(201).json(meeting);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.put('/meetings/:meetingId/approve', async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const adminUser = req.body.adminUser || { role: 'admin' };
+    const meeting = await dataService.approveMeeting(meetingId, adminUser);
+    broadcast('MEETINGS_UPDATED', { meetingId: meeting.meetingId });
+    res.json(meeting);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+router.get('/meetings/:meetingId/verify', async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const { userId, email, role } = req.query;
+    if (!userId && !email) {
+      return res.status(401).json({ allowed: false, error: 'Authentication required' });
+    }
+    const user = { id: userId, email, role: role || 'user' };
+    const verification = await dataService.verifyMeetingAccess(meetingId, user);
+    if (!verification.allowed) {
+      return res.status(403).json(verification);
+    }
+    res.json(verification);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;

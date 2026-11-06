@@ -8,11 +8,11 @@ interface Props {
 }
 
 export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
-  const { 
-    notifications, 
-    handleMarkNotificationRead, 
-    handleMarkAllNotificationsRead, 
-    setUserNav, 
+  const {
+    notifications,
+    handleMarkNotificationRead,
+    handleMarkAllNotificationsRead,
+    setUserNav,
     setAdminNav,
     portalMode
   } = useApp();
@@ -37,6 +37,10 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
 
   const handleNotificationClick = async (notif: typeof notifications[0]) => {
     await handleMarkNotificationRead(notif.id);
+    if (notif.link && notif.link.startsWith('/meet/')) {
+      window.location.href = notif.link;
+      return;
+    }
     if (notif.link === 'appointments') {
       if (portalMode === 'admin') setAdminNav('appointments');
       else setUserNav('appointments');
@@ -49,7 +53,7 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
   };
 
   return (
-    <div 
+    <div
       ref={dropdownRef}
       className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150"
     >
@@ -88,9 +92,8 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
             <div
               key={notif.id}
               onClick={() => handleNotificationClick(notif)}
-              className={`p-3.5 hover:bg-purple-50/50 transition cursor-pointer flex items-start gap-3 ${
-                !notif.read ? 'bg-indigo-50/30' : ''
-              }`}
+              className={`p-3.5 hover:bg-purple-50/50 transition cursor-pointer flex items-start gap-3 ${!notif.read ? 'bg-indigo-50/30' : ''
+                }`}
             >
               <div className="mt-1">
                 <span className={`block w-2 h-2 rounded-full ${!notif.read ? 'bg-[#5a36e6]' : 'bg-gray-300'}`} />

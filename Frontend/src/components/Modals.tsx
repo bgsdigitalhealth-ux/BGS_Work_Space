@@ -218,11 +218,11 @@ export const Modals: React.FC = () => {
               <h3 className="font-bold text-slate-900 text-base">
                 {editingDept ? 'Edit Department' : 'Add New Department'}
               </h3>
-              <button 
+              <button
                 onClick={() => {
                   setIsAddDeptOpen(false);
                   setEditingDept(null);
-                }} 
+                }}
                 className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -294,11 +294,11 @@ export const Modals: React.FC = () => {
               <h3 className="font-bold text-slate-900 text-base">
                 {editingTeam ? 'Edit Team' : 'Add New Team'}
               </h3>
-              <button 
+              <button
                 onClick={() => {
                   setIsAddTeamOpen(false);
                   setEditingTeam(null);
-                }} 
+                }}
                 className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -357,11 +357,11 @@ export const Modals: React.FC = () => {
               <h3 className="font-bold text-slate-900 text-base">
                 {editingMember ? 'Edit Team Member' : 'Add Team Member'}
               </h3>
-              <button 
+              <button
                 onClick={() => {
                   setIsAddMemberOpen(false);
                   setEditingMember(null);
-                }} 
+                }}
                 className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />

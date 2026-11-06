@@ -1,13 +1,13 @@
 import React from 'react';
-import { 
-  Users, 
-  Edit3, 
-  Trash2, 
-  Plus, 
-  Phone, 
-  Mail, 
-  Send, 
-  CheckSquare, 
+import {
+  Users,
+  Edit3,
+  Trash2,
+  Plus,
+  Phone,
+  Mail,
+  Send,
+  CheckSquare,
   CheckCircle2,
   Check
 } from 'lucide-react';
@@ -17,17 +17,17 @@ import { AssignWorkForm } from './AssignWorkForm';
 import { AssignedWorkSummary } from './AssignedWorkSummary';
 
 export const MembersTable: React.FC = () => {
-  const { 
-    selectedTeam, 
-    members, 
+  const {
+    selectedTeam,
+    members,
     tasks,
     workDone,
-    teamSubTab, 
-    setTeamSubTab, 
-    setIsAddMemberOpen, 
+    teamSubTab,
+    setTeamSubTab,
+    setIsAddMemberOpen,
     openEditTeam,
     openEditMember,
-    handleDeleteMember, 
+    handleDeleteMember,
     handleDeleteTeam,
     handleDeleteTask,
     handleDeleteWorkDone
@@ -117,14 +117,14 @@ export const MembersTable: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          <button 
+          <button
             onClick={() => openEditTeam(selectedTeam)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5 text-slate-500" />
             <span>Edit Team</span>
           </button>
-          <button 
+          <button
             onClick={() => handleDeleteTeam(selectedTeam.id)}
             title="Delete Team"
             className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors shadow-2xs cursor-pointer"
@@ -138,9 +138,8 @@ export const MembersTable: React.FC = () => {
       <div className="flex items-center gap-6 mt-4 border-b border-slate-100 text-xs font-bold text-slate-500 overflow-x-auto">
         <button
           onClick={() => setTeamSubTab('Members')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Members' ? 'text-indigo-600' : 'hover:text-slate-800'
-          }`}
+          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Members' ? 'text-indigo-600' : 'hover:text-slate-800'
+            }`}
         >
           <Users className="w-3.5 h-3.5" />
           <span>Members ({members.length})</span>
@@ -151,9 +150,8 @@ export const MembersTable: React.FC = () => {
 
         <button
           onClick={() => setTeamSubTab('Roles')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Roles' ? 'text-indigo-600' : 'hover:text-slate-800'
-          }`}
+          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Roles' ? 'text-indigo-600' : 'hover:text-slate-800'
+            }`}
         >
           <Send className="w-3.5 h-3.5" />
           <span>+ Roles & Work</span>
@@ -164,9 +162,8 @@ export const MembersTable: React.FC = () => {
 
         <button
           onClick={() => setTeamSubTab('Tasks')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Tasks' ? 'text-indigo-600' : 'hover:text-slate-800'
-          }`}
+          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Tasks' ? 'text-indigo-600' : 'hover:text-slate-800'
+            }`}
         >
           <CheckSquare className="w-3.5 h-3.5" />
           <span>Today's Tasks ({tasks.length})</span>
@@ -177,9 +174,8 @@ export const MembersTable: React.FC = () => {
 
         <button
           onClick={() => setTeamSubTab('WorkDone')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'WorkDone' ? 'text-indigo-600' : 'hover:text-slate-800'
-          }`}
+          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'WorkDone' ? 'text-indigo-600' : 'hover:text-slate-800'
+            }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Today's Work Done ({workDone.length})</span>
@@ -259,14 +255,14 @@ export const MembersTable: React.FC = () => {
                       </td>
                       <td className="py-3 px-3 text-right">
                         <div className="flex items-center justify-end gap-1.5">
-                          <button 
+                          <button
                             onClick={() => openEditMember(member)}
                             title="Edit member"
                             className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
-                          <button 
+                          <button
                             onClick={() => handleDeleteMember(member.id)}
                             title="Delete member"
                             className="p-1 rounded text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors cursor-pointer"
@@ -317,25 +313,23 @@ export const MembersTable: React.FC = () => {
                   key={task.id}
                   className="flex items-center justify-between p-3.5 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all group"
                 >
-                  <div 
+                  <div
                     className="flex items-center gap-3 flex-1 min-w-0 select-none cursor-default"
                     title={task.completed ? "Status: Completed by Team Member" : "Status: In Progress (Awaiting user update/completion)"}
                   >
                     <div
-                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${
-                        task.completed
-                          ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
-                          : 'border-slate-300 bg-slate-50 text-slate-400'
-                      }`}
+                      className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${task.completed
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs'
+                        : 'border-slate-300 bg-slate-50 text-slate-400'
+                        }`}
                       title={task.completed ? "Completed by Team Member" : "Read-only: Auto-checks when member updates work"}
                     >
                       {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span
-                        className={`text-xs font-semibold truncate ${
-                          task.completed ? 'line-through text-slate-400' : 'text-slate-800'
-                        }`}
+                        className={`text-xs font-semibold truncate ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'
+                          }`}
                       >
                         {task.title}
                       </span>

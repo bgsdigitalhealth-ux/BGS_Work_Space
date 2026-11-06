@@ -756,14 +756,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshUnreadMessagesCount();
       };
 
+      const handleMeetingEvent = () => {
+        refreshNotifications();
+        refreshAppointments();
+      };
+
       socket.on('conversation_updated', handleUpdate);
       socket.on('new_message', handleUpdate);
       socket.on('messages_read', handleUpdate);
+      socket.on('meeting_invitation', handleMeetingEvent);
+      socket.on('meeting_popup', handleMeetingEvent);
 
       return () => {
         socket.off('conversation_updated', handleUpdate);
         socket.off('new_message', handleUpdate);
         socket.off('messages_read', handleUpdate);
+        socket.off('meeting_invitation', handleMeetingEvent);
+        socket.off('meeting_popup', handleMeetingEvent);
       };
     } else {
       setUnreadMessagesCount(0);

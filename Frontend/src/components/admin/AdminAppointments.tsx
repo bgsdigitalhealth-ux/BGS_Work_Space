@@ -13,7 +13,8 @@ import {
   Eye, 
   Edit2, 
   Trash2, 
-  X
+  X,
+  Video
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Appointment } from '../../types';
@@ -375,7 +376,17 @@ export const AdminAppointments: React.FC = () => {
                         {getStatusBadge(apt.status)}
                       </td>
                       <td className="py-4 text-right pr-2 whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1 text-gray-400">
+                        <div className="inline-flex items-center gap-1.5 text-gray-400">
+                          {(apt.joinUrl || (apt.location && apt.location.startsWith('/meet/'))) && (
+                            <a
+                              href={apt.joinUrl || apt.location}
+                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] flex items-center gap-1 transition-all shadow-xs"
+                              title="Join Video Meeting"
+                            >
+                              <Video className="w-3 h-3" />
+                              <span>Join</span>
+                            </a>
+                          )}
                           <button
                             onClick={() => setViewingItem(apt)}
                             className="p-1.5 rounded-lg hover:text-[#5a36e6] hover:bg-white transition"

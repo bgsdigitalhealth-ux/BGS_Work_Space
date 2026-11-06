@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { 
-  Search, 
-  Plus, 
-  SendHorizontal, 
-  Paperclip, 
-  Smile, 
-  Check, 
-  CheckCheck, 
-  Video, 
-  Phone, 
-  MoreVertical, 
-  Download, 
-  FileText, 
-  X, 
-  MessageSquare, 
-  CircleDashed, 
-  Users, 
-  Settings, 
-  Sparkles, 
-  Mic, 
-  Lock, 
+import {
+  Search,
+  Plus,
+  SendHorizontal,
+  Paperclip,
+  Smile,
+  Check,
+  CheckCheck,
+  Video,
+  Phone,
+  MoreVertical,
+  Download,
+  FileText,
+  X,
+  MessageSquare,
+  CircleDashed,
+  Users,
+  Settings,
+  Sparkles,
+  Mic,
+  Lock,
   SquarePen,
   ArrowLeft,
   Copy,
@@ -45,7 +45,7 @@ export const MessagesView: React.FC = () => {
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterTab, setFilterTab] = useState<'All' | 'Unread' | 'Admin' | 'Users'>('All');
-  
+
   // Leftmost mini rail navigation tab
   const [activeRailTab, setActiveRailTab] = useState<'chats' | 'calls' | 'status' | 'groups' | 'ai' | 'settings'>('chats');
 
@@ -278,7 +278,7 @@ export const MessagesView: React.FC = () => {
         if (u.email) set.add(u.email.toLowerCase().trim());
       });
       setOnlineUserIds(prev => new Set([...prev, ...set]));
-    }).catch(() => {});
+    }).catch(() => { });
 
     socket.emit('get_online_users');
 
@@ -429,7 +429,7 @@ export const MessagesView: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const sizeFormatted = file.size > 1024 * 1024 
+    const sizeFormatted = file.size > 1024 * 1024
       ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
       : `${Math.round(file.size / 1024)} KB`;
 
@@ -480,8 +480,8 @@ export const MessagesView: React.FC = () => {
   const handleStartMeeting = () => {
     if (!currentUser) return;
     const code = `MEET-WKHUB-${Math.floor(1000 + Math.random() * 9000)}`;
-    const finalTitle = meetingTitle.trim() || (meetingType === 'group' 
-      ? (selectedMeetingGroupTeam !== 'All Teams' ? `${selectedMeetingGroupTeam} Group Meeting` : 'Team Workspace Group Meeting') 
+    const finalTitle = meetingTitle.trim() || (meetingType === 'group'
+      ? (selectedMeetingGroupTeam !== 'All Teams' ? `${selectedMeetingGroupTeam} Group Meeting` : 'Team Workspace Group Meeting')
       : (activeConversation?.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : 'Direct Video Meeting'));
 
     const newMeeting: MeetingData = {
@@ -571,8 +571,8 @@ export const MessagesView: React.FC = () => {
     if (msg.senderName && msg.senderName !== 'User' && msg.senderName.trim()) {
       return msg.senderName.trim();
     }
-    const match = eligibleUsers.find(u => 
-      u.id === msg.senderId || 
+    const match = eligibleUsers.find(u =>
+      u.id === msg.senderId ||
       (msg.senderEmail && u.email.toLowerCase() === msg.senderEmail.toLowerCase())
     );
     if (match && match.name) return match.name;
@@ -639,7 +639,7 @@ export const MessagesView: React.FC = () => {
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      list = list.filter(c => 
+      list = list.filter(c =>
         (c.otherUser?.email || '').toLowerCase().includes(q) ||
         (c.otherUser?.name || '').toLowerCase().includes(q) ||
         (c.lastMessage?.text || '').toLowerCase().includes(q)
@@ -734,7 +734,7 @@ export const MessagesView: React.FC = () => {
 
   return (
     <div className="flex h-[calc(100dvh-120px)] md:h-[calc(100vh-85px)] min-h-[500px] md:min-h-[640px] bg-white rounded-xl md:rounded-2xl border border-gray-200 overflow-hidden shadow-xl md:shadow-2xl relative select-none">
-      
+
       {/* ---------------- 1. WHATSAPP ICON NAVIGATION RAIL (FAR LEFT) ---------------- */}
       <aside className="hidden md:flex w-14 sm:w-16 bg-[#f0f2f5] border-r border-[#e9edef] flex flex-col items-center justify-between py-3.5 shrink-0 z-20">
         {/* Top Icons */}
@@ -742,18 +742,17 @@ export const MessagesView: React.FC = () => {
           {/* WhatsApp / WorkHub Brand Icon */}
           <div className="w-10 h-10 rounded-full flex items-center justify-center bg-[#25D366] text-white shadow-xs cursor-pointer hover:opacity-90 transition-opacity" title="WorkHub WhatsApp Chats">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
-              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z"/>
+              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z" />
             </svg>
           </div>
 
           <div className="w-8 h-px bg-gray-300/80 my-1" />
 
           {/* Chats Icon (Active) */}
-          <button 
-            onClick={() => setActiveRailTab('chats')} 
-            className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-colors cursor-pointer ${
-              activeRailTab === 'chats' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
-            }`}
+          <button
+            onClick={() => setActiveRailTab('chats')}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-colors cursor-pointer ${activeRailTab === 'chats' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+              }`}
             title="Chats"
           >
             <MessageSquare className="w-5 h-5 stroke-[2.2]" />
@@ -765,52 +764,49 @@ export const MessagesView: React.FC = () => {
           </button>
 
           {/* Calls */}
-          <button 
+          <button
             onClick={() => {
               setActiveRailTab('calls');
               alert('Voice and Video calls history: All endpoints ready for WebRTC.');
-            }} 
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-              activeRailTab === 'calls' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
-            }`}
+            }}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'calls' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+              }`}
             title="Calls"
           >
             <Phone className="w-5 h-5" />
           </button>
 
           {/* Status */}
-          <button 
+          <button
             onClick={() => {
               setActiveRailTab('status');
               alert('Work Status Updates: Share your active daily progress with connected teams.');
-            }} 
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-              activeRailTab === 'status' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
-            }`}
+            }}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'status' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+              }`}
             title="Status"
           >
             <CircleDashed className="w-5 h-5" />
           </button>
 
           {/* Teams / Communities */}
-          <button 
+          <button
             onClick={() => {
               setActiveRailTab('groups');
               openNewChatModal();
-            }} 
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
-              activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
-            }`}
+            }}
+            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+              }`}
             title="Communities & Teams"
           >
             <Users className="w-5 h-5" />
           </button>
 
           {/* AI / Meta AI Sparkles */}
-          <button 
+          <button
             onClick={() => {
               alert('WorkHub AI Copilot: Instant task summarization and assignment drafting.');
-            }} 
+            }}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
             title="WorkHub AI"
           >
@@ -820,7 +816,7 @@ export const MessagesView: React.FC = () => {
 
         {/* Bottom Icons: Settings & User Profile */}
         <div className="flex flex-col items-center gap-3">
-          <button 
+          <button
             onClick={() => alert(`Logged in as: ${currentUser?.email} (${currentUser?.role})`)}
             className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
             title="Settings"
@@ -845,7 +841,7 @@ export const MessagesView: React.FC = () => {
           <h2 className="text-xl font-bold text-[#111b21] tracking-tight">Chats</h2>
           <div className="flex items-center gap-1 text-[#54656f]">
             {/* Video Meeting Action Button (Create or Join Group/Direct Meeting) */}
-            <button 
+            <button
               type="button"
               onClick={() => {
                 setMeetingTitle(activeConversation?.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : '');
@@ -860,7 +856,7 @@ export const MessagesView: React.FC = () => {
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#25D366] ring-2 ring-white animate-pulse" />
             </button>
 
-            <button 
+            <button
               type="button"
               onClick={openNewChatModal}
               className="p-2 rounded-full hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
@@ -870,7 +866,7 @@ export const MessagesView: React.FC = () => {
             </button>
 
             <div className="relative">
-              <button 
+              <button
                 type="button"
                 onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
                 className="p-2 rounded-full hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
@@ -881,7 +877,7 @@ export const MessagesView: React.FC = () => {
 
               {/* 3-Dots Dropdown Menu */}
               {isHeaderMenuOpen && (
-                <div 
+                <div
                   onMouseLeave={() => setIsHeaderMenuOpen(false)}
                   className="absolute right-0 mt-1 w-56 bg-white rounded-2xl shadow-xl border border-gray-100 py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150"
                 >
@@ -958,11 +954,10 @@ export const MessagesView: React.FC = () => {
               <button
                 key={tab}
                 onClick={() => setFilterTab(tab)}
-                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#d9fdd3] text-[#008069] font-semibold'
-                    : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
-                }`}
+                className={`px-3 py-1 text-xs font-medium rounded-full whitespace-nowrap transition-all cursor-pointer ${isActive
+                  ? 'bg-[#d9fdd3] text-[#008069] font-semibold'
+                  : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
+                  }`}
               >
                 {tab === 'Unread' && totalUnreadCount > 0 ? `Unread (${totalUnreadCount})` : tab}
               </button>
@@ -1002,11 +997,10 @@ export const MessagesView: React.FC = () => {
                 <div
                   key={conv.id}
                   onClick={() => selectConversation(conv)}
-                  className={`p-3 px-3.5 flex items-center gap-3 cursor-pointer transition-colors ${
-                    isSelected 
-                      ? 'bg-[#f0f2f5]' 
-                      : 'hover:bg-[#f5f6f6]'
-                  }`}
+                  className={`p-3 px-3.5 flex items-center gap-3 cursor-pointer transition-colors ${isSelected
+                    ? 'bg-[#f0f2f5]'
+                    : 'hover:bg-[#f5f6f6]'
+                    }`}
                 >
                   {/* WhatsApp Circular Avatar with Online Dot */}
                   <div className="relative shrink-0">
@@ -1062,9 +1056,9 @@ export const MessagesView: React.FC = () => {
       {/* ---------------- 3. CHAT CANVAS & CONVERSATION (RIGHT PANEL) ---------------- */}
       {activeConversation ? (
         <div className="flex-1 flex flex-col bg-[#efeae2] min-w-0 relative">
-          
+
           {/* Subtle WhatsApp Classic Wallpaper Pattern Overlay */}
-          <div 
+          <div
             className="absolute inset-0 pointer-events-none opacity-[0.06] z-0"
             style={{
               backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20h20v20H20zm50 0h20v20H70zm-50 50h20v20H20zm50 0h20v20H70z' fill='%23000000' fill-opacity='1' fill-rule='evenodd'/%3E%3Ccircle cx='30' cy='30' r='5' fill='%23000000'/%3E%3Ccircle cx='80' cy='30' r='5' fill='%23000000'/%3E%3Ccircle cx='30' cy='80' r='5' fill='%23000000'/%3E%3Ccircle cx='80' cy='80' r='5' fill='%23000000'/%3E%3C/svg%3E")`,
@@ -1076,7 +1070,7 @@ export const MessagesView: React.FC = () => {
           <div className="h-[60px] px-3 sm:px-4 bg-[#f0f2f5] border-b border-[#e9edef] flex items-center justify-between shrink-0 z-10">
             <div className="flex items-center gap-2 sm:gap-3 min-w-0">
               {/* Mobile Back Button to return to Chats List */}
-              <button 
+              <button
                 type="button"
                 onClick={() => setActiveConversation(null)}
                 className="md:hidden p-1.5 rounded-full hover:bg-gray-200/60 text-[#54656f] -ml-1 transition-colors cursor-pointer"
@@ -1120,7 +1114,7 @@ export const MessagesView: React.FC = () => {
             {/* Header Right Action Icons */}
             <div className="flex items-center gap-1 sm:gap-2 text-[#54656f]">
               {/* Video Meeting Call Button */}
-              <button 
+              <button
                 type="button"
                 onClick={() => {
                   setMeetingTitle(activeConversation.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : 'Direct Video Meeting');
@@ -1128,37 +1122,37 @@ export const MessagesView: React.FC = () => {
                   setIsMeetingModalOpen(true);
                   setMeetingTab('create');
                 }}
-                className="p-2 rounded-full hover:bg-[#d9fdd3] text-[#008069] transition-colors cursor-pointer" 
+                className="p-2 rounded-full hover:bg-[#d9fdd3] text-[#008069] transition-colors cursor-pointer"
                 title="Start Video Meeting (or Group Call)"
               >
                 <Video className="w-5 h-5 stroke-[2.2]" />
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setMeetingTitle(activeConversation.otherUser?.name ? `Voice Call with ${activeConversation.otherUser.name}` : 'Voice Call');
                   setMeetingType('direct');
                   setIsMeetingModalOpen(true);
                   setMeetingTab('create');
                 }}
-                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer"
                 title="Voice Call"
               >
                 <Phone className="w-5 h-5" />
               </button>
               <div className="h-5 w-px bg-gray-300 mx-1 hidden sm:block" />
-              <button 
+              <button
                 onClick={() => alert(`Search conversation messages with ${activeConversation.otherUser?.email}`)}
-                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer"
                 title="Search Messages"
               >
                 <Search className="w-5 h-5" />
               </button>
-              <button 
+              <button
                 onClick={() => {
                   setIsMeetingModalOpen(true);
                   setMeetingTab('create');
                 }}
-                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer" 
+                className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer"
                 title="Meeting Options"
               >
                 <MoreVertical className="w-5 h-5" />
@@ -1271,15 +1265,15 @@ export const MessagesView: React.FC = () => {
                 const showSenderHeader = !isMe && !isSameSenderAsPrev;
 
                 return (
-                  <div 
-                    key={msg.id} 
+                  <div
+                    key={msg.id}
                     className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} ${isSameSenderAsPrev ? 'mt-0.5' : 'mt-2.5'}`}
                   >
                     <div className={`flex items-end gap-2 max-w-[85%] sm:max-w-md ${isMe ? 'justify-end' : 'justify-start'}`}>
                       {/* Avatar on the left for incoming team messages (WhatsApp Group style) */}
                       {!isMe && (
                         !isSameSenderAsPrev ? (
-                          <div 
+                          <div
                             className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 mb-0.5 shadow-2xs ${getAvatarBg(msg.senderEmail || displayName)}`}
                             title={`${displayName} (${msg.senderEmail})`}
                           >
@@ -1291,12 +1285,11 @@ export const MessagesView: React.FC = () => {
                       )}
 
                       {/* Chat Bubble */}
-                      <div 
-                        className={`relative px-3.5 py-2 rounded-lg shadow-2xs leading-relaxed break-words ${
-                          isMe 
-                            ? 'bg-[#d9fdd3] text-[#111b21] ' + (isSameSenderAsPrev ? 'rounded-tr-lg' : 'rounded-tr-none')
-                            : 'bg-white text-[#111b21] border border-gray-100/60 ' + (isSameSenderAsPrev ? 'rounded-tl-lg' : 'rounded-tl-none')
-                        }`}
+                      <div
+                        className={`relative px-3.5 py-2 rounded-lg shadow-2xs leading-relaxed break-words ${isMe
+                          ? 'bg-[#d9fdd3] text-[#111b21] ' + (isSameSenderAsPrev ? 'rounded-tr-lg' : 'rounded-tr-none')
+                          : 'bg-white text-[#111b21] border border-gray-100/60 ' + (isSameSenderAsPrev ? 'rounded-tl-lg' : 'rounded-tl-none')
+                          }`}
                       >
                         {/* WhatsApp Group Sender Name with distinct member color & role badge */}
                         {showSenderHeader && (
@@ -1320,10 +1313,10 @@ export const MessagesView: React.FC = () => {
                         {msg.attachment && (
                           <div className="mb-2 p-2 rounded-lg bg-black/5 flex items-center gap-3">
                             {msg.attachment.type === 'image' || msg.attachment.url?.startsWith('data:image') ? (
-                              <img 
-                                src={msg.attachment.url} 
-                                alt={msg.attachment.name} 
-                                className="w-16 h-16 rounded-md object-cover border border-white" 
+                              <img
+                                src={msg.attachment.url}
+                                alt={msg.attachment.name}
+                                className="w-16 h-16 rounded-md object-cover border border-white"
                               />
                             ) : (
                               <div className="w-10 h-10 rounded-md bg-[#00a884] text-white flex items-center justify-center">
@@ -1335,9 +1328,9 @@ export const MessagesView: React.FC = () => {
                               <p className="text-[10px] text-gray-500">{msg.attachment.size || 'Attachment'}</p>
                             </div>
                             {msg.attachment.url && (
-                              <a 
-                                href={msg.attachment.url} 
-                                download={msg.attachment.name} 
+                              <a
+                                href={msg.attachment.url}
+                                download={msg.attachment.name}
                                 className="p-1.5 rounded-full hover:bg-white text-gray-700 transition-colors"
                                 title="Download"
                               >
@@ -1538,8 +1531,8 @@ export const MessagesView: React.FC = () => {
             </button>
 
             {/* Input Pill */}
-            <form 
-              onSubmit={e => { e.preventDefault(); handleSendMessage(); }} 
+            <form
+              onSubmit={e => { e.preventDefault(); handleSendMessage(); }}
               className="flex-1 flex items-center bg-white rounded-lg px-4 py-2 border border-transparent focus-within:border-gray-200 shadow-2xs"
             >
               <input
@@ -1580,7 +1573,7 @@ export const MessagesView: React.FC = () => {
             {/* WhatsApp Laptop/Phone Center Graphic */}
             <div className="w-20 h-20 rounded-full bg-[#d9fdd3] text-[#008069] flex items-center justify-center mb-6 shadow-sm">
               <svg viewBox="0 0 24 24" width="44" height="44" fill="currentColor">
-                <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z"/>
+                <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91C2.13 13.66 2.59 15.36 3.45 16.86L2.05 22L7.3 20.62C8.75 21.41 10.38 21.83 12.04 21.83C17.5 21.83 21.95 17.38 21.95 11.92C21.95 9.27 20.92 6.78 19.05 4.91C17.18 3.03 14.69 2 12.04 2ZM12.05 20.15C10.57 20.15 9.12 19.75 7.85 19L7.55 18.82L4.43 19.64L5.26 16.6L5.06 16.29C4.24 14.98 3.81 13.47 3.81 11.91C3.81 7.37 7.5 3.68 12.05 3.68C14.25 3.68 16.31 4.54 17.87 6.1C19.42 7.66 20.28 9.72 20.28 11.92C20.28 16.46 16.59 20.15 12.05 20.15Z" />
               </svg>
             </div>
 
@@ -1616,7 +1609,7 @@ export const MessagesView: React.FC = () => {
                 <h3 className="font-bold text-base text-[#111b21]">New Chat</h3>
                 <p className="text-xs text-[#667781]">Select any registered member or admin</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsNewChatOpen(false)}
                 className="p-1.5 rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-200/60 cursor-pointer"
               >
@@ -1642,11 +1635,10 @@ export const MessagesView: React.FC = () => {
                   <button
                     key={role}
                     onClick={() => setNewChatRoleFilter(role)}
-                    className={`px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${
-                      newChatRoleFilter === role
-                        ? 'bg-[#00a884] text-white font-semibold'
-                        : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
-                    }`}
+                    className={`px-3 py-1 text-xs font-medium rounded-full transition-all cursor-pointer ${newChatRoleFilter === role
+                      ? 'bg-[#00a884] text-white font-semibold'
+                      : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
+                      }`}
                   >
                     {role === 'All' ? 'All Registered' : role === 'Admin' ? 'Admins' : 'Users / Members'}
                   </button>
@@ -1689,11 +1681,10 @@ export const MessagesView: React.FC = () => {
                             <h4 className="font-semibold text-xs text-[#111b21] group-hover:text-[#00a884] truncate">
                               {user.name}
                             </h4>
-                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                              user.role === 'admin' 
-                                ? 'bg-purple-100 text-purple-700' 
-                                : 'bg-emerald-100 text-emerald-700'
-                            }`}>
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-semibold ${user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-emerald-100 text-emerald-700'
+                              }`}>
                               {user.role === 'admin' ? 'Admin' : 'User'}
                             </span>
                           </div>
@@ -1760,11 +1751,10 @@ export const MessagesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMeetingTab('create')}
-                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  meetingTab === 'create'
-                    ? 'bg-white text-[#008069] shadow-xs'
-                    : 'text-gray-600 hover:bg-gray-200/60'
-                }`}
+                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${meetingTab === 'create'
+                  ? 'bg-white text-[#008069] shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-200/60'
+                  }`}
               >
                 <Video className="w-4 h-4" />
                 <span>Create Meeting</span>
@@ -1773,11 +1763,10 @@ export const MessagesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setMeetingTab('join')}
-                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                  meetingTab === 'join'
-                    ? 'bg-white text-[#008069] shadow-xs'
-                    : 'text-gray-600 hover:bg-gray-200/60'
-                }`}
+                className={`flex-1 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${meetingTab === 'join'
+                  ? 'bg-white text-[#008069] shadow-xs'
+                  : 'text-gray-600 hover:bg-gray-200/60'
+                  }`}
               >
                 <Users className="w-4 h-4" />
                 <span>Join with Code</span>
@@ -1796,11 +1785,10 @@ export const MessagesView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setMeetingType('group')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
-                        meetingType === 'group'
-                          ? 'border-[#00a884] bg-emerald-50/50 ring-2 ring-[#00a884]/20'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${meetingType === 'group'
+                        ? 'border-[#00a884] bg-emerald-50/50 ring-2 ring-[#00a884]/20'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <Users className={`w-5 h-5 ${meetingType === 'group' ? 'text-[#00a884]' : 'text-gray-500'}`} />
@@ -1817,11 +1805,10 @@ export const MessagesView: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setMeetingType('direct')}
-                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
-                        meetingType === 'direct'
-                          ? 'border-[#00a884] bg-emerald-50/50 ring-2 ring-[#00a884]/20'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
+                      className={`p-3 rounded-2xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${meetingType === 'direct'
+                        ? 'border-[#00a884] bg-emerald-50/50 ring-2 ring-[#00a884]/20'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                        }`}
                     >
                       <div className="flex items-center justify-between">
                         <Video className={`w-5 h-5 ${meetingType === 'direct' ? 'text-[#00a884]' : 'text-gray-500'}`} />
@@ -2031,11 +2018,10 @@ export const MessagesView: React.FC = () => {
 
           {/* Main Video Stage Grid */}
           <div className="flex-1 overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-            <div className={`grid gap-4 w-full max-w-6xl h-full max-h-[680px] ${
-              activeMeetingRoom.type === 'group' 
-                ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2' 
-                : 'grid-cols-1 sm:grid-cols-2'
-            }`}>
+            <div className={`grid gap-4 w-full max-w-6xl h-full max-h-[680px] ${activeMeetingRoom.type === 'group'
+              ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2'
+              : 'grid-cols-1 sm:grid-cols-2'
+              }`}>
               {/* Tile 1: You (Current User) */}
               <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-emerald-500/40 shadow-xl flex flex-col items-center justify-center group min-h-[220px]">
                 {meetingVideoOff ? (
@@ -2151,11 +2137,10 @@ export const MessagesView: React.FC = () => {
             <button
               type="button"
               onClick={() => setMeetingMuted(!meetingMuted)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${
-                meetingMuted
-                  ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                  : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-              }`}
+              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingMuted
+                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
+                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
+                }`}
               title={meetingMuted ? "Unmute Microphone" : "Mute Microphone"}
             >
               {meetingMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -2165,11 +2150,10 @@ export const MessagesView: React.FC = () => {
             <button
               type="button"
               onClick={() => setMeetingVideoOff(!meetingVideoOff)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${
-                meetingVideoOff
-                  ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                  : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-              }`}
+              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingVideoOff
+                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
+                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
+                }`}
               title={meetingVideoOff ? "Turn On Camera" : "Turn Off Camera"}
             >
               {meetingVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
@@ -2182,11 +2166,10 @@ export const MessagesView: React.FC = () => {
                 setMeetingScreenSharing(!meetingScreenSharing);
                 alert(!meetingScreenSharing ? "Screen Sharing active: Presenting your workspace." : "Screen Sharing stopped.");
               }}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${
-                meetingScreenSharing
-                  ? 'bg-[#00a884] text-white ring-2 ring-emerald-400/50'
-                  : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-              }`}
+              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingScreenSharing
+                ? 'bg-[#00a884] text-white ring-2 ring-emerald-400/50'
+                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
+                }`}
               title="Share Screen"
             >
               <Monitor className="w-5 h-5" />

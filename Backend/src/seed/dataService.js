@@ -12,7 +12,9 @@ const UserTask = require('../models/UserTask');
 const WorkHistory = require('../models/WorkHistory');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const Meeting = require('../models/Meeting');
 const initialData = require('./seedData');
+const crypto = require('crypto');
 
 const fs = require('fs');
 const path = require('path');
@@ -49,6 +51,9 @@ const loadStore = () => {
               memoryStore.users.unshift(u);
             }
           }
+        }
+        if (!memoryStore.meetings) {
+          memoryStore.meetings = [];
         }
         console.log('[Storage] Persistent database state loaded from disk successfully.');
         return;
@@ -2089,8 +2094,17 @@ const getAppointments = async (filter = {}) => {
   if (filter.status && filter.status !== 'All') {
     list = list.filter(a => a.status.toLowerCase() === filter.status.toLowerCase());
   }
-  if (filter.userId) {
-    list = list.filter(a => a.userId === filter.userId);
+  if (filter.userId || filter.email) {
+    const uEmail = (filter.email || '').toLowerCase().trim();
+    list = list.filter(a => {
+      if (filter.userId && (a.userId === filter.userId || a.receiverId === filter.userId)) return true;
+      if (uEmail) {
+        if (a.senderEmail && a.senderEmail.toLowerCase() === uEmail) return true;
+        if (a.receiverEmail && a.receiverEmail.toLowerCase() === uEmail) return true;
+        if (a.requestedBy && a.requestedBy.toLowerCase().includes(uEmail)) return true;
+      }
+      return false;
+    });
   }
   if (filter.date) {
     list = list.filter(a => a.date === filter.date);
@@ -2126,10 +2140,15 @@ const createAppointment = async (data) => {
     time: timeFormatted,
     endTime: data.endTime || '12:00 PM',
     dateTimeDisplay: `${dateFormatted}, ${timeFormatted}`,
-    location: data.location || 'Online (Google Meet)',
+    location: data.location || (data.joinUrl ? data.joinUrl : 'Online (Video Meet)'),
     purpose: data.purpose || '',
     status: data.status || 'Scheduled',
-    isToday: data.date === todayStr
+    isToday: data.date === todayStr,
+    meetingId: data.meetingId || null,
+    joinUrl: data.joinUrl || null,
+    senderEmail: data.senderEmail || '',
+    receiverId: data.receiverId || '',
+    receiverEmail: data.receiverEmail || ''
   };
 
   if (!memoryStore.appointments) {
@@ -2692,6 +2711,321 @@ const getTotalUnreadMessagesCount = async (userId) => {
   return convs.reduce((acc, c) => acc + (c.unread || 0), 0);
 };
 
+// =========================================================================
+// --- Video Meeting & WebRTC Services (1-to-1 & 1-to-Many Private Calls) ---
+// =========================================================================
+
+const createMeeting = async (data) => {
+  if (!memoryStore.meetings) {
+    memoryStore.meetings = [];
+  }
+
+  const senderEmail = (data.senderEmail || '').toLowerCase().trim();
+  const receiverEmail = (data.receiverEmail || '').toLowerCase().trim();
+
+  // Idempotency check:
+  // If a meeting for this exact request or matching sender/receiver/slot in last 5 min exists, return it
+  const existing = memoryStore.meetings.find(m => {
+    if (data.requestId && m.requestId === data.requestId) return true;
+    if (data.customId && m.customId === data.customId) return true;
+    if (
+      senderEmail && receiverEmail &&
+      m.senderEmail?.toLowerCase() === senderEmail &&
+      m.receiverEmail?.toLowerCase() === receiverEmail &&
+      m.date === data.date &&
+      m.time === data.time &&
+      Math.abs(new Date(m.createdAt || Date.now()).getTime() - Date.now()) < 5 * 60 * 1000
+    ) {
+      return true;
+    }
+    return false;
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const meetingId = 'm-' + Math.random().toString(36).substring(2, 8) + '-' + Date.now().toString(36);
+  const joinUrl = `/meet/${meetingId}`;
+  const requiresApproval = Boolean(data.requiresApproval);
+  const status = requiresApproval ? 'Pending' : (data.status || 'Scheduled');
+
+  const invitation = {
+    id: 'inv-' + Math.random().toString(36).substring(2, 9),
+    status: requiresApproval ? 'Pending' : 'Sent',
+    joinUrl: joinUrl,
+    issuedAt: new Date().toISOString()
+  };
+
+  const participants = Array.isArray(data.participants) && data.participants.length > 0
+    ? data.participants
+    : [
+        { id: data.senderId || data.senderEmail, name: data.senderName, email: senderEmail, role: 'host' },
+        { id: data.receiverId || data.receiverEmail, name: data.receiverName || 'Dean Office', email: receiverEmail, role: 'attendee' }
+      ];
+
+  const participantEmails = Array.isArray(data.participantEmails) && data.participantEmails.length > 0
+    ? data.participantEmails.map(e => (e || '').toLowerCase().trim()).filter(Boolean)
+    : [senderEmail, receiverEmail].filter(Boolean);
+
+  const newMeeting = {
+    id: generateId('meet'),
+    customId: data.customId || ('meet_' + Date.now()),
+    requestId: data.requestId || ('req_' + Date.now()),
+    meetingId: meetingId,
+    title: data.title || (data.purpose ? (data.purpose.length > 40 ? data.purpose.substring(0, 40) + '...' : data.purpose) : `Meeting with ${data.receiverName || data.receiverEmail || 'Dean'}`),
+    type: data.type || 'one-to-one', // 'one-to-one' | 'one-to-many'
+    senderId: data.senderId || data.senderEmail,
+    senderName: data.senderName,
+    senderEmail: senderEmail,
+    receiverId: data.receiverId || data.receiverEmail,
+    receiverName: data.receiverName || 'Dean Office',
+    receiverEmail: receiverEmail,
+    participants: participants,
+    participantEmails: participantEmails,
+    date: data.date,
+    time: data.time,
+    mode: data.mode || 'Online',
+    location: data.mode === 'Online' ? joinUrl : (data.location || data.place || ''),
+    joinUrl: joinUrl,
+    purpose: data.purpose || '',
+    status: status,
+    requiresApproval: requiresApproval,
+    invitationIssued: !requiresApproval,
+    invitation: invitation,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  memoryStore.meetings.unshift(newMeeting);
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Meeting.create(newMeeting);
+    } catch (e) {
+      console.warn('[Meeting] Mongo save warning:', e.message);
+    }
+  }
+
+  // Sync to Appointment calendar so it appears in both users' dashboards
+  try {
+    const appointmentData = {
+      title: newMeeting.title,
+      requestedBy: `${newMeeting.senderName} (${newMeeting.senderEmail})`,
+      userId: newMeeting.senderId,
+      receiverId: newMeeting.receiverId,
+      department: data.department || 'Administration',
+      team: newMeeting.receiverName ? `With: ${newMeeting.receiverName}` : 'Administration',
+      date: newMeeting.date,
+      time: newMeeting.time,
+      dateTimeDisplay: `${newMeeting.date} • ${newMeeting.time}`,
+      location: newMeeting.mode === 'Online' ? joinUrl : newMeeting.location,
+      purpose: newMeeting.purpose,
+      status: newMeeting.status === 'Pending' ? 'Upcoming' : newMeeting.status,
+      isToday: false,
+      meetingId: newMeeting.meetingId,
+      joinUrl: newMeeting.joinUrl,
+      senderEmail: newMeeting.senderEmail,
+      receiverEmail: newMeeting.receiverEmail
+    };
+    await createAppointment(appointmentData);
+  } catch (e) {
+    console.warn('[Meeting] Appointment sync warning:', e.message);
+  }
+
+  // Issue invitation if no approval is required
+  if (!requiresApproval) {
+    await issueMeetingInvitation(newMeeting);
+  }
+
+  return newMeeting;
+};
+
+const issueMeetingInvitation = async (meeting) => {
+  if (!meeting) return;
+
+  // 1. Save persistent notification for the receiver (offline receivers will see it in bell on sign in)
+  await createNotification({
+    recipientRole: 'user',
+    recipientUserId: meeting.receiverId,
+    title: 'Video Meeting Invitation 📹',
+    message: `${meeting.senderName} invited you to a video meeting: "${meeting.title}" on ${meeting.date} at ${meeting.time}`,
+    link: meeting.joinUrl,
+    actionUrl: meeting.joinUrl,
+    meetingId: meeting.meetingId
+  });
+
+  // Also save confirmation notification for sender
+  await createNotification({
+    recipientRole: 'user',
+    recipientUserId: meeting.senderId,
+    title: 'Meeting Scheduled',
+    message: `Your meeting with ${meeting.receiverName} on ${meeting.date} at ${meeting.time} is scheduled. Join URL: ${meeting.joinUrl}`,
+    link: meeting.joinUrl,
+    actionUrl: meeting.joinUrl,
+    meetingId: meeting.meetingId
+  });
+
+  // 2. Real-time Socket.IO notification to receiver's user rooms
+  try {
+    const { getIO } = require('../socket');
+    const io = getIO();
+    if (io) {
+      if (meeting.receiverId) {
+        io.to(`user_${meeting.receiverId}`).emit('meeting_invitation', {
+          meeting,
+          joinUrl: meeting.joinUrl,
+          senderName: meeting.senderName,
+          senderEmail: meeting.senderEmail
+        });
+        io.to(`user_${meeting.receiverId}`).emit('meeting_popup', {
+          meeting,
+          joinUrl: meeting.joinUrl,
+          senderName: meeting.senderName
+        });
+      }
+      if (meeting.receiverEmail) {
+        io.to(`user_${meeting.receiverEmail}`).emit('meeting_invitation', {
+          meeting,
+          joinUrl: meeting.joinUrl,
+          senderName: meeting.senderName,
+          senderEmail: meeting.senderEmail
+        });
+        io.to(`user_${meeting.receiverEmail}`).emit('meeting_popup', {
+          meeting,
+          joinUrl: meeting.joinUrl,
+          senderName: meeting.senderName
+        });
+      }
+    }
+  } catch (e) {
+    console.warn('[Meeting] Socket notification warning:', e.message);
+  }
+};
+
+const approveMeeting = async (meetingId, adminUser) => {
+  if (!memoryStore.meetings) memoryStore.meetings = [];
+  const meeting = memoryStore.meetings.find(m => m.meetingId === meetingId || m.id === meetingId);
+  if (!meeting) throw new Error('Meeting not found');
+
+  if (meeting.status === 'Scheduled' && meeting.invitationIssued) {
+    return meeting;
+  }
+
+  meeting.status = 'Scheduled';
+  meeting.invitationIssued = true;
+  if (meeting.invitation) {
+    meeting.invitation.status = 'Sent';
+    meeting.invitation.issuedAt = new Date().toISOString();
+  }
+  meeting.updatedAt = new Date().toISOString();
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Meeting.findOneAndUpdate(
+        { meetingId: meeting.meetingId },
+        { status: 'Scheduled', invitationIssued: true }
+      );
+    } catch (e) {}
+  }
+
+  await issueMeetingInvitation(meeting);
+  return meeting;
+};
+
+const getMeetingById = async (meetingId) => {
+  if (!memoryStore.meetings) memoryStore.meetings = [];
+  const m = memoryStore.meetings.find(x => x.meetingId === meetingId || x.id === meetingId);
+  if (m) return m;
+
+  if (getStatus()) {
+    try {
+      const doc = await Meeting.findOne({ $or: [{ meetingId }, { customId: meetingId }] }).lean();
+      if (doc) return { ...doc, id: doc.customId || doc._id.toString() };
+    } catch (e) {}
+  }
+  return null;
+};
+
+const getMeetingsForUser = async (user) => {
+  if (!memoryStore.meetings) memoryStore.meetings = [];
+  if (!user) return [];
+
+  const email = (user.email || '').toLowerCase().trim();
+  const id = user.id || '';
+  const isAdmin = user.role === 'admin';
+
+  return memoryStore.meetings.filter(m => {
+    if (isAdmin) return true;
+    if (id && (m.senderId === id || m.receiverId === id)) return true;
+    if (email && (m.senderEmail?.toLowerCase() === email || m.receiverEmail?.toLowerCase() === email)) return true;
+    if (m.participantEmails && m.participantEmails.includes(email)) return true;
+    if (m.participants && m.participants.some(p => (id && p.id === id) || (email && p.email?.toLowerCase() === email))) return true;
+    return false;
+  });
+};
+
+const verifyMeetingAccess = async (meetingId, user) => {
+  if (!user || (!user.id && !user.email)) {
+    return { allowed: false, reason: 'Authentication required. Please log in.' };
+  }
+
+  const meeting = await getMeetingById(meetingId);
+  if (!meeting) {
+    return { allowed: false, reason: 'Meeting not found.' };
+  }
+
+  const email = (user.email || '').toLowerCase().trim();
+  const id = user.id || '';
+  const isAdmin = user.role === 'admin';
+
+  if (isAdmin) {
+    return { allowed: true, meeting, role: 'admin' };
+  }
+
+  const isSender = (id && meeting.senderId === id) || (email && meeting.senderEmail?.toLowerCase() === email);
+  const isReceiver = (id && meeting.receiverId === id) || (email && meeting.receiverEmail?.toLowerCase() === email);
+  const isParticipant = (meeting.participantEmails && meeting.participantEmails.includes(email)) ||
+    (meeting.participants && meeting.participants.some(p => (id && p.id === id) || (email && p.email?.toLowerCase() === email)));
+
+  if (isSender) return { allowed: true, meeting, role: 'sender' };
+  if (isReceiver) return { allowed: true, meeting, role: 'receiver' };
+  if (isParticipant) return { allowed: true, meeting, role: 'participant' };
+
+  return {
+    allowed: false,
+    reason: 'Access Denied: You are not an authorized participant in this meeting.'
+  };
+};
+
+const getTurnCredentials = (userId) => {
+  const secret = process.env.COTURN_SECRET || 'workhub_coturn_secret_key_2026';
+  const coturnHost = process.env.COTURN_HOST || 'turn.workhub.local';
+  const ttl = 24 * 3600; // 24 hours
+  const expiry = Math.floor(Date.now() / 1000) + ttl;
+  const username = `${expiry}:${userId || 'anonymous'}`;
+  const hmac = crypto.createHmac('sha1', secret);
+  hmac.update(username);
+  const credential = hmac.digest('base64');
+
+  return {
+    iceServers: [
+      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
+      {
+        urls: [
+          `turn:${coturnHost}:3478?transport=udp`,
+          `turn:${coturnHost}:3478?transport=tcp`,
+          `turns:${coturnHost}:5349?transport=tcp`
+        ],
+        username,
+        credential
+      }
+    ]
+  };
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -2751,5 +3085,13 @@ module.exports = {
   getMessagesForConversation,
   createMessage,
   markConversationAsRead,
-  getTotalUnreadMessagesCount
+  getTotalUnreadMessagesCount,
+  // Video Meeting Exports
+  createMeeting,
+  issueMeetingInvitation,
+  approveMeeting,
+  getMeetingById,
+  getMeetingsForUser,
+  verifyMeetingAccess,
+  getTurnCredentials
 };

@@ -31,8 +31,173 @@
   "assignments": [],
   "tasks": [],
   "workDone": [],
-  "appointments": [],
-  "notifications": [],
+  "appointments": [
+    {
+      "id": "apt-1793959653265-30",
+      "title": "Department Multi-Staff Briefing",
+      "requestedBy": "Dr. Priya Sharma (dr.priya@bgsmch.edu)",
+      "userId": "usr-priya",
+      "department": "Administration",
+      "team": "With: Dean Office",
+      "date": "2026-11-10",
+      "time": "03:00 PM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "10 Nov 2026, 03:00 PM",
+      "location": "/meet/m-tw0bts-mw4t9bip",
+      "purpose": "Weekly all-hands surgical briefing",
+      "status": "Scheduled",
+      "isToday": false,
+      "meetingId": "m-tw0bts-mw4t9bip",
+      "joinUrl": "/meet/m-tw0bts-mw4t9bip",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverId": "",
+      "receiverEmail": ""
+    },
+    {
+      "id": "apt-1793959620549-611",
+      "title": "Dean Approval Consultation",
+      "requestedBy": "Staff User (user@workhub.internal)",
+      "userId": "usr-user",
+      "department": "Administration",
+      "team": "With: Dean Admin",
+      "date": "2026-11-09",
+      "time": "11:00 AM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "09 Nov 2026, 11:00 AM",
+      "location": "/meet/m-95lx13-mw4t8m9w",
+      "purpose": "Department budget review",
+      "status": "Upcoming",
+      "isToday": false,
+      "meetingId": "m-95lx13-mw4t8m9w",
+      "joinUrl": "/meet/m-95lx13-mw4t8m9w",
+      "senderEmail": "user@workhub.internal",
+      "receiverId": "usr-admin",
+      "receiverEmail": "admin@workhub.internal"
+    },
+    {
+      "id": "apt-1793959599966-846",
+      "title": "Surgical Strategy Session",
+      "requestedBy": "Dr. Priya Sharma (dr.priya@bgsmch.edu)",
+      "userId": "usr-priya",
+      "department": "Administration",
+      "team": "With: Staff Member",
+      "date": "2026-11-08",
+      "time": "04:00 PM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "08 Nov 2026, 04:00 PM",
+      "location": "/meet/m-4b0cut-mw4t86du",
+      "purpose": "Quarterly surgical review",
+      "status": "Scheduled",
+      "isToday": false,
+      "meetingId": "m-4b0cut-mw4t86du",
+      "joinUrl": "/meet/m-4b0cut-mw4t86du",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverId": "usr-user",
+      "receiverEmail": "user@workhub.internal"
+    },
+    {
+      "id": "apt-1793959428526-393",
+      "title": "Clinical Case Discussion",
+      "requestedBy": "Dr. Priya Sharma (dr.priya@bgsmch.edu)",
+      "userId": "usr-priya",
+      "department": "Administration",
+      "team": "With: Staff Member",
+      "date": "2026-11-07",
+      "time": "02:30 PM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "07 Nov 2026, 02:30 PM",
+      "location": "/meet/m-4sgcer-mw4t4i3d",
+      "purpose": "Review patient discharge protocols",
+      "status": "Scheduled",
+      "isToday": false,
+      "meetingId": "m-4sgcer-mw4t4i3d",
+      "joinUrl": "/meet/m-4sgcer-mw4t4i3d",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverEmail": "user@workhub.internal"
+    }
+  ],
+  "notifications": [
+    {
+      "id": "notif-1793959653266-332",
+      "recipientRole": "user",
+      "recipientUserId": "usr-priya",
+      "title": "Meeting Scheduled",
+      "message": "Your meeting with Dean Office on 2026-11-10 at 03:00 PM is scheduled. Join URL: /meet/m-tw0bts-mw4t9bip",
+      "timestamp": "06 Nov 2026, 03:37 PM",
+      "read": false,
+      "link": "/meet/m-tw0bts-mw4t9bip"
+    },
+    {
+      "id": "notif-1793959653266-90",
+      "recipientRole": "user",
+      "recipientUserId": null,
+      "title": "Video Meeting Invitation 📹",
+      "message": "Dr. Priya Sharma invited you to a video meeting: \"Department Multi-Staff Briefing\" on 2026-11-10 at 03:00 PM",
+      "timestamp": "06 Nov 2026, 03:37 PM",
+      "read": false,
+      "link": "/meet/m-tw0bts-mw4t9bip"
+    },
+    {
+      "id": "notif-1793959620557-538",
+      "recipientRole": "user",
+      "recipientUserId": "usr-user",
+      "title": "Meeting Scheduled",
+      "message": "Your meeting with Dean Admin on 2026-11-09 at 11:00 AM is scheduled. Join URL: /meet/m-95lx13-mw4t8m9w",
+      "timestamp": "06 Nov 2026, 03:37 PM",
+      "read": false,
+      "link": "/meet/m-95lx13-mw4t8m9w"
+    },
+    {
+      "id": "notif-1793959620556-641",
+      "recipientRole": "user",
+      "recipientUserId": "usr-admin",
+      "title": "Video Meeting Invitation 📹",
+      "message": "Staff User invited you to a video meeting: \"Dean Approval Consultation\" on 2026-11-09 at 11:00 AM",
+      "timestamp": "06 Nov 2026, 03:37 PM",
+      "read": false,
+      "link": "/meet/m-95lx13-mw4t8m9w"
+    },
+    {
+      "id": "notif-1793959599967-153",
+      "recipientRole": "user",
+      "recipientUserId": "usr-priya",
+      "title": "Meeting Scheduled",
+      "message": "Your meeting with Staff Member on 2026-11-08 at 04:00 PM is scheduled. Join URL: /meet/m-4b0cut-mw4t86du",
+      "timestamp": "06 Nov 2026, 03:36 PM",
+      "read": false,
+      "link": "/meet/m-4b0cut-mw4t86du"
+    },
+    {
+      "id": "notif-1793959599966-307",
+      "recipientRole": "user",
+      "recipientUserId": "usr-user",
+      "title": "Video Meeting Invitation 📹",
+      "message": "Dr. Priya Sharma invited you to a video meeting: \"Surgical Strategy Session\" on 2026-11-08 at 04:00 PM",
+      "timestamp": "06 Nov 2026, 03:36 PM",
+      "read": false,
+      "link": "/meet/m-4b0cut-mw4t86du"
+    },
+    {
+      "id": "notif-1793959428528-368",
+      "recipientRole": "user",
+      "recipientUserId": "usr-priya",
+      "title": "Meeting Scheduled",
+      "message": "Your meeting with Staff Member on 2026-11-07 at 02:30 PM is scheduled. Join URL: /meet/m-4sgcer-mw4t4i3d",
+      "timestamp": "06 Nov 2026, 03:33 PM",
+      "read": false,
+      "link": "/meet/m-4sgcer-mw4t4i3d"
+    },
+    {
+      "id": "notif-1793959428526-633",
+      "recipientRole": "user",
+      "recipientUserId": "usr-user",
+      "title": "Video Meeting Invitation 📹",
+      "message": "Dr. Priya Sharma invited you to a video meeting: \"Clinical Case Discussion\" on 2026-11-07 at 02:30 PM",
+      "timestamp": "06 Nov 2026, 03:33 PM",
+      "read": false,
+      "link": "/meet/m-4sgcer-mw4t4i3d"
+    }
+  ],
   "conversations": [
     {
       "id": "conv-1793899506755-52",
@@ -182,6 +347,210 @@
       "teamRole": "Developer",
       "avatar": "B",
       "title": "Developer"
+    }
+  ],
+  "meetings": [
+    {
+      "id": "meet-1793959653265-962",
+      "customId": "meet_1793959653265",
+      "requestId": "req_1793959653265",
+      "meetingId": "m-tw0bts-mw4t9bip",
+      "title": "Department Multi-Staff Briefing",
+      "type": "one-to-many",
+      "senderId": "usr-priya",
+      "senderName": "Dr. Priya Sharma",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverName": "Dean Office",
+      "receiverEmail": "",
+      "participants": [
+        {
+          "email": "dr.priya@bgsmch.edu",
+          "name": "Dr. Priya Sharma",
+          "id": "usr-priya",
+          "role": "host"
+        },
+        {
+          "email": "user@workhub.internal",
+          "name": "Staff Member",
+          "id": "usr-user",
+          "role": "attendee"
+        },
+        {
+          "email": "dr.rahul@bgsmch.edu",
+          "name": "Dr. Rahul Verma",
+          "id": "usr-rahul",
+          "role": "attendee"
+        }
+      ],
+      "participantEmails": [
+        "dr.priya@bgsmch.edu",
+        "user@workhub.internal",
+        "dr.rahul@bgsmch.edu"
+      ],
+      "date": "2026-11-10",
+      "time": "03:00 PM",
+      "mode": "Online",
+      "location": "/meet/m-tw0bts-mw4t9bip",
+      "joinUrl": "/meet/m-tw0bts-mw4t9bip",
+      "purpose": "Weekly all-hands surgical briefing",
+      "status": "Scheduled",
+      "requiresApproval": false,
+      "invitationIssued": true,
+      "invitation": {
+        "id": "inv-6g5wg5f",
+        "status": "Sent",
+        "joinUrl": "/meet/m-tw0bts-mw4t9bip",
+        "issuedAt": "2026-11-06T10:07:33.265Z"
+      },
+      "createdAt": "2026-11-06T10:07:33.265Z",
+      "updatedAt": "2026-11-06T10:07:33.265Z"
+    },
+    {
+      "id": "meet-1793959620548-496",
+      "customId": "meet_1793959620548",
+      "requestId": "req_1793959620548",
+      "meetingId": "m-95lx13-mw4t8m9w",
+      "title": "Dean Approval Consultation",
+      "type": "one-to-one",
+      "senderId": "usr-user",
+      "senderName": "Staff User",
+      "senderEmail": "user@workhub.internal",
+      "receiverId": "usr-admin",
+      "receiverName": "Dean Admin",
+      "receiverEmail": "admin@workhub.internal",
+      "participants": [
+        {
+          "id": "usr-user",
+          "name": "Staff User",
+          "email": "user@workhub.internal",
+          "role": "host"
+        },
+        {
+          "id": "usr-admin",
+          "name": "Dean Admin",
+          "email": "admin@workhub.internal",
+          "role": "attendee"
+        }
+      ],
+      "participantEmails": [
+        "user@workhub.internal",
+        "admin@workhub.internal"
+      ],
+      "date": "2026-11-09",
+      "time": "11:00 AM",
+      "mode": "Online",
+      "location": "/meet/m-95lx13-mw4t8m9w",
+      "joinUrl": "/meet/m-95lx13-mw4t8m9w",
+      "purpose": "Department budget review",
+      "status": "Scheduled",
+      "requiresApproval": true,
+      "invitationIssued": true,
+      "invitation": {
+        "id": "inv-s5mvzv3",
+        "status": "Sent",
+        "joinUrl": "/meet/m-95lx13-mw4t8m9w",
+        "issuedAt": "2026-11-06T10:07:00.556Z"
+      },
+      "createdAt": "2026-11-06T10:07:00.548Z",
+      "updatedAt": "2026-11-06T10:07:00.556Z"
+    },
+    {
+      "id": "meet-1793959599954-756",
+      "customId": "meet_1793959599954",
+      "requestId": "req_1793959599954",
+      "meetingId": "m-4b0cut-mw4t86du",
+      "title": "Surgical Strategy Session",
+      "type": "one-to-one",
+      "senderId": "usr-priya",
+      "senderName": "Dr. Priya Sharma",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverId": "usr-user",
+      "receiverName": "Staff Member",
+      "receiverEmail": "user@workhub.internal",
+      "participants": [
+        {
+          "id": "usr-priya",
+          "name": "Dr. Priya Sharma",
+          "email": "dr.priya@bgsmch.edu",
+          "role": "host"
+        },
+        {
+          "id": "usr-user",
+          "name": "Staff Member",
+          "email": "user@workhub.internal",
+          "role": "attendee"
+        }
+      ],
+      "participantEmails": [
+        "dr.priya@bgsmch.edu",
+        "user@workhub.internal"
+      ],
+      "date": "2026-11-08",
+      "time": "04:00 PM",
+      "mode": "Online",
+      "location": "/meet/m-4b0cut-mw4t86du",
+      "joinUrl": "/meet/m-4b0cut-mw4t86du",
+      "purpose": "Quarterly surgical review",
+      "status": "Scheduled",
+      "requiresApproval": false,
+      "invitationIssued": true,
+      "invitation": {
+        "id": "inv-9a1hjta",
+        "status": "Sent",
+        "joinUrl": "/meet/m-4b0cut-mw4t86du",
+        "issuedAt": "2026-11-06T10:06:39.954Z"
+      },
+      "createdAt": "2026-11-06T10:06:39.954Z",
+      "updatedAt": "2026-11-06T10:06:39.954Z"
+    },
+    {
+      "id": "meet-1793959428505-974",
+      "customId": "meet_1793959428505",
+      "requestId": "req_1793959428505",
+      "meetingId": "m-4sgcer-mw4t4i3d",
+      "title": "Clinical Case Discussion",
+      "type": "one-to-one",
+      "senderId": "usr-priya",
+      "senderName": "Dr. Priya Sharma",
+      "senderEmail": "dr.priya@bgsmch.edu",
+      "receiverId": "usr-user",
+      "receiverName": "Staff Member",
+      "receiverEmail": "user@workhub.internal",
+      "participants": [
+        {
+          "id": "usr-priya",
+          "name": "Dr. Priya Sharma",
+          "email": "dr.priya@bgsmch.edu",
+          "role": "host"
+        },
+        {
+          "id": "usr-user",
+          "name": "Staff Member",
+          "email": "user@workhub.internal",
+          "role": "attendee"
+        }
+      ],
+      "participantEmails": [
+        "dr.priya@bgsmch.edu",
+        "user@workhub.internal"
+      ],
+      "date": "2026-11-07",
+      "time": "02:30 PM",
+      "mode": "Online",
+      "location": "/meet/m-4sgcer-mw4t4i3d",
+      "joinUrl": "/meet/m-4sgcer-mw4t4i3d",
+      "purpose": "Review patient discharge protocols",
+      "status": "Scheduled",
+      "requiresApproval": false,
+      "invitationIssued": true,
+      "invitation": {
+        "id": "inv-aq2vcv2",
+        "status": "Sent",
+        "joinUrl": "/meet/m-4sgcer-mw4t4i3d",
+        "issuedAt": "2026-11-06T10:03:48.505Z"
+      },
+      "createdAt": "2026-11-06T10:03:48.505Z",
+      "updatedAt": "2026-11-06T10:03:48.505Z"
     }
   ]
 }

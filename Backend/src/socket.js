@@ -202,14 +202,99 @@ function initSocket(server) {
       });
     });
 
-    // 7. Disconnect handling (when user closes tab or website)
+    // 7. WebRTC & Private Video Meeting Rooms
+    socket.on('join_meeting', async ({ meetingId, user }, callback) => {
+      try {
+        if (!meetingId || !user) {
+          if (typeof callback === 'function') callback({ success: false, error: 'Invalid meeting parameters' });
+          return;
+        }
+
+        const verification = await dataService.verifyMeetingAccess(meetingId, user);
+        if (!verification.allowed) {
+          socket.emit('meeting_access_denied', { error: verification.reason || 'Access Denied: You are not authorized to join this meeting.' });
+          if (typeof callback === 'function') callback({ success: false, error: verification.reason });
+          return;
+        }
+
+        const email = (user.email || '').toLowerCase().trim();
+        const id = user.id || email;
+        const name = user.name || email;
+
+        const meetingRoom = `meet_${meetingId}`;
+        socket.join(meetingRoom);
+
+        // Store meeting metadata on socket
+        socket.meetingId = meetingId;
+        socket.meetingUser = { id, email, name, role: user.role || 'user' };
+
+        // Fetch existing peers in this room (excluding self)
+        const roomSockets = await io.in(meetingRoom).fetchSockets();
+        const existingPeers = roomSockets
+          .filter(s => s.id !== socket.id && s.meetingUser)
+          .map(s => ({
+            socketId: s.id,
+            user: s.meetingUser
+          }));
+
+        // Broadcast to existing room peers that a new user joined
+        socket.to(meetingRoom).emit('user_joined_meeting', {
+          socketId: socket.id,
+          user: socket.meetingUser
+        });
+
+        if (typeof callback === 'function') {
+          callback({
+            success: true,
+            meeting: verification.meeting,
+            existingPeers
+          });
+        }
+      } catch (err) {
+        console.error('[Socket] join_meeting error:', err.message);
+        if (typeof callback === 'function') callback({ success: false, error: err.message });
+      }
+    });
+
+    socket.on('webrtc_signal', ({ meetingId, targetSocketId, signal, senderUser }) => {
+      if (!meetingId || !targetSocketId || !signal) return;
+      if (socket.meetingId !== meetingId) return;
+
+      io.to(targetSocketId).emit('webrtc_signal', {
+        senderSocketId: socket.id,
+        signal,
+        senderUser: senderUser || socket.meetingUser
+      });
+    });
+
+    socket.on('leave_meeting', ({ meetingId }) => {
+      if (!meetingId) return;
+      const meetingRoom = `meet_${meetingId}`;
+      socket.leave(meetingRoom);
+      socket.to(meetingRoom).emit('user_left_meeting', {
+        socketId: socket.id,
+        user: socket.meetingUser
+      });
+      socket.meetingId = null;
+      socket.meetingUser = null;
+    });
+
+    // 8. Disconnect handling (when user closes tab or website)
     socket.on('disconnect', () => {
+      if (socket.meetingId) {
+        const meetingRoom = `meet_${socket.meetingId}`;
+        socket.to(meetingRoom).emit('user_left_meeting', {
+          socketId: socket.id,
+          user: socket.meetingUser
+        });
+      }
+
       const removed = activeSockets.get(socket.id);
       activeSockets.delete(socket.id);
 
       if (removed) {
-        const stillOnline = getOnlineUsers().some(u => 
-          (removed.email && u.email === removed.email) || 
+        const stillOnline = getOnlineUsers().some(u =>
+          (removed.email && u.email === removed.email) ||
           (removed.id && u.id === removed.id)
         );
 

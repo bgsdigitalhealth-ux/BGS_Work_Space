@@ -22,11 +22,29 @@ import { UserAssignWork } from './components/user/UserAssignWork';
 import { UserSettings } from './components/user/UserSettings';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
+import { MeetingRoom } from './components/meet/MeetingRoom';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
   const { currentUser, userNav, adminNav, members, userWorkspace } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
+
+  // Check if current route is a private video meeting route: /meet/<meeting-id>
+  const pathname = window.location.pathname;
+  const isMeetingRoute = pathname.startsWith('/meet/');
+  const meetingId = isMeetingRoute ? pathname.replace('/meet/', '').split('/')[0].split('?')[0] : '';
+
+  if (isMeetingRoute && meetingId) {
+    return (
+      <MeetingRoom 
+        meetingId={meetingId} 
+        onLeave={() => {
+          window.history.pushState({}, '', '/');
+          window.location.href = '/';
+        }} 
+      />
+    );
+  }
 
   // When user logs out (currentUser becomes null), redirect immediately to the starting face interface
   React.useEffect(() => {

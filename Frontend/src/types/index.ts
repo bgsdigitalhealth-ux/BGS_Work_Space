@@ -169,6 +169,10 @@ export interface Appointment {
   purpose?: string;
   status: 'Scheduled' | 'Upcoming' | 'Completed' | 'Cancelled';
   isToday?: boolean;
+  meetingId?: string;
+  joinUrl?: string;
+  senderEmail?: string;
+  receiverEmail?: string;
 }
 
 export interface AppointmentStats {
@@ -303,6 +307,37 @@ export interface EligibleUser {
   phone?: string;
   department?: string;
   team?: string;
+}
+
+export interface VideoMeeting {
+  id: string;
+  customId?: string;
+  meetingId: string;
+  title: string;
+  type: 'one-to-one' | 'one-to-many';
+  senderId: string;
+  senderName: string;
+  senderEmail: string;
+  receiverId?: string;
+  receiverName?: string;
+  receiverEmail?: string;
+  participants: Array<{
+    id?: string;
+    name?: string;
+    email?: string;
+    role?: string;
+  }>;
+  participantEmails: string[];
+  date: string;
+  time: string;
+  mode: 'Online' | 'Offline';
+  location?: string;
+  joinUrl: string;
+  purpose?: string;
+  status: 'Pending' | 'Scheduled' | 'Upcoming' | 'Completed' | 'Cancelled';
+  requiresApproval: boolean;
+  invitationIssued: boolean;
+  createdAt?: string;
 }
 
 

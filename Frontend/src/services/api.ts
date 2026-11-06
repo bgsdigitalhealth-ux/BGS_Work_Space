@@ -481,5 +481,75 @@ export const api = {
     const res = await fetch(`${API_BASE}/messages/unread-count?userId=${encodeURIComponent(userId)}`);
     if (!res.ok) throw new Error('Failed to fetch unread messages count');
     return res.json();
+  },
+
+  // Video Meetings & WebRTC API
+  getMeetings: async (userId?: string, email?: string, role?: string): Promise<any[]> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (email) params.append('email', email);
+    if (role) params.append('role', role);
+    const res = await fetch(`${API_BASE}/meetings?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch meetings');
+    return res.json();
+  },
+
+  getMeetingById: async (meetingId: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/meetings/${meetingId}`);
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to fetch meeting' }));
+      throw new Error(err.error || 'Failed to fetch meeting');
+    }
+    return res.json();
+  },
+
+  createMeeting: async (data: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/meetings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create meeting' }));
+      throw new Error(err.error || 'Failed to create meeting');
+    }
+    return res.json();
+  },
+
+  approveMeeting: async (meetingId: string, adminUser?: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/meetings/${meetingId}/approve`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ adminUser })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to approve meeting' }));
+      throw new Error(err.error || 'Failed to approve meeting');
+    }
+    return res.json();
+  },
+
+  verifyMeetingAccess: async (meetingId: string, userId?: string, email?: string, role?: string): Promise<{ allowed: boolean; meeting?: any; role?: string; reason?: string }> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (email) params.append('email', email);
+    if (role) params.append('role', role);
+    const res = await fetch(`${API_BASE}/meetings/${meetingId}/verify?${params.toString()}`);
+    if (res.status === 403) {
+      const err = await res.json().catch(() => ({ error: 'Access Denied' }));
+      return { allowed: false, reason: err.reason || err.error || 'Access Denied' };
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Verification failed' }));
+      return { allowed: false, reason: err.reason || err.error || 'Verification failed' };
+    }
+    return res.json();
+  },
+
+  getTurnCredentials: async (userId?: string): Promise<{ iceServers: RTCIceServer[] }> => {
+    const url = userId ? `${API_BASE}/meetings/turn-credentials?userId=${encodeURIComponent(userId)}` : `${API_BASE}/meetings/turn-credentials`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to get ICE servers');
+    return res.json();
   }
 };
