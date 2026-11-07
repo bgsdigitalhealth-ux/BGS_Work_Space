@@ -24,7 +24,6 @@ import {
   Clock,
   Video,
   Copy,
-  Check,
   Sparkles
 } from 'lucide-react';
 import { api } from '../../services/api';
@@ -72,17 +71,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [reqDetails, setReqDetails] = useState('');
   const [reqPriority, setReqPriority] = useState<'Normal' | 'Urgent' | 'Low'>('Normal');
 
-  // Registered Users for receiver selection
-  const [registeredUsers, setRegisteredUsers] = useState<any[]>([]);
-  const [receiverSearch, setReceiverSearch] = useState('');
-  const [showReceiverDropdown, setShowReceiverDropdown] = useState(false);
-
   // Meeting Form Specific State (Playfair / Inter ivory-to-sage specification)
   const [meetingType, setMeetingType] = useState<'one-to-one' | 'one-to-many'>('one-to-one');
   const [meetingSenderName, setMeetingSenderName] = useState('');
   const [meetingSenderEmail, setMeetingSenderEmail] = useState('');
   const [meetingSenderNumber, setMeetingSenderNumber] = useState('');
-  const [meetingReceiverId, setMeetingReceiverId] = useState('');
   const [meetingReceiverName, setMeetingReceiverName] = useState('');
   const [meetingReceiverEmail, setMeetingReceiverEmail] = useState('');
   const [meetingReceiverNumber, setMeetingReceiverNumber] = useState('');
@@ -92,13 +85,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [meetingTime, setMeetingTime] = useState('10:00 AM');
   const [meetingPurpose, setMeetingPurpose] = useState('');
   const [createdJoinUrl, setCreatedJoinUrl] = useState('');
-
-  // Fetch registered users on mount
-  useEffect(() => {
-    api.getEligibleUsers().then(users => {
-      if (Array.isArray(users)) setRegisteredUsers(users);
-    }).catch(() => {});
-  }, []);
 
   // Auto-fill sender if user is logged in
   useEffect(() => {
@@ -111,19 +97,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   const handleMeetingSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!meetingSenderName.trim() || !meetingSenderEmail.trim()) {
       alert('Please enter Sender Name and Sender Email ID.');
       return;
     }
-
-    if (meetingType === 'one-to-one' && !meetingReceiverEmail.trim()) {
-      alert('Please select or enter the receiver details.');
+    if (!emailRegex.test(meetingSenderEmail.trim())) {
+      alert('Please enter a valid Sender Email ID.');
       return;
     }
 
-    if (meetingType === 'one-to-many' && selectedGroupReceivers.length === 0 && !meetingReceiverEmail.trim()) {
-      alert('Please select at least one registered receiver for the group meeting.');
-      return;
+    if (meetingType === 'one-to-one') {
+      if (!meetingReceiverName.trim() || !meetingReceiverEmail.trim()) {
+        alert('Please enter Receiver Name and Receiver Email ID.');
+        return;
+      }
+      if (!emailRegex.test(meetingReceiverEmail.trim())) {
+        alert('Please enter a valid Receiver Email ID.');
+        return;
+      }
+    } else {
+      if (selectedGroupReceivers.length === 0 && (!meetingReceiverName.trim() || !meetingReceiverEmail.trim())) {
+        alert('Please enter at least one participant (Name and Email ID) for the group meeting.');
+        return;
+      }
+      if (meetingReceiverEmail.trim() && !emailRegex.test(meetingReceiverEmail.trim())) {
+        alert('Please enter a valid Receiver Email ID.');
+        return;
+      }
     }
 
     setIsSubmitting(true);
@@ -139,9 +141,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           selectedGroupReceivers.forEach(r => {
             participantsList.push({ id: r.id || r.email, name: r.name, email: r.email, phone: r.phone || '', role: 'attendee' });
           });
-        } else if (meetingReceiverEmail.trim()) {
+        }
+        if (meetingReceiverEmail.trim() && !participantsList.some(p => p.email.toLowerCase() === meetingReceiverEmail.trim().toLowerCase())) {
           participantsList.push({
-            id: meetingReceiverId || meetingReceiverEmail,
+            id: meetingReceiverEmail,
             name: meetingReceiverName || 'Participant',
             email: meetingReceiverEmail,
             phone: meetingReceiverNumber,
@@ -150,7 +153,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         }
       } else {
         participantsList.push({
-          id: meetingReceiverId || meetingReceiverEmail,
+          id: meetingReceiverEmail,
           name: meetingReceiverName || 'Participant',
           email: meetingReceiverEmail,
           phone: meetingReceiverNumber,
@@ -159,25 +162,28 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       }
 
       const participantEmailsList = participantsList.map(p => (p.email || '').toLowerCase().trim());
+      const effectiveReceiverName = meetingReceiverName || (selectedGroupReceivers.length > 0 ? selectedGroupReceivers[0].name : 'Administration Office');
+      const effectiveReceiverEmail = meetingReceiverEmail || (selectedGroupReceivers.length > 0 ? selectedGroupReceivers[0].email : '');
+      const effectiveReceiverNumber = meetingReceiverNumber || (selectedGroupReceivers.length > 0 ? (selectedGroupReceivers[0].phone || '') : '');
 
       const res = await api.createMeeting({
-        title: `Meeting: ${meetingPurpose ? (meetingPurpose.length > 35 ? meetingPurpose.substring(0, 35) + '...' : meetingPurpose) : (meetingReceiverName ? `Meeting with ${meetingReceiverName}` : 'Video Meeting')}`,
+        title: `Meeting: ${meetingPurpose ? (meetingPurpose.length > 35 ? meetingPurpose.substring(0, 35) + '...' : meetingPurpose) : (effectiveReceiverName ? `Meeting with ${effectiveReceiverName}` : 'Video Meeting')}`,
         type: meetingType,
         senderId: currentUser?.id || meetingSenderEmail,
         senderName: meetingSenderName,
         senderEmail: meetingSenderEmail,
         senderNumber: meetingSenderNumber,
-        receiverId: meetingReceiverId || meetingReceiverEmail,
-        receiverName: meetingReceiverName,
-        receiverEmail: meetingReceiverEmail,
-        receiverNumber: meetingReceiverNumber,
+        receiverId: effectiveReceiverEmail,
+        receiverName: effectiveReceiverName,
+        receiverEmail: effectiveReceiverEmail,
+        receiverNumber: effectiveReceiverNumber,
         participants: participantsList,
         participantEmails: participantEmailsList,
         date: reqDate,
         time: meetingTime || '10:00 AM',
         mode: meetingMode,
         location: meetingMode === 'Online' ? '' : (meetingPlace || 'Main Conference Hall'),
-        purpose: `${meetingPurpose}${meetingSenderNumber ? `\nSender Number: ${meetingSenderNumber}` : ''}${meetingReceiverNumber ? `\nReceiver Number: ${meetingReceiverNumber}` : ''}`,
+        purpose: `${meetingPurpose}${meetingSenderNumber ? `\nSender Number: ${meetingSenderNumber}` : ''}${effectiveReceiverNumber ? `\nReceiver Number: ${effectiveReceiverNumber}` : ''}`,
         requiresApproval: false
       });
 
@@ -411,13 +417,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setMeetingSenderName(currentUser?.name || '');
     setMeetingSenderEmail(currentUser?.email || '');
     setMeetingSenderNumber((currentUser as any)?.phone || '');
-    setMeetingReceiverId('');
     setMeetingReceiverName('');
     setMeetingReceiverEmail('');
     setMeetingReceiverNumber('');
     setSelectedGroupReceivers([]);
-    setReceiverSearch('');
-    setShowReceiverDropdown(false);
     setCreatedJoinUrl('');
     setMeetingPlace('');
     setMeetingTime('10:00 AM');
@@ -1031,12 +1034,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                     )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Receiver:</span>
-                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingReceiverName || meetingReceiverEmail}</span>
+                      <span className="font-semibold text-gray-800 truncate max-w-[170px]">
+                        {meetingReceiverName || (selectedGroupReceivers.length > 0 ? `${selectedGroupReceivers[0].name}${selectedGroupReceivers.length > 1 ? ` (+${selectedGroupReceivers.length - 1} more)` : ''}` : meetingReceiverEmail)}
+                      </span>
                     </div>
-                    {meetingReceiverNumber && (
+                    {(meetingReceiverNumber || (selectedGroupReceivers.length > 0 && selectedGroupReceivers[0]?.phone)) && (
                       <div className="flex justify-between">
                         <span className="text-gray-500">Receiver Number:</span>
-                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingReceiverNumber}</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">
+                          {meetingReceiverNumber || selectedGroupReceivers[0]?.phone}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -1137,7 +1144,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       </div>
                     </div>
 
-                    {/* Section 2: Receiver Details (Select Registered User) */}
+                    {/* Section 2: Receiver Details (Direct Typing) */}
                     <div className="space-y-3">
                       <div className="flex items-center gap-3">
                         <span className="font-serif text-sm sm:text-base font-bold text-[#133926] whitespace-nowrap">
@@ -1146,106 +1153,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <div className="h-px bg-[#c6d4c2] flex-1" />
                       </div>
 
-                      {/* Registered User Selection Dropdown */}
-                      <div className="relative">
-                        <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
-                          Select Registered Receiver
-                        </label>
-                        <div className="relative">
-                          <input
-                            type="text"
-                            value={receiverSearch}
-                            onChange={(e) => {
-                              setReceiverSearch(e.target.value);
-                              setShowReceiverDropdown(true);
-                            }}
-                            onFocus={() => setShowReceiverDropdown(true)}
-                            placeholder="Search registered user by name or email..."
-                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter pr-10"
-                          />
-                          <ChevronDown className="w-4 h-4 text-gray-500 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                        </div>
-
-                        {showReceiverDropdown && (
-                          <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-[#c4d4c0] rounded-2xl shadow-xl max-h-52 overflow-y-auto z-30 p-1.5">
-                            {registeredUsers
-                              .filter(u => 
-                                !receiverSearch || 
-                                (u.name && u.name.toLowerCase().includes(receiverSearch.toLowerCase())) ||
-                                (u.email && u.email.toLowerCase().includes(receiverSearch.toLowerCase()))
-                              )
-                              .map(u => (
-                                <button
-                                  key={u.id || u.email}
-                                  type="button"
-                                  onClick={() => {
-                                    if (meetingType === 'one-to-many') {
-                                      if (!selectedGroupReceivers.some(r => r.email === u.email)) {
-                                        setSelectedGroupReceivers(prev => [...prev, u]);
-                                      }
-                                    }
-                                    setMeetingReceiverId(u.id);
-                                    setMeetingReceiverName(u.name);
-                                    setMeetingReceiverEmail(u.email);
-                                    if (u.phone) setMeetingReceiverNumber(u.phone);
-                                    setReceiverSearch('');
-                                    setShowReceiverDropdown(false);
-                                  }}
-                                  className="w-full text-left px-3 py-2 rounded-xl hover:bg-[#eef5ec] flex items-center justify-between transition-colors cursor-pointer text-xs"
-                                >
-                                  <div>
-                                    <span className="font-semibold text-gray-900 block">{u.name}</span>
-                                    <span className="text-[11px] text-gray-500">{u.email}</span>
-                                  </div>
-                                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#e3ece0] text-[#133926] font-medium">
-                                    {u.role || 'Member'}
-                                  </span>
-                                </button>
-                              ))}
-                            {registeredUsers.length === 0 && (
-                              <div className="p-3 text-center text-xs text-gray-500">
-                                No registered users found. You can type details below manually.
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Display Selected Receiver Name & Email */}
-                      {(meetingReceiverName || meetingReceiverEmail) && (
-                        <div className="p-3 rounded-2xl bg-[#f4f7f2] border border-[#c4d4c0] flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#133926] text-white flex items-center justify-center font-bold text-xs">
-                              {(meetingReceiverName || 'U').charAt(0).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="text-xs font-semibold text-[#133926] flex items-center gap-1.5">
-                                <span>{meetingReceiverName}</span>
-                                <Check className="w-3.5 h-3.5 text-emerald-600" />
-                              </div>
-                              <div className="text-[11px] text-gray-600">{meetingReceiverEmail}</div>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setMeetingReceiverName('');
-                              setMeetingReceiverEmail('');
-                              setMeetingReceiverId('');
-                              setMeetingReceiverNumber('');
-                            }}
-                            className="text-xs text-gray-400 hover:text-red-600 p-1"
-                            title="Clear receiver"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-
-                      {/* One-to-Many Group Participant Chips */}
+                      {/* Group Participant Chips (for Group 1-to-Many meetings) */}
                       {meetingType === 'one-to-many' && selectedGroupReceivers.length > 0 && (
                         <div className="space-y-1.5">
-                          <span className="text-[11px] font-semibold text-gray-600">Selected Group Participants:</span>
+                          <span className="text-[11px] font-semibold text-gray-600">Added Group Participants ({selectedGroupReceivers.length}):</span>
                           <div className="flex flex-wrap gap-1.5">
                             {selectedGroupReceivers.map(r => (
                               <span key={r.email} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[#e8f1e6] border border-[#c0d6bd] text-xs text-[#133926]">
@@ -1253,7 +1164,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                 <button
                                   type="button"
                                   onClick={() => setSelectedGroupReceivers(prev => prev.filter(x => x.email !== r.email))}
-                                  className="text-gray-400 hover:text-red-600"
+                                  className="text-gray-400 hover:text-red-600 cursor-pointer"
                                 >
                                   <X className="w-3 h-3" />
                                 </button>
@@ -1263,7 +1174,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         </div>
                       )}
 
-                      {/* Editable Fields for Name, Email and Number */}
+                      {/* Typed Input Fields for Receiver Name, Receiver Email ID and Receiver Number */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         <div>
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
@@ -1271,6 +1182,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input
                             type="text"
+                            required={selectedGroupReceivers.length === 0}
                             value={meetingReceiverName}
                             onChange={(e) => setMeetingReceiverName(e.target.value)}
                             placeholder="Enter receiver name"
@@ -1283,6 +1195,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input
                             type="email"
+                            required={selectedGroupReceivers.length === 0}
                             value={meetingReceiverEmail}
                             onChange={(e) => setMeetingReceiverEmail(e.target.value)}
                             placeholder="Enter receiver email"
@@ -1302,6 +1215,44 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           />
                         </div>
                       </div>
+
+                      {/* If Group (1-to-Many) mode, allow clicking "+ Add Participant to Group" to add multiple typed participants */}
+                      {meetingType === 'one-to-many' && (
+                        <div className="flex justify-end pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                              if (!meetingReceiverName.trim() || !meetingReceiverEmail.trim()) {
+                                alert('Please enter both Receiver Name and Email ID to add to group.');
+                                return;
+                              }
+                              if (!emailRegex.test(meetingReceiverEmail.trim())) {
+                                alert('Please enter a valid Receiver Email ID.');
+                                return;
+                              }
+                              if (selectedGroupReceivers.some(r => r.email.toLowerCase() === meetingReceiverEmail.trim().toLowerCase())) {
+                                alert('This participant is already added to the group list.');
+                                return;
+                              }
+                              setSelectedGroupReceivers(prev => [
+                                ...prev,
+                                {
+                                  name: meetingReceiverName.trim(),
+                                  email: meetingReceiverEmail.trim(),
+                                  phone: meetingReceiverNumber.trim()
+                                }
+                              ]);
+                              setMeetingReceiverName('');
+                              setMeetingReceiverEmail('');
+                              setMeetingReceiverNumber('');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-[#e3ede0] hover:bg-[#d5e3d1] text-[#133926] border border-[#b8ceb5] text-xs font-semibold font-inter transition-all cursor-pointer flex items-center gap-1.5"
+                          >
+                            <span>+ Add Participant to Group</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
 
                     {/* Section 3: Mode of Meeting */}
