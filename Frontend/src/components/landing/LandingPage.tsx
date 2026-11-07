@@ -437,13 +437,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   return (
     <div
-      className="min-h-screen bg-[#ede6f9] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-no-repeat bg-right lg:bg-center"
+      className="min-h-screen bg-[#f5f8f6] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-no-repeat bg-right lg:bg-center transition-all duration-300"
       style={{
         backgroundImage: `url('/landing-bg.jpg')`
       }}
     >
-      {/* Mobile subtle light wash so typography is crystal clear across small screens */}
-      <div className="absolute inset-0 bg-white/50 sm:bg-white/20 lg:bg-transparent pointer-events-none z-0" />
+      {/* Subtle elegant gradient wash ensuring typography and cards on the left are crystal clear */}
+      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-transparent sm:from-white/85 sm:via-white/45 lg:to-transparent pointer-events-none z-0" />
 
       {/* ---------------- TOP NAVIGATION BAR ---------------- */}
       <header className="w-full bg-white/85 backdrop-blur-md border-b border-purple-100/60 sticky top-0 z-50 transition-all">
