@@ -174,6 +174,7 @@ export interface Appointment {
   senderEmail?: string;
   senderNumber?: string;
   receiverEmail?: string;
+  receiverNumber?: string;
 }
 
 export interface AppointmentStats {

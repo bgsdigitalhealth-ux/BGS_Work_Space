@@ -2149,7 +2149,8 @@ const createAppointment = async (data) => {
     senderEmail: data.senderEmail || '',
     senderNumber: data.senderNumber || data.phone || '',
     receiverId: data.receiverId || '',
-    receiverEmail: data.receiverEmail || ''
+    receiverEmail: data.receiverEmail || '',
+    receiverNumber: data.receiverNumber || ''
   };
 
   if (!memoryStore.appointments) {
@@ -2783,6 +2784,7 @@ const createMeeting = async (data) => {
     receiverId: data.receiverId || data.receiverEmail,
     receiverName: data.receiverName || 'Administration Office',
     receiverEmail: receiverEmail,
+    receiverNumber: data.receiverNumber || '',
     participants: participants,
     participantEmails: participantEmails,
     date: data.date,
@@ -2830,7 +2832,8 @@ const createMeeting = async (data) => {
       joinUrl: newMeeting.joinUrl,
       senderEmail: newMeeting.senderEmail,
       senderNumber: newMeeting.senderNumber || '',
-      receiverEmail: newMeeting.receiverEmail
+      receiverEmail: newMeeting.receiverEmail,
+      receiverNumber: newMeeting.receiverNumber || ''
     };
     await createAppointment(appointmentData);
   } catch (e) {

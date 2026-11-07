@@ -85,6 +85,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [meetingReceiverId, setMeetingReceiverId] = useState('');
   const [meetingReceiverName, setMeetingReceiverName] = useState('');
   const [meetingReceiverEmail, setMeetingReceiverEmail] = useState('');
+  const [meetingReceiverNumber, setMeetingReceiverNumber] = useState('');
   const [selectedGroupReceivers, setSelectedGroupReceivers] = useState<any[]>([]);
   const [meetingMode, setMeetingMode] = useState<'Online' | 'Offline'>('Online');
   const [meetingPlace, setMeetingPlace] = useState('');
@@ -136,13 +137,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       if (meetingType === 'one-to-many') {
         if (selectedGroupReceivers.length > 0) {
           selectedGroupReceivers.forEach(r => {
-            participantsList.push({ id: r.id || r.email, name: r.name, email: r.email, role: 'attendee' });
+            participantsList.push({ id: r.id || r.email, name: r.name, email: r.email, phone: r.phone || '', role: 'attendee' });
           });
         } else if (meetingReceiverEmail.trim()) {
           participantsList.push({
             id: meetingReceiverId || meetingReceiverEmail,
             name: meetingReceiverName || 'Participant',
             email: meetingReceiverEmail,
+            phone: meetingReceiverNumber,
             role: 'attendee'
           });
         }
@@ -151,6 +153,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           id: meetingReceiverId || meetingReceiverEmail,
           name: meetingReceiverName || 'Participant',
           email: meetingReceiverEmail,
+          phone: meetingReceiverNumber,
           role: 'attendee'
         });
       }
@@ -167,13 +170,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         receiverId: meetingReceiverId || meetingReceiverEmail,
         receiverName: meetingReceiverName,
         receiverEmail: meetingReceiverEmail,
+        receiverNumber: meetingReceiverNumber,
         participants: participantsList,
         participantEmails: participantEmailsList,
         date: reqDate,
         time: meetingTime || '10:00 AM',
         mode: meetingMode,
         location: meetingMode === 'Online' ? '' : (meetingPlace || 'Main Conference Hall'),
-        purpose: meetingPurpose,
+        purpose: `${meetingPurpose}${meetingSenderNumber ? `\nSender Number: ${meetingSenderNumber}` : ''}${meetingReceiverNumber ? `\nReceiver Number: ${meetingReceiverNumber}` : ''}`,
         requiresApproval: false
       });
 
@@ -195,6 +199,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [eventSenderNumber, setEventSenderNumber] = useState('');
   const [eventReceiverName, setEventReceiverName] = useState('');
   const [eventReceiverEmail, setEventReceiverEmail] = useState('');
+  const [eventReceiverNumber, setEventReceiverNumber] = useState('');
   const [eventTitle, setEventTitle] = useState('');
   const [eventDepartment, setEventDepartment] = useState('');
   const [eventTime, setEventTime] = useState('');
@@ -233,13 +238,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         requestedBy: `${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? ` • ${eventSenderNumber}` : ''})`,
         senderEmail: eventSenderEmail,
         senderNumber: eventSenderNumber,
+        receiverEmail: eventReceiverEmail,
+        receiverNumber: eventReceiverNumber,
         department: eventDepartment || 'Institutional Events',
         team: eventReceiverName ? `To: ${eventReceiverName}` : 'Administration Office',
         date: reqDate,
         time: eventTime || '10:00 AM',
         dateTimeDisplay: `${reqDate} • ${eventTime || 'TBD'}`,
         location: 'Campus Auditorium / Conference Hall',
-        purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? `, Phone: ${eventSenderNumber}` : ''})\nReceiver: ${eventReceiverName} (${eventReceiverEmail})\n\nPurpose / Description:\n${eventPurpose}`,
+        purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? `, Phone: ${eventSenderNumber}` : ''})\nReceiver: ${eventReceiverName} (${eventReceiverEmail}${eventReceiverNumber ? `, Phone: ${eventReceiverNumber}` : ''})\n\nPurpose / Description:\n${eventPurpose}`,
         status: 'Scheduled'
       });
     } catch (err) {
@@ -257,6 +264,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [infoSenderNumber, setInfoSenderNumber] = useState('');
   const [infoReceiverName, setInfoReceiverName] = useState('');
   const [infoReceiverEmail, setInfoReceiverEmail] = useState('');
+  const [infoReceiverNumber, setInfoReceiverNumber] = useState('');
   const [infoSubject, setInfoSubject] = useState('');
   const [infoDepartment, setInfoDepartment] = useState('');
   const [infoDescription, setInfoDescription] = useState('');
@@ -312,13 +320,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         requestedBy: `${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? ` • ${infoSenderNumber}` : ''})`,
         senderEmail: infoSenderEmail,
         senderNumber: infoSenderNumber,
+        receiverEmail: infoReceiverEmail,
+        receiverNumber: infoReceiverNumber,
         department: infoDepartment.trim() || 'General Information',
         team: infoReceiverName ? `To: ${infoReceiverName} (${infoReceiverEmail})` : 'Administration Office',
         date: reqDate,
         time: '10:00 AM',
         dateTimeDisplay: `${reqDate} • General Info`,
         location: 'Office of Administration',
-        purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? `, Phone: ${infoSenderNumber}` : ''})\nReceiver: ${infoReceiverName} (${infoReceiverEmail})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
+        purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? `, Phone: ${infoSenderNumber}` : ''})\nReceiver: ${infoReceiverName} (${infoReceiverEmail}${infoReceiverNumber ? `, Phone: ${infoReceiverNumber}` : ''})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
         status: 'Scheduled'
       });
     } catch (err) {
@@ -404,6 +414,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setMeetingReceiverId('');
     setMeetingReceiverName('');
     setMeetingReceiverEmail('');
+    setMeetingReceiverNumber('');
     setSelectedGroupReceivers([]);
     setReceiverSearch('');
     setShowReceiverDropdown(false);
@@ -416,6 +427,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setEventSenderNumber('');
     setEventReceiverName('');
     setEventReceiverEmail('');
+    setEventReceiverNumber('');
     setEventTitle('');
     setEventDepartment('');
     setEventTime('');
@@ -425,6 +437,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setInfoSenderNumber('');
     setInfoReceiverName('');
     setInfoReceiverEmail('');
+    setInfoReceiverNumber('');
     setInfoSubject('');
     setInfoDepartment('');
     setInfoDescription('');
@@ -1020,6 +1033,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingReceiverName || meetingReceiverEmail}</span>
                     </div>
+                    {meetingReceiverNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Receiver Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingReceiverNumber}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* If Online Join URL was generated by backend */}
@@ -1168,6 +1187,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                                     setMeetingReceiverId(u.id);
                                     setMeetingReceiverName(u.name);
                                     setMeetingReceiverEmail(u.email);
+                                    if (u.phone) setMeetingReceiverNumber(u.phone);
                                     setReceiverSearch('');
                                     setShowReceiverDropdown(false);
                                   }}
@@ -1212,6 +1232,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                               setMeetingReceiverName('');
                               setMeetingReceiverEmail('');
                               setMeetingReceiverId('');
+                              setMeetingReceiverNumber('');
                             }}
                             className="text-xs text-gray-400 hover:text-red-600 p-1"
                             title="Clear receiver"
@@ -1242,8 +1263,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         </div>
                       )}
 
-                      {/* Editable Fields for Name and Email */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Editable Fields for Name, Email and Number */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         <div>
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Receiver Name
@@ -1265,6 +1286,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             value={meetingReceiverEmail}
                             onChange={(e) => setMeetingReceiverEmail(e.target.value)}
                             placeholder="Enter receiver email"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Receiver Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={meetingReceiverNumber}
+                            onChange={(e) => setMeetingReceiverNumber(e.target.value)}
+                            placeholder="Enter receiver number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1534,6 +1567,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventReceiverName}</span>
                     </div>
+                    {eventReceiverNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Receiver Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventReceiverNumber}</span>
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -1613,7 +1652,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <div className="h-px bg-[#c4d4c0] flex-1" />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         <div>
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
                             Receiver Name
@@ -1638,6 +1677,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             value={eventReceiverEmail} 
                             onChange={(e) => setEventReceiverEmail(e.target.value)} 
                             placeholder="Enter receiver email ID"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Receiver Number
+                          </label>
+                          <input 
+                            type="tel" 
+                            value={eventReceiverNumber} 
+                            onChange={(e) => setEventReceiverNumber(e.target.value)} 
+                            placeholder="Enter receiver number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1798,6 +1850,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoReceiverName} ({infoReceiverEmail})</span>
                     </div>
+                    {infoReceiverNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Receiver Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoReceiverNumber}</span>
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
@@ -1891,7 +1949,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <div className="h-px bg-[#c4d4c0] flex-1" />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
@@ -1910,6 +1968,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             setInfoReceiverName(e.target.value);
                             if (infoErrors.receiverName) setInfoErrors(prev => ({ ...prev, receiverName: undefined }));
                           }} 
+                          placeholder="Enter receiver name"
                           className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.receiverName ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
                         />
                       </div>
@@ -1932,7 +1991,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             setInfoReceiverEmail(e.target.value);
                             if (infoErrors.receiverEmail) setInfoErrors(prev => ({ ...prev, receiverEmail: undefined }));
                           }} 
+                          placeholder="Enter receiver email ID"
                           className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.receiverEmail ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Receiver Number
+                          </label>
+                        </div>
+                        <input 
+                          type="tel" 
+                          value={infoReceiverNumber} 
+                          onChange={(e) => setInfoReceiverNumber(e.target.value)} 
+                          placeholder="Enter receiver number"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                         />
                       </div>
                     </div>

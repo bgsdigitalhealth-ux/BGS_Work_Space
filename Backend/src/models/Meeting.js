@@ -56,6 +56,11 @@ const meetingSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  receiverNumber: {
+    type: String,
+    default: '',
+    trim: true
+  },
   participants: [{
     id: String,
     name: String,
