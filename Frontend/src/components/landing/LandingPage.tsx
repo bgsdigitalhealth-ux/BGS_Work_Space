@@ -168,7 +168,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         date: reqDate,
         time: meetingTime || '10:00 AM',
         mode: meetingMode,
-        location: meetingMode === 'Online' ? '' : (meetingPlace || 'Dean Conference Hall'),
+        location: meetingMode === 'Online' ? '' : (meetingPlace || 'Main Conference Hall'),
         purpose: meetingPurpose,
         requiresApproval: false
       });
@@ -303,11 +303,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         title: infoSubject.trim() || `General Info from ${infoSenderName}`,
         requestedBy: `${infoSenderName} (${infoSenderEmail})`,
         department: infoDepartment.trim() || 'General Information',
-        team: infoReceiverName ? `To: ${infoReceiverName} (${infoReceiverEmail})` : 'Dean Administration',
+        team: infoReceiverName ? `To: ${infoReceiverName} (${infoReceiverEmail})` : 'Administration Office',
         date: reqDate,
         time: '10:00 AM',
         dateTimeDisplay: `${reqDate} • General Info`,
-        location: 'Office of the Dean',
+        location: 'Office of Administration',
         purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail})\nReceiver: ${infoReceiverName} (${infoReceiverEmail})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
         status: 'Scheduled'
       });
@@ -325,7 +325,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     {
       id: 'meeting',
       title: 'Meeting',
-      desc: 'Request a meeting with the Dean',
+      desc: 'Request a meeting with Administration',
       icon: Users,
       color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
       badge: 'Meeting Request'
@@ -333,7 +333,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     {
       id: 'event',
       title: 'Event',
-      desc: 'Invite the Dean to an event or programme',
+      desc: 'Invite to an event or programme',
       icon: Calendar,
       color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
       badge: 'Event Invitation'
@@ -363,7 +363,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         title: reqSubject.trim() || `${selectedRequestType?.title || 'Work'} Request from ${reqName}`,
         requestedBy: `${reqName} (${reqEmail}${reqPhone ? ` • ${reqPhone}` : ''})`,
         department: reqDepartment,
-        team: selectedRequestType?.title || "Dean's Administration Office",
+        team: selectedRequestType?.title || "Administration Office",
         date: reqDate,
         time: reqTimeSlot.split(' ')[0] || '10:00 AM',
         dateTimeDisplay: `${reqDate} • ${reqTimeSlot}`,
@@ -983,7 +983,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       Meeting Request Scheduled
                     </h3>
                     <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
-                      Your meeting request has been recorded and submitted to the Dean's Office.
+                      Your meeting request has been recorded and submitted to the Administration Office.
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f7f9f6] border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
@@ -1477,7 +1477,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       Event Organize Submitted
                     </h3>
                     <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
-                      Your event details and invitation have been recorded and sent to the Dean's Office.
+                      Your event details and invitation have been recorded and sent to the Administration Office.
                     </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-[#f7f9f6] border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
@@ -1726,7 +1726,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       General Information Submitted
                     </h3>
                     <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto font-inter">
-                      Your information has been recorded and submitted to the Dean's Office.
+                      Your information has been recorded and submitted to the Administration Office.
                     </p>
                   </div>
                   <div className="p-4 rounded-xl bg-white border border-[#d2ded0] max-w-sm mx-auto text-left text-xs font-inter space-y-1.5">
@@ -2002,7 +2002,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         Work Request Submitted!
                       </h4>
                       <p className="text-xs text-gray-500 mt-1 max-w-sm mx-auto leading-relaxed">
-                        Your request has been logged and forwarded directly to the Dean & Administrative Office.
+                        Your request has been logged and forwarded directly to the Administrative Office.
                       </p>
                     </div>
 
@@ -2099,7 +2099,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           {departments.filter(d => d.id !== 'all').map((d) => (
                             <option key={d.id} value={d.title}>{d.title}</option>
                           ))}
-                          <option value="Dean Administration Office">Dean Administration Office</option>
+                          <option value="Administration Office">Administration Office</option>
                           <option value="External / Visiting Faculty">External / Visiting Faculty</option>
                         </select>
                       </div>

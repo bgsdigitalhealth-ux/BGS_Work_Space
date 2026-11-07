@@ -38,7 +38,7 @@
       "requestedBy": "Dr. Priya Sharma (dr.priya@bgsmch.edu)",
       "userId": "usr-priya",
       "department": "Administration",
-      "team": "With: Dean Office",
+      "team": "With: Administration Office",
       "date": "2026-11-10",
       "time": "03:00 PM",
       "endTime": "12:00 PM",
@@ -55,11 +55,11 @@
     },
     {
       "id": "apt-1793959620549-611",
-      "title": "Dean Approval Consultation",
+      "title": "Management Approval Consultation",
       "requestedBy": "Staff User (user@workhub.internal)",
       "userId": "usr-user",
       "department": "Administration",
-      "team": "With: Dean Admin",
+      "team": "With: Administration Admin",
       "date": "2026-11-09",
       "time": "11:00 AM",
       "endTime": "12:00 PM",
@@ -122,7 +122,7 @@
       "recipientRole": "user",
       "recipientUserId": "usr-priya",
       "title": "Meeting Scheduled",
-      "message": "Your meeting with Dean Office on 2026-11-10 at 03:00 PM is scheduled. Join URL: /meet/m-tw0bts-mw4t9bip",
+      "message": "Your meeting with Administration Office on 2026-11-10 at 03:00 PM is scheduled. Join URL: /meet/m-tw0bts-mw4t9bip",
       "timestamp": "06 Nov 2026, 03:37 PM",
       "read": false,
       "link": "/meet/m-tw0bts-mw4t9bip"
@@ -142,7 +142,7 @@
       "recipientRole": "user",
       "recipientUserId": "usr-user",
       "title": "Meeting Scheduled",
-      "message": "Your meeting with Dean Admin on 2026-11-09 at 11:00 AM is scheduled. Join URL: /meet/m-95lx13-mw4t8m9w",
+      "message": "Your meeting with Administration Admin on 2026-11-09 at 11:00 AM is scheduled. Join URL: /meet/m-95lx13-mw4t8m9w",
       "timestamp": "06 Nov 2026, 03:37 PM",
       "read": false,
       "link": "/meet/m-95lx13-mw4t8m9w"
@@ -152,7 +152,7 @@
       "recipientRole": "user",
       "recipientUserId": "usr-admin",
       "title": "Video Meeting Invitation 📹",
-      "message": "Staff User invited you to a video meeting: \"Dean Approval Consultation\" on 2026-11-09 at 11:00 AM",
+      "message": "Staff User invited you to a video meeting: \"Management Approval Consultation\" on 2026-11-09 at 11:00 AM",
       "timestamp": "06 Nov 2026, 03:37 PM",
       "read": false,
       "link": "/meet/m-95lx13-mw4t8m9w"
@@ -360,7 +360,7 @@
       "senderId": "usr-priya",
       "senderName": "Dr. Priya Sharma",
       "senderEmail": "dr.priya@bgsmch.edu",
-      "receiverName": "Dean Office",
+      "receiverName": "Administration Office",
       "receiverEmail": "",
       "participants": [
         {
@@ -410,13 +410,13 @@
       "customId": "meet_1793959620548",
       "requestId": "req_1793959620548",
       "meetingId": "m-95lx13-mw4t8m9w",
-      "title": "Dean Approval Consultation",
+      "title": "Management Approval Consultation",
       "type": "one-to-one",
       "senderId": "usr-user",
       "senderName": "Staff User",
       "senderEmail": "user@workhub.internal",
       "receiverId": "usr-admin",
-      "receiverName": "Dean Admin",
+      "receiverName": "Administration Admin",
       "receiverEmail": "admin@workhub.internal",
       "participants": [
         {
@@ -427,7 +427,7 @@
         },
         {
           "id": "usr-admin",
-          "name": "Dean Admin",
+          "name": "Administration Admin",
           "email": "admin@workhub.internal",
           "role": "attendee"
         }

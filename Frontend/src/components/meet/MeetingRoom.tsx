@@ -706,7 +706,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, onLeave }) => {
               <div className="space-y-3 py-4 border-y border-[#26382c] text-xs">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Host (Sender):</span>
-                  <span className="font-semibold text-gray-200">{meeting?.senderName || 'Dean Office'}</span>
+                  <span className="font-semibold text-gray-200">{meeting?.senderName || 'Administration Office'}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400">Invitee:</span>

@@ -2761,7 +2761,7 @@ const createMeeting = async (data) => {
     ? data.participants
     : [
         { id: data.senderId || data.senderEmail, name: data.senderName, email: senderEmail, role: 'host' },
-        { id: data.receiverId || data.receiverEmail, name: data.receiverName || 'Dean Office', email: receiverEmail, role: 'attendee' }
+        { id: data.receiverId || data.receiverEmail, name: data.receiverName || 'Administration Office', email: receiverEmail, role: 'attendee' }
       ];
 
   const participantEmails = Array.isArray(data.participantEmails) && data.participantEmails.length > 0
@@ -2773,13 +2773,13 @@ const createMeeting = async (data) => {
     customId: data.customId || ('meet_' + Date.now()),
     requestId: data.requestId || ('req_' + Date.now()),
     meetingId: meetingId,
-    title: data.title || (data.purpose ? (data.purpose.length > 40 ? data.purpose.substring(0, 40) + '...' : data.purpose) : `Meeting with ${data.receiverName || data.receiverEmail || 'Dean'}`),
+    title: data.title || (data.purpose ? (data.purpose.length > 40 ? data.purpose.substring(0, 40) + '...' : data.purpose) : `Meeting with ${data.receiverName || data.receiverEmail || 'Administration'}`),
     type: data.type || 'one-to-one', // 'one-to-one' | 'one-to-many'
     senderId: data.senderId || data.senderEmail,
     senderName: data.senderName,
     senderEmail: senderEmail,
     receiverId: data.receiverId || data.receiverEmail,
-    receiverName: data.receiverName || 'Dean Office',
+    receiverName: data.receiverName || 'Administration Office',
     receiverEmail: receiverEmail,
     participants: participants,
     participantEmails: participantEmails,
