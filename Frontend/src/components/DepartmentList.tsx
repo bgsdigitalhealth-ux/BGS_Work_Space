@@ -48,29 +48,28 @@ export const DepartmentList: React.FC = () => {
           </div>
         ) : (
           departments.map((dept) => {
-          const isSelected = selectedDepartment?.id === dept.id;
-          return (
-            <button
-              key={dept.id}
-              onClick={() => setSelectedDepartment(dept)}
-              className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left text-sm font-semibold transition-all cursor-pointer ${
-                isSelected
+            const isSelected = selectedDepartment?.id === dept.id;
+            return (
+              <button
+                key={dept.id}
+                onClick={() => setSelectedDepartment(dept)}
+                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left text-sm font-semibold transition-all cursor-pointer ${isSelected
                   ? 'bg-indigo-50/90 text-indigo-900 border border-indigo-200/80 shadow-2xs'
                   : 'text-slate-700 hover:bg-slate-50 border border-transparent'
-              }`}
-            >
-              <div className="flex items-center gap-3 truncate">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-white shadow-2xs' : 'bg-slate-100'}`}>
-                  {getIcon(dept.icon || dept.name)}
+                  }`}
+              >
+                <div className="flex items-center gap-3 truncate">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-white shadow-2xs' : 'bg-slate-100'}`}>
+                    {getIcon(dept.icon || dept.name)}
+                  </div>
+                  <span className="truncate">{dept.name}</span>
                 </div>
-                <span className="truncate">{dept.name}</span>
-              </div>
-              <span className={`text-xs font-normal shrink-0 ${isSelected ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
-                {getTeamCountText(dept)}
-              </span>
-            </button>
-          );
-        })
+                <span className={`text-xs font-normal shrink-0 ${isSelected ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
+                  {getTeamCountText(dept)}
+                </span>
+              </button>
+            );
+          })
         )}
       </div>
     </div>

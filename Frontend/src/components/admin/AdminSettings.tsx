@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Shield, 
-  KeyRound, 
-  UserPlus, 
-  Trash2, 
-  Eye, 
-  EyeOff, 
-  Save, 
-  Mail, 
-  User as UserIcon, 
-  CheckCircle2, 
+import {
+  Shield,
+  KeyRound,
+  UserPlus,
+  Trash2,
+  Eye,
+  EyeOff,
+  Save,
+  Mail,
+  User as UserIcon,
+  CheckCircle2,
   AlertCircle,
   ShieldCheck,
   Plus,
@@ -55,7 +55,7 @@ export const AdminSettings: React.FC = () => {
   const adminsCount = (allUsers || []).filter(u => u.role === 'admin').length;
 
   const filteredUsers = (allUsers || []).filter(u => {
-    const matchesSearch = 
+    const matchesSearch =
       (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
       (u.email || '').toLowerCase().includes(userSearch.toLowerCase());
     const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
@@ -131,7 +131,7 @@ export const AdminSettings: React.FC = () => {
         setCurrentUser(res.user);
         try {
           localStorage.setItem('workhub_user', JSON.stringify(res.user));
-        } catch (e) {}
+        } catch (e) { }
 
         setProfileSuccess('Admin credentials updated successfully!');
         setNewPassword('');
@@ -491,11 +491,10 @@ export const AdminSettings: React.FC = () => {
                   key={role}
                   type="button"
                   onClick={() => setUserRoleFilter(role)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
-                    userRoleFilter === role
-                      ? 'bg-slate-900 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${userRoleFilter === role
+                    ? 'bg-slate-900 text-white'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
                 >
                   {role === 'all' ? `All (${(allUsers || []).length})` : role === 'admin' ? `Admin (${adminsCount})` : `User (${regularUsersCount})`}
                 </button>
@@ -516,11 +515,10 @@ export const AdminSettings: React.FC = () => {
                 return (
                   <div key={u.id || u.email} className="py-2.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 truncate">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                        isAdmin 
-                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-2xs' 
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                      }`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isAdmin
+                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-2xs'
+                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                        }`}>
                         {u.avatar || (u.name || 'U').charAt(0).toUpperCase()}
                       </div>
                       <div className="truncate">
@@ -536,11 +534,10 @@ export const AdminSettings: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border ${
-                      isAdmin 
-                        ? 'bg-purple-50 text-purple-700 border-purple-200/60' 
-                        : 'bg-slate-100 text-slate-600 border-slate-200/60'
-                    }`}>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border ${isAdmin
+                      ? 'bg-purple-50 text-purple-700 border-purple-200/60'
+                      : 'bg-slate-100 text-slate-600 border-slate-200/60'
+                      }`}>
                       {isAdmin ? 'Admin' : 'User'}
                     </span>
                   </div>
