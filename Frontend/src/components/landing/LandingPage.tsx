@@ -807,17 +807,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </main>
 
-      {/* ---------------- FOOTER ---------------- */}
-      <footer className="w-full bg-white/75 backdrop-blur-md border-t border-gray-200/60 py-5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-          <p>© 2026 WorkHub Team Workspace. BGS Digital Health. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <button onClick={() => setShowAboutModal(true)} className="hover:text-[#5a36e6] cursor-pointer">About Platform</button>
-            <button onClick={() => setShowContactModal(true)} className="hover:text-[#5a36e6] cursor-pointer">Support & Contact</button>
-            <button onClick={onLogin} className="hover:text-[#5a36e6] font-semibold text-[#5a36e6] cursor-pointer">Login</button>
-          </div>
-        </div>
-      </footer>
 
       {/* ---------------- MODAL 1: Department Info Modal ---------------- */}
       {selectedDeptInfo && (
