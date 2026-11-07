@@ -74,6 +74,16 @@ const startServer = async () => {
   // Initialize Socket.IO Real-Time Engine
   initSocket(server);
 
+  // Initialize WPPConnect WhatsApp Session asynchronously in background
+  try {
+    const { initWppSession } = require('./services/wppService');
+    initWppSession().catch(err => {
+      console.warn('[WPPConnect] Background session initialization notice:', err.message);
+    });
+  } catch (err) {
+    console.warn('[WPPConnect] WPP service loader notice:', err.message);
+  }
+
   server.listen(PORT, HOST, () => {
     console.log(`[Server] Worker Space Backend with Socket.IO running on http://${HOST}:${PORT}`);
   });

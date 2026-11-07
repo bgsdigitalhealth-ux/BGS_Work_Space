@@ -21,3 +21,8 @@ Thumbs.db
 .vscode/
 .idea/
 
+# WPPConnect session tokens & local message queues
+tokens/
+*.session.data.json
+Backend/data/wpp_messages.json
+

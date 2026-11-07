@@ -1424,6 +1424,90 @@ const checkEmail = async (email) => {
   };
 };
 
+// --- Verify Receiver Email against Registered Users (For Work Requests: Meeting, Event, General Info) ---
+const verifyReceiverEmail = async (email) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (!cleanEmail) {
+    return {
+      exists: false,
+      error: 'Invalid receiver email. Enter the email address of a registered user.'
+    };
+  }
+
+  // 1. Check MongoDB Atlas if connected
+  if (getStatus()) {
+    try {
+      const dbUser = await User.findOne({ email: cleanEmail }).lean();
+      if (dbUser) {
+        return {
+          exists: true,
+          user: {
+            id: dbUser.customId || dbUser._id.toString(),
+            userId: dbUser.customId || dbUser._id.toString(),
+            name: dbUser.name,
+            email: dbUser.email,
+            role: dbUser.role,
+            phone: dbUser.phone || ''
+          }
+        };
+      }
+      const dbMember = await Member.findOne({ email: cleanEmail }).lean();
+      if (dbMember) {
+        return {
+          exists: true,
+          user: {
+            id: dbMember.customId || dbMember._id.toString(),
+            userId: dbMember.customId || dbMember._id.toString(),
+            name: dbMember.name,
+            email: dbMember.email,
+            role: dbMember.role || 'user',
+            phone: dbMember.phone || ''
+          }
+        };
+      }
+    } catch (e) {
+      console.warn('Mongo verifyReceiverEmail warning:', e.message);
+    }
+  }
+
+  // 2. Check memoryStore.users
+  const user = (memoryStore.users || []).find(u => (u.email || '').toLowerCase() === cleanEmail);
+  if (user) {
+    return {
+      exists: true,
+      user: {
+        id: user.id || user.customId,
+        userId: user.id || user.customId,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        phone: user.phone || ''
+      }
+    };
+  }
+
+  // 3. Check memoryStore.members
+  const member = (memoryStore.members || []).find(m => (m.email || '').toLowerCase() === cleanEmail);
+  if (member) {
+    return {
+      exists: true,
+      user: {
+        id: member.id || member.customId || member._id,
+        userId: member.id || member.customId || member._id,
+        name: member.name,
+        email: member.email,
+        role: member.role || 'user',
+        phone: member.phone || ''
+      }
+    };
+  }
+
+  return {
+    exists: false,
+    error: 'Invalid receiver email. Enter the email address of a registered user.'
+  };
+};
+
 const createPassword = async (email, password) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail || !password) {
@@ -2146,9 +2230,13 @@ const createAppointment = async (data) => {
     isToday: data.date === todayStr,
     meetingId: data.meetingId || null,
     joinUrl: data.joinUrl || null,
+    referenceId: data.referenceId || ('APT-' + Date.now()),
+    formType: data.formType || (data.title && data.title.toLowerCase().includes('event') ? 'Event Organize' : (data.title && data.title.toLowerCase().includes('general') ? 'General Information' : 'Work Request')),
+    senderName: data.senderName || (data.requestedBy ? data.requestedBy.split('(')[0].trim() : 'Sender'),
     senderEmail: data.senderEmail || '',
     senderNumber: data.senderNumber || data.phone || '',
     receiverId: data.receiverId || '',
+    receiverName: data.receiverName || (data.team ? data.team.replace(/^To:\s*/, '').split('(')[0].trim() : 'Receiver'),
     receiverEmail: data.receiverEmail || '',
     receiverNumber: data.receiverNumber || ''
   };
@@ -2159,13 +2247,22 @@ const createAppointment = async (data) => {
   memoryStore.appointments.unshift(newApt);
   saveStore();
 
+  let createdResult = newApt;
+
   if (getStatus()) {
     try {
       const created = await Appointment.create({
         customId: newApt.id,
+        referenceId: newApt.referenceId,
+        formType: newApt.formType,
         title: newApt.title,
         requestedBy: newApt.requestedBy,
         userId: newApt.userId,
+        receiverId: newApt.receiverId,
+        senderEmail: newApt.senderEmail,
+        senderNumber: newApt.senderNumber,
+        receiverEmail: newApt.receiverEmail,
+        receiverNumber: newApt.receiverNumber,
         department: newApt.department,
         team: newApt.team,
         date: newApt.date,
@@ -2177,13 +2274,31 @@ const createAppointment = async (data) => {
         status: newApt.status,
         isToday: newApt.isToday
       });
-      return { ...created.toObject(), id: created._id.toString() };
+      createdResult = { ...created.toObject(), id: created._id.toString() };
     } catch (e) {
       console.warn('Mongo appointment create error:', e.message);
     }
   }
 
-  return newApt;
+  // Automatically trigger WhatsApp notifications via WPPConnect (fail-safe)
+  try {
+    const wppService = require('../services/wppService');
+    if (newApt.senderNumber || newApt.receiverNumber) {
+      wppService.sendWorkRequestNotifications({
+        formType: newApt.formType,
+        referenceId: newApt.referenceId || newApt.id,
+        senderName: newApt.senderName,
+        senderNumber: newApt.senderNumber,
+        receiverName: newApt.receiverName,
+        receiverNumber: newApt.receiverNumber,
+        agreedToNotifications: data.agreedToNotifications !== false
+      }).catch(err => console.warn('[WPPConnect] sendWorkRequestNotifications async warning:', err.message));
+    }
+  } catch (wppErr) {
+    console.warn('[WPPConnect] Error calling wppService:', wppErr.message);
+  }
+
+  return createdResult;
 };
 
 const updateAppointment = async (id, data) => {
@@ -2830,8 +2945,12 @@ const createMeeting = async (data) => {
       isToday: false,
       meetingId: newMeeting.meetingId,
       joinUrl: newMeeting.joinUrl,
+      referenceId: data.referenceId || newMeeting.requestId || newMeeting.customId || ('MEET-' + newMeeting.meetingId),
+      formType: 'Meeting',
+      senderName: newMeeting.senderName,
       senderEmail: newMeeting.senderEmail,
       senderNumber: newMeeting.senderNumber || '',
+      receiverName: newMeeting.receiverName,
       receiverEmail: newMeeting.receiverEmail,
       receiverNumber: newMeeting.receiverNumber || ''
     };
@@ -3068,6 +3187,7 @@ module.exports = {
   updateUserWorkStatus,
   loginUser,
   checkEmail,
+  verifyReceiverEmail,
   createPassword,
   getUsers,
   updateAdminProfile,

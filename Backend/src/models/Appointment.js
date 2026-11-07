@@ -19,6 +19,34 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     default: 'usr-member'
   },
+  receiverId: {
+    type: String,
+    default: ''
+  },
+  referenceId: {
+    type: String,
+    default: ''
+  },
+  formType: {
+    type: String,
+    default: ''
+  },
+  senderEmail: {
+    type: String,
+    default: ''
+  },
+  senderNumber: {
+    type: String,
+    default: ''
+  },
+  receiverEmail: {
+    type: String,
+    default: ''
+  },
+  receiverNumber: {
+    type: String,
+    default: ''
+  },
   department: {
     type: String,
     default: 'Engineering'

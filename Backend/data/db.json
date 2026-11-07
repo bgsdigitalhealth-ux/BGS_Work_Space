@@ -118,6 +118,26 @@
   ],
   "notifications": [
     {
+      "id": "notif-1794030197620-106",
+      "recipientRole": "user",
+      "recipientUserId": "john@example.com",
+      "title": "Meeting Scheduled",
+      "message": "Your meeting with BGS Staff on 2026-11-08 at 11:00 AM is scheduled. Join URL: /meet/m-urbttd-mw5z9bvo",
+      "timestamp": "07 Nov 2026, 11:13 AM",
+      "read": false,
+      "link": "/meet/m-urbttd-mw5z9bvo"
+    },
+    {
+      "id": "notif-1794030197618-388",
+      "recipientRole": "user",
+      "recipientUserId": "bgsmchhospitalnagarur@gmail.com",
+      "title": "Video Meeting Invitation 📹",
+      "message": "John Doe invited you to a video meeting: \"Testing WPPConnect Work Request\" on 2026-11-08 at 11:00 AM",
+      "timestamp": "07 Nov 2026, 11:13 AM",
+      "read": false,
+      "link": "/meet/m-urbttd-mw5z9bvo"
+    },
+    {
       "id": "notif-1793959653266-332",
       "recipientRole": "user",
       "recipientUserId": "usr-priya",

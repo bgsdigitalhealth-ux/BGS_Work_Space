@@ -171,10 +171,16 @@ export interface Appointment {
   isToday?: boolean;
   meetingId?: string;
   joinUrl?: string;
+  referenceId?: string;
+  formType?: string;
+  senderName?: string;
   senderEmail?: string;
   senderNumber?: string;
+  receiverId?: string;
+  receiverName?: string;
   receiverEmail?: string;
   receiverNumber?: string;
+  agreedToNotifications?: boolean;
 }
 
 export interface AppointmentStats {

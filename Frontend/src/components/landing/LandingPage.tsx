@@ -99,6 +99,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     e.preventDefault();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+    // 1. Validate Sender Details & Number
     if (!meetingSenderName.trim() || !meetingSenderEmail.trim()) {
       alert('Please enter Sender Name and Sender Email ID.');
       return;
@@ -107,7 +108,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       alert('Please enter a valid Sender Email ID.');
       return;
     }
+    const cleanSenderNum = meetingSenderNumber.replace(/\D/g, '');
+    if (!cleanSenderNum || cleanSenderNum.length < 10) {
+      alert('Please enter a valid Sender Number (at least 10 digits).');
+      return;
+    }
 
+    // 1b. Validate Receiver Details & Number
     if (meetingType === 'one-to-one') {
       if (!meetingReceiverName.trim() || !meetingReceiverEmail.trim()) {
         alert('Please enter Receiver Name and Receiver Email ID.');
@@ -117,21 +124,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         alert('Please enter a valid Receiver Email ID.');
         return;
       }
+      const cleanReceiverNum = meetingReceiverNumber.replace(/\D/g, '');
+      if (!cleanReceiverNum || cleanReceiverNum.length < 10) {
+        alert('Please enter a valid Receiver Number (at least 10 digits).');
+        return;
+      }
     } else {
       if (selectedGroupReceivers.length === 0 && (!meetingReceiverName.trim() || !meetingReceiverEmail.trim())) {
         alert('Please enter at least one participant (Name and Email ID) for the group meeting.');
         return;
       }
-      if (meetingReceiverEmail.trim() && !emailRegex.test(meetingReceiverEmail.trim())) {
-        alert('Please enter a valid Receiver Email ID.');
-        return;
+      if (meetingReceiverEmail.trim()) {
+        if (!emailRegex.test(meetingReceiverEmail.trim())) {
+          alert('Please enter a valid Receiver Email ID.');
+          return;
+        }
+        const cleanReceiverNum = meetingReceiverNumber.replace(/\D/g, '');
+        if (!cleanReceiverNum || cleanReceiverNum.length < 10) {
+          alert('Please enter a valid Receiver Number (at least 10 digits).');
+          return;
+        }
       }
     }
 
+    // 2. Verify Receiver Email ID against registered users in the backend
+    const emailToVerify = meetingReceiverEmail.trim() || (selectedGroupReceivers.length > 0 ? selectedGroupReceivers[0].email : '');
     setIsSubmitting(true);
-    const newRef = `MEET-${meetingMode.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
+      const verifyRes = await api.verifyReceiverEmail(emailToVerify);
+      if (!verifyRes.exists) {
+        // 3. If receiver email is not registered: show message, preserve entries, stop submission
+        alert('Invalid receiver email. Enter the email address of a registered user.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Verification succeeds: save request with unique reference ID and matched receiver's account ID
+      const matchedReceiverId = verifyRes.user?.id || verifyRes.user?.userId || emailToVerify;
+      const newRef = `MEET-${meetingMode.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
       const participantsList: Array<{ id: string; name: string; email: string; phone?: string; role: string; }> = [
         { id: currentUser?.id || meetingSenderEmail, name: meetingSenderName, email: meetingSenderEmail, phone: meetingSenderNumber, role: 'host' }
       ];
@@ -144,7 +176,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         }
         if (meetingReceiverEmail.trim() && !participantsList.some(p => p.email.toLowerCase() === meetingReceiverEmail.trim().toLowerCase())) {
           participantsList.push({
-            id: meetingReceiverEmail,
+            id: matchedReceiverId,
             name: meetingReceiverName || 'Participant',
             email: meetingReceiverEmail,
             phone: meetingReceiverNumber,
@@ -153,7 +185,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         }
       } else {
         participantsList.push({
-          id: meetingReceiverEmail,
+          id: matchedReceiverId,
           name: meetingReceiverName || 'Participant',
           email: meetingReceiverEmail,
           phone: meetingReceiverNumber,
@@ -169,11 +201,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       const res = await api.createMeeting({
         title: `Meeting: ${meetingPurpose ? (meetingPurpose.length > 35 ? meetingPurpose.substring(0, 35) + '...' : meetingPurpose) : (effectiveReceiverName ? `Meeting with ${effectiveReceiverName}` : 'Video Meeting')}`,
         type: meetingType,
+        referenceId: newRef,
+        formType: 'Meeting',
         senderId: currentUser?.id || meetingSenderEmail,
         senderName: meetingSenderName,
         senderEmail: meetingSenderEmail,
         senderNumber: meetingSenderNumber,
-        receiverId: effectiveReceiverEmail,
+        receiverId: matchedReceiverId,
         receiverName: effectiveReceiverName,
         receiverEmail: effectiveReceiverEmail,
         receiverNumber: effectiveReceiverNumber,
@@ -184,18 +218,31 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         mode: meetingMode,
         location: meetingMode === 'Online' ? '' : (meetingPlace || 'Main Conference Hall'),
         purpose: `${meetingPurpose}${meetingSenderNumber ? `\nSender Number: ${meetingSenderNumber}` : ''}${effectiveReceiverNumber ? `\nReceiver Number: ${effectiveReceiverNumber}` : ''}`,
-        requiresApproval: false
+        requiresApproval: false,
+        agreedToNotifications: true
       });
 
       if (res && res.joinUrl) {
         setCreatedJoinUrl(res.joinUrl);
       }
+
+      // 5. Send WhatsApp messages via WPPConnect (fail-safe delivery)
+      api.sendWppNotifications({
+        formType: 'Meeting',
+        referenceId: newRef,
+        senderName: meetingSenderName,
+        senderNumber: meetingSenderNumber,
+        receiverName: effectiveReceiverName,
+        receiverNumber: effectiveReceiverNumber,
+        agreedToNotifications: true
+      }).catch(err => console.warn('WPP notification trigger notice:', err));
+
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
     } catch (err) {
       console.warn('Meeting creation warning:', err);
     } finally {
       setIsSubmitting(false);
-      setReferenceId(newRef);
-      setRequestFormSubmitted(true);
     }
   };
 
@@ -214,6 +261,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const handleEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // 1. Validate both numbers and input fields
     if (!eventSenderName.trim()) {
       alert('Please enter Sender Name.');
       return;
@@ -222,6 +271,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       alert('Please enter a valid Sender Email ID.');
       return;
     }
+    const cleanSenderNum = eventSenderNumber.replace(/\D/g, '');
+    if (!cleanSenderNum || cleanSenderNum.length < 10) {
+      alert('Please enter a valid Sender Number (at least 10 digits).');
+      return;
+    }
+
     if (!eventReceiverName.trim()) {
       alert('Please enter Receiver Name.');
       return;
@@ -230,20 +285,43 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       alert('Please enter a valid Receiver Email ID.');
       return;
     }
+    const cleanReceiverNum = eventReceiverNumber.replace(/\D/g, '');
+    if (!cleanReceiverNum || cleanReceiverNum.length < 10) {
+      alert('Please enter a valid Receiver Number (at least 10 digits).');
+      return;
+    }
+
     if (!eventTitle.trim()) {
       alert('Please enter Title of Event.');
       return;
     }
 
     setIsSubmitting(true);
-    const newRef = `EVT-ORG-${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
+      // 2. Verify Receiver Email ID against registered users in the backend
+      const verifyRes = await api.verifyReceiverEmail(eventReceiverEmail.trim());
+      if (!verifyRes.exists) {
+        // 3. Show error message, preserve form entries, and stop submission
+        alert('Invalid receiver email. Enter the email address of a registered user.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Save request with unique reference ID and matched receiver's account ID
+      const matchedReceiverId = verifyRes.user?.id || verifyRes.user?.userId || eventReceiverEmail.trim();
+      const newRef = `EVT-ORG-${Math.floor(1000 + Math.random() * 9000)}`;
+
       await api.createAppointment({
+        referenceId: newRef,
+        formType: 'Event Organize',
         title: `Event: ${eventTitle}`,
         requestedBy: `${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? ` • ${eventSenderNumber}` : ''})`,
+        senderName: eventSenderName,
         senderEmail: eventSenderEmail,
         senderNumber: eventSenderNumber,
+        receiverId: matchedReceiverId,
+        receiverName: eventReceiverName,
         receiverEmail: eventReceiverEmail,
         receiverNumber: eventReceiverNumber,
         department: eventDepartment || 'Institutional Events',
@@ -253,14 +331,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         dateTimeDisplay: `${reqDate} • ${eventTime || 'TBD'}`,
         location: 'Campus Auditorium / Conference Hall',
         purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? `, Phone: ${eventSenderNumber}` : ''})\nReceiver: ${eventReceiverName} (${eventReceiverEmail}${eventReceiverNumber ? `, Phone: ${eventReceiverNumber}` : ''})\n\nPurpose / Description:\n${eventPurpose}`,
-        status: 'Scheduled'
+        status: 'Scheduled',
+        agreedToNotifications: true
       });
+
+      // 5. Send WhatsApp notifications via WPPConnect (fail-safe delivery)
+      api.sendWppNotifications({
+        formType: 'Event Organize',
+        referenceId: newRef,
+        senderName: eventSenderName,
+        senderNumber: eventSenderNumber,
+        receiverName: eventReceiverName,
+        receiverNumber: eventReceiverNumber,
+        agreedToNotifications: true
+      }).catch(err => console.warn('WPP notification trigger notice:', err));
+
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
     } catch (err) {
       console.warn('API submission fallback:', err);
     } finally {
       setIsSubmitting(false);
-      setReferenceId(newRef);
-      setRequestFormSubmitted(true);
     }
   };
 
@@ -279,8 +370,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [infoErrors, setInfoErrors] = useState<{
     senderName?: string;
     senderEmail?: string;
+    senderNumber?: string;
     receiverName?: string;
     receiverEmail?: string;
+    receiverNumber?: string;
     subject?: string;
   }>({});
 
@@ -289,6 +382,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const errors: typeof infoErrors = {};
 
+    // 1. Validate both numbers and input fields
     if (!infoSenderName.trim()) {
       errors.senderName = 'Sender Name is required';
     }
@@ -296,6 +390,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       errors.senderEmail = 'Sender Email is required';
     } else if (!emailRegex.test(infoSenderEmail.trim())) {
       errors.senderEmail = 'Invalid email address';
+    }
+    const cleanSenderNum = infoSenderNumber.replace(/\D/g, '');
+    if (!cleanSenderNum || cleanSenderNum.length < 10) {
+      errors.senderNumber = 'Valid 10-digit number required';
     }
 
     if (!infoReceiverName.trim()) {
@@ -306,6 +404,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     } else if (!emailRegex.test(infoReceiverEmail.trim())) {
       errors.receiverEmail = 'Invalid email address';
     }
+    const cleanReceiverNum = infoReceiverNumber.replace(/\D/g, '');
+    if (!cleanReceiverNum || cleanReceiverNum.length < 10) {
+      errors.receiverNumber = 'Valid 10-digit number required';
+    }
 
     if (!infoSubject.trim()) {
       errors.subject = 'Subject is required';
@@ -313,19 +415,40 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
     if (Object.keys(errors).length > 0) {
       setInfoErrors(errors);
+      if (errors.senderNumber || errors.receiverNumber) {
+        alert('Please enter valid 10-digit numbers for both Sender Number and Receiver Number.');
+      }
       return;
     }
     setInfoErrors({});
 
     setIsSubmitting(true);
-    const newRef = `GEN-INF-${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
+      // 2. Verify Receiver Email ID against registered users in the backend
+      const verifyRes = await api.verifyReceiverEmail(infoReceiverEmail.trim());
+      if (!verifyRes.exists) {
+        // 3. Show error message, preserve form entries, and stop submission
+        setInfoErrors({ receiverEmail: 'Invalid receiver email. Enter the email address of a registered user.' });
+        alert('Invalid receiver email. Enter the email address of a registered user.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // 4. Save request with unique reference ID and matched receiver's account ID
+      const matchedReceiverId = verifyRes.user?.id || verifyRes.user?.userId || infoReceiverEmail.trim();
+      const newRef = `GEN-INF-${Math.floor(1000 + Math.random() * 9000)}`;
+
       await api.createAppointment({
+        referenceId: newRef,
+        formType: 'General Information',
         title: infoSubject.trim() || `General Info from ${infoSenderName}`,
         requestedBy: `${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? ` • ${infoSenderNumber}` : ''})`,
+        senderName: infoSenderName,
         senderEmail: infoSenderEmail,
         senderNumber: infoSenderNumber,
+        receiverId: matchedReceiverId,
+        receiverName: infoReceiverName,
         receiverEmail: infoReceiverEmail,
         receiverNumber: infoReceiverNumber,
         department: infoDepartment.trim() || 'General Information',
@@ -335,14 +458,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         dateTimeDisplay: `${reqDate} • General Info`,
         location: 'Office of Administration',
         purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? `, Phone: ${infoSenderNumber}` : ''})\nReceiver: ${infoReceiverName} (${infoReceiverEmail}${infoReceiverNumber ? `, Phone: ${infoReceiverNumber}` : ''})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
-        status: 'Scheduled'
+        status: 'Scheduled',
+        agreedToNotifications: true
       });
+
+      // 5. Send WhatsApp notifications via WPPConnect (fail-safe delivery)
+      api.sendWppNotifications({
+        formType: 'General Information',
+        referenceId: newRef,
+        senderName: infoSenderName,
+        senderNumber: infoSenderNumber,
+        receiverName: infoReceiverName,
+        receiverNumber: infoReceiverNumber,
+        agreedToNotifications: true
+      }).catch(err => console.warn('WPP notification trigger notice:', err));
+
+      setReferenceId(newRef);
+      setRequestFormSubmitted(true);
     } catch (err) {
       console.warn('API submission fallback:', err);
     } finally {
       setIsSubmitting(false);
-      setReferenceId(newRef);
-      setRequestFormSubmitted(true);
     }
   };
 
@@ -1135,9 +1271,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input
                             type="tel"
+                            required
                             value={meetingSenderNumber}
                             onChange={(e) => setMeetingSenderNumber(e.target.value)}
-                            placeholder="Enter sender number"
+                            placeholder="Enter 10-digit sender number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1208,9 +1345,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input
                             type="tel"
+                            required={selectedGroupReceivers.length === 0}
                             value={meetingReceiverNumber}
                             onChange={(e) => setMeetingReceiverNumber(e.target.value)}
-                            placeholder="Enter receiver number"
+                            placeholder="Enter 10-digit receiver number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1585,9 +1723,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input 
                             type="tel" 
+                            required
                             value={eventSenderNumber} 
                             onChange={(e) => setEventSenderNumber(e.target.value)} 
-                            placeholder="Enter sender number"
+                            placeholder="Enter 10-digit sender number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1638,9 +1777,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           </label>
                           <input 
                             type="tel" 
+                            required
                             value={eventReceiverNumber} 
                             onChange={(e) => setEventReceiverNumber(e.target.value)} 
-                            placeholder="Enter receiver number"
+                            placeholder="Enter 10-digit receiver number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1879,13 +2019,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
                             Sender Number
                           </label>
+                          {infoErrors.senderNumber && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.senderNumber}
+                            </span>
+                          )}
                         </div>
                         <input 
                           type="tel" 
+                          required
                           value={infoSenderNumber} 
-                          onChange={(e) => setInfoSenderNumber(e.target.value)} 
-                          placeholder="Enter sender number"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          onChange={(e) => {
+                            setInfoSenderNumber(e.target.value);
+                            if (infoErrors.senderNumber) setInfoErrors(prev => ({ ...prev, senderNumber: undefined }));
+                          }} 
+                          placeholder="Enter 10-digit sender number"
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.senderNumber ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
                         />
                       </div>
                     </div>
@@ -1914,6 +2063,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         </div>
                         <input 
                           type="text" 
+                          required
                           value={infoReceiverName} 
                           onChange={(e) => {
                             setInfoReceiverName(e.target.value);
@@ -1937,6 +2087,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         </div>
                         <input 
                           type="email" 
+                          required
                           value={infoReceiverEmail} 
                           onChange={(e) => {
                             setInfoReceiverEmail(e.target.value);
@@ -1952,13 +2103,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
                             Receiver Number
                           </label>
+                          {infoErrors.receiverNumber && (
+                            <span className="text-red-500 text-[11px] font-medium font-inter">
+                              {infoErrors.receiverNumber}
+                            </span>
+                          )}
                         </div>
                         <input 
                           type="tel" 
+                          required
                           value={infoReceiverNumber} 
-                          onChange={(e) => setInfoReceiverNumber(e.target.value)} 
-                          placeholder="Enter receiver number"
-                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          onChange={(e) => {
+                            setInfoReceiverNumber(e.target.value);
+                            if (infoErrors.receiverNumber) setInfoErrors(prev => ({ ...prev, receiverNumber: undefined }));
+                          }} 
+                          placeholder="Enter 10-digit receiver number"
+                          className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.receiverNumber ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
                         />
                       </div>
                     </div>

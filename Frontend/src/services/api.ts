@@ -551,5 +551,58 @@ export const api = {
     const res = await fetch(url);
     if (!res.ok) throw new Error('Failed to get ICE servers');
     return res.json();
+  },
+
+  // Receiver Email Verification for Work Requests (Meeting, Event, General Info)
+  verifyReceiverEmail: async (email: string): Promise<{ exists: boolean; user?: any; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify-receiver`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: (email || '').trim().toLowerCase() })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.exists) {
+        return {
+          exists: false,
+          error: data.error || 'Invalid receiver email. Enter the email address of a registered user.'
+        };
+      }
+      return { exists: true, user: data.user };
+    } catch (err: any) {
+      return {
+        exists: false,
+        error: err.message || 'Invalid receiver email. Enter the email address of a registered user.'
+      };
+    }
+  },
+
+  // WPPConnect WhatsApp Integration
+  sendWppNotifications: async (payload: {
+    formType: string;
+    referenceId: string;
+    senderName: string;
+    senderNumber: string;
+    receiverName: string;
+    receiverNumber: string;
+    agreedToNotifications?: boolean;
+  }): Promise<any> => {
+    try {
+      const res = await fetch(`${API_BASE}/wpp/send-notifications`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      return await res.json().catch(() => ({ success: true }));
+    } catch (err) {
+      console.warn('WPP notification error:', err);
+      return { success: false };
+    }
+  },
+
+  getWppStatus: async (): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/status`);
+    if (!res.ok) throw new Error('Failed to fetch WPPConnect status');
+    return res.json();
   }
 };

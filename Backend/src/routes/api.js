@@ -44,6 +44,20 @@ router.post('/auth/check-email', async (req, res) => {
   }
 });
 
+// --- Verify Receiver Email against Registered Users (Work Requests) ---
+router.post('/auth/verify-receiver', async (req, res) => {
+  try {
+    const { email } = req.body;
+    const result = await dataService.verifyReceiverEmail(email);
+    if (!result.exists) {
+      return res.status(404).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/auth/create-password', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -798,6 +812,26 @@ router.get('/meetings/:meetingId/verify', async (req, res) => {
       return res.status(403).json(verification);
     }
     res.json(verification);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- WPPConnect & WhatsApp Messaging Endpoints ---
+router.get('/wpp/status', (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    res.json(wppService.getServiceStatus());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wpp/send-notifications', async (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    const result = await wppService.sendWorkRequestNotifications(req.body);
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

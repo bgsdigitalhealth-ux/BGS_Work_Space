@@ -19,6 +19,7 @@
   "author": "BGSMCHDigital",
   "license": "ISC",
   "dependencies": {
+    "@wppconnect-team/wppconnect": "^2.3.6",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
