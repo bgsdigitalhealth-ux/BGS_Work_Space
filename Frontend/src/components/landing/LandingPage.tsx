@@ -745,12 +745,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* 4 Feature Badges in matching Frosted Glass */}
+            {/* 4 Feature Badges in matching Frosted Glass (Hover effect only, no redirect to login) */}
             <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
-                onClick={onLogin}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-default transform hover:-translate-y-1"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <Users className="w-5 h-5" />
@@ -778,8 +777,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Feature 3: Appointment Scheduling */}
               <div
-                onClick={onLogin}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-default transform hover:-translate-y-1"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <Calendar className="w-5 h-5" />
@@ -791,8 +789,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Feature 4: Real-time Messaging */}
               <div
-                onClick={onLogin}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-default transform hover:-translate-y-1"
               >
                 <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <MessageSquare className="w-5 h-5" />
