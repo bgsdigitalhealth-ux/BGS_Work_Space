@@ -131,6 +131,59 @@ router.get('/auth/users', async (req, res) => {
   }
 });
 
+// Update User (Name, Email, Role, Password) from Admin Settings
+router.put('/auth/users/:id', async (req, res) => {
+  try {
+    const result = await dataService.updateUser(req.params.id, req.body);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+    broadcast('USER_UPDATED', { user: result.user, oldEmail: result.oldEmail });
+    broadcast('ORG_CHANGED', { entity: 'user', action: 'update', data: result.user });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Permanently Delete User from Admin Settings
+router.delete('/auth/users/:id', async (req, res) => {
+  try {
+    const result = await dataService.deleteUser(req.params.id);
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    const deletedUser = result.deletedUser;
+    broadcast('USER_DELETED', {
+      id: deletedUser?.id || req.params.id,
+      email: deletedUser?.email
+    });
+    broadcast('MEMBER_DELETED', {
+      id: deletedUser?.memberId || req.params.id,
+      email: deletedUser?.email
+    });
+    broadcast('ORG_CHANGED', { entity: 'user', action: 'delete', id: req.params.id });
+
+    // Instantly terminate active socket session and rooms for this deleted user
+    const io = getIO();
+    if (io && deletedUser) {
+      io.to(`user_${deletedUser.id}`).emit('session_terminated', {
+        reason: 'Your account has been deleted by an administrator. Access to the website has been revoked.'
+      });
+      if (deletedUser.email) {
+        io.to(`user_${deletedUser.email.toLowerCase()}`).emit('session_terminated', {
+          reason: 'Your account has been deleted by an administrator. Access to the website has been revoked.'
+        });
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Admin Profile & Personnel Settings ---
 router.put('/auth/profile', async (req, res) => {
   try {

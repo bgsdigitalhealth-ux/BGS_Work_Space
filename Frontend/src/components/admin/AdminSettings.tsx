@@ -16,14 +16,15 @@ import {
   X,
   Users,
   Search,
-  UserCheck
+  UserCheck,
+  Pencil
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { User } from '../../types';
 
 export const AdminSettings: React.FC = () => {
-  const { currentUser, setCurrentUser, allUsers } = useApp();
+  const { currentUser, setCurrentUser, allUsers, refreshAll } = useApp();
 
   // Admin Profile State
   const [name, setName] = useState(currentUser?.name || 'Admin');
@@ -51,6 +52,18 @@ export const AdminSettings: React.FC = () => {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
 
+  // Edit & Delete User State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditUserOpen, setIsEditUserOpen] = useState(false);
+  const [editUserName, setEditUserName] = useState('');
+  const [editUserEmail, setEditUserEmail] = useState('');
+  const [editUserRole, setEditUserRole] = useState<'admin' | 'user'>('user');
+  const [editUserPassword, setEditUserPassword] = useState('');
+  const [showEditUserPassword, setShowEditUserPassword] = useState(false);
+  const [savingUser, setSavingUser] = useState(false);
+  const [userActionMsg, setUserActionMsg] = useState('');
+  const [userActionError, setUserActionError] = useState('');
+
   const regularUsersCount = (allUsers || []).filter(u => u.role === 'user').length;
   const adminsCount = (allUsers || []).filter(u => u.role === 'admin').length;
 
@@ -61,6 +74,92 @@ export const AdminSettings: React.FC = () => {
     const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
     return matchesSearch && matchesRole;
   });
+
+  // Open Edit User Modal
+  const handleOpenEditUser = (u: User) => {
+    setUserActionMsg('');
+    setUserActionError('');
+    setEditingUser(u);
+    setEditUserName(u.name || '');
+    setEditUserEmail(u.email || '');
+    setEditUserRole((u.role as 'admin' | 'user') || 'user');
+    setEditUserPassword('');
+    setShowEditUserPassword(false);
+    setIsEditUserOpen(true);
+  };
+
+  // Save User Edit Changes
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setUserActionMsg('');
+    setUserActionError('');
+
+    if (!editUserName.trim()) {
+      setUserActionError('User name cannot be empty.');
+      return;
+    }
+    if (!editUserEmail.trim()) {
+      setUserActionError('User email address cannot be empty.');
+      return;
+    }
+
+    setSavingUser(true);
+    try {
+      const payload: { name: string; email: string; role: 'admin' | 'user'; password?: string } = {
+        name: editUserName.trim(),
+        email: editUserEmail.trim().toLowerCase(),
+        role: editUserRole
+      };
+      if (editUserPassword.trim()) {
+        if (editUserPassword.trim().length < 6) {
+          setUserActionError('Password must be at least 6 characters long.');
+          setSavingUser(false);
+          return;
+        }
+        payload.password = editUserPassword.trim();
+      }
+
+      const res = await api.updateUser(editingUser.id, payload);
+      if (res.success) {
+        setUserActionMsg(`User "${res.user.name}" updated successfully!`);
+        setIsEditUserOpen(false);
+        setEditingUser(null);
+        await refreshAll();
+        fetchAdmins();
+      }
+    } catch (err: any) {
+      setUserActionError(err.message || 'Failed to update user.');
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  // Permanently Delete User Account
+  const handleDeleteUser = async (u: User) => {
+    setUserActionMsg('');
+    setUserActionError('');
+
+    if (u.email.toLowerCase() === currentUser?.email.toLowerCase()) {
+      alert('You cannot delete your own currently logged-in account.');
+      return;
+    }
+
+    if (!window.confirm(`Are you sure you want to permanently delete user "${u.name}" (${u.email})?\n\nOnce deleted, this user will immediately be logged out and will NEVER be able to access the dashboard or website using this email ID.`)) {
+      return;
+    }
+
+    try {
+      const res = await api.deleteUser(u.id);
+      if (res.success) {
+        setUserActionMsg(`User "${u.name}" (${u.email}) was deleted permanently. Access revoked.`);
+        await refreshAll();
+        fetchAdmins();
+      }
+    } catch (err: any) {
+      setUserActionError(err.message || 'Failed to delete user.');
+    }
+  };
 
   // Fetch all admins
   const fetchAdmins = async () => {
@@ -472,6 +571,20 @@ export const AdminSettings: React.FC = () => {
             Complete directory of all registered user accounts with dashboard access.
           </p>
 
+          {userActionMsg && (
+            <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>{userActionMsg}</span>
+            </div>
+          )}
+
+          {userActionError && (
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>{userActionError}</span>
+            </div>
+          )}
+
           {/* Search & Filter */}
           <div className="space-y-2">
             <div className="relative">
@@ -534,12 +647,36 @@ export const AdminSettings: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border ${isAdmin
-                      ? 'bg-purple-50 text-purple-700 border-purple-200/60'
-                      : 'bg-slate-100 text-slate-600 border-slate-200/60'
-                      }`}>
-                      {isAdmin ? 'Admin' : 'User'}
-                    </span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isAdmin
+                        ? 'bg-purple-50 text-purple-700 border-purple-200/60'
+                        : 'bg-slate-100 text-slate-600 border-slate-200/60'
+                        }`}>
+                        {isAdmin ? 'Admin' : 'User'}
+                      </span>
+
+                      {/* Edit User Button */}
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditUser(u)}
+                        title={`Edit user ${u.name}`}
+                        className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete User Button */}
+                      {!isCurrentUser && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(u)}
+                          title={`Permanently delete user ${u.name}`}
+                          className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 );
               })
@@ -547,6 +684,120 @@ export const AdminSettings: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* --- MODAL: EDIT USER ACCOUNT --- */}
+      {isEditUserOpen && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full border border-slate-200 shadow-2xl relative">
+            <button
+              onClick={() => {
+                setIsEditUserOpen(false);
+                setEditingUser(null);
+              }}
+              className="absolute right-4 top-4 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 text-base">Edit User Account</h3>
+                <p className="text-xs text-slate-500">Update name, email ID, role, or reset password.</p>
+              </div>
+            </div>
+
+            {userActionError && (
+              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-semibold">
+                {userActionError}
+              </div>
+            )}
+
+            <form onSubmit={handleSaveUser} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editUserName}
+                  onChange={(e) => setEditUserName(e.target.value)}
+                  placeholder="e.g. Full Name"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={editUserEmail}
+                  onChange={(e) => setEditUserEmail(e.target.value)}
+                  placeholder="user@company.com"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">This email address is required to log in.</p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Platform Role *</label>
+                <select
+                  value={editUserRole}
+                  onChange={(e) => setEditUserRole(e.target.value as 'admin' | 'user')}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                >
+                  <option value="user">User (Team Member)</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Reset Password <span className="text-slate-400 font-normal">(Leave blank to keep current)</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type={showEditUserPassword ? 'text' : 'password'}
+                    value={editUserPassword}
+                    onChange={(e) => setEditUserPassword(e.target.value)}
+                    placeholder="Enter new password (optional)"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-3 pr-10 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowEditUserPassword(!showEditUserPassword)}
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition cursor-pointer"
+                  >
+                    {showEditUserPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditUserOpen(false);
+                    setEditingUser(null);
+                  }}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingUser}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm cursor-pointer disabled:opacity-50"
+                >
+                  {savingUser ? 'Saving...' : 'Save User Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* --- MODAL: ADD NEW ADMINISTRATOR --- */}
       {isAddAdminOpen && (

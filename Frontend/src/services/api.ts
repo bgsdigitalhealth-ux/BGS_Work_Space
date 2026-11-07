@@ -316,6 +316,28 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch users');
     return res.json();
   },
+  updateUser: async (id: string, data: { name?: string; email?: string; role?: 'admin' | 'user'; password?: string; avatar?: string }): Promise<{ success: boolean; user: import('../types').User }> => {
+    const res = await fetch(`${API_BASE}/auth/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to update user' }));
+      throw new Error(err.error || 'Failed to update user');
+    }
+    return res.json();
+  },
+  deleteUser: async (id: string): Promise<{ success: boolean; message: string }> => {
+    const res = await fetch(`${API_BASE}/auth/users/${id}`, {
+      method: 'DELETE'
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to delete user' }));
+      throw new Error(err.error || 'Failed to delete user');
+    }
+    return res.json();
+  },
   updateAdminProfile: async (data: { identifier: string; name?: string; email?: string; newPassword?: string }): Promise<{ success: boolean; user: import('../types').User }> => {
     const res = await fetch(`${API_BASE}/auth/profile`, {
       method: 'PUT',
