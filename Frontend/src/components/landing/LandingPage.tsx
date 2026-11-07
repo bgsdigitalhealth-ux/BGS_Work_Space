@@ -437,16 +437,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   return (
     <div
-      className="min-h-screen bg-[#f5f8f6] text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-no-repeat bg-right lg:bg-center transition-all duration-300"
+      className="min-h-screen text-gray-900 font-sans selection:bg-[#5a36e6] selection:text-white flex flex-col justify-between relative overflow-x-hidden bg-cover bg-center bg-no-repeat transition-all duration-300"
       style={{
         backgroundImage: `url('/landing-bg.jpg')`
       }}
     >
-      {/* Subtle elegant gradient wash ensuring typography and cards on the left are crystal clear */}
-      <div className="absolute inset-0 bg-gradient-to-r from-white/95 via-white/70 to-transparent sm:from-white/85 sm:via-white/45 lg:to-transparent pointer-events-none z-0" />
+      {/* Subtle edge-to-edge ambient filter so the full architectural campus covers the webpage */}
+      <div className="absolute inset-0 bg-slate-900/[0.04] backdrop-contrast-[1.01] pointer-events-none z-0" />
 
       {/* ---------------- TOP NAVIGATION BAR ---------------- */}
-      <header className="w-full bg-white/85 backdrop-blur-md border-b border-purple-100/60 sticky top-0 z-50 transition-all">
+      <header className="w-full bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
           {/* Left Brand Logo & Title */}
@@ -709,43 +709,46 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
           {/* Left Hero Details */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
-            {/* Pill Tag */}
-            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#714fe0] mb-3 inline-block">
-              TEAM COLLABORATION PLATFORM
-            </span>
+            {/* Frosted Glass Hero Container for crystal-clear readability against the full-cover campus background */}
+            <div className="p-7 sm:p-9 rounded-3xl bg-white/75 backdrop-blur-xl border border-white/80 shadow-2xl shadow-indigo-950/5 max-w-2xl">
+              {/* Pill Tag */}
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#5a36e6] mb-3 inline-block">
+                TEAM COLLABORATION PLATFORM
+              </span>
 
-            {/* Headline */}
-            <div className="space-y-1">
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#130f30] tracking-tight leading-[1.08]">
-                WorkHub
-              </h2>
-              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#8f68ea] tracking-tight leading-[1.08]">
-                Team Workspace
-              </h2>
-            </div>
+              {/* Headline */}
+              <div className="space-y-1">
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-950 tracking-tight leading-[1.08]">
+                  WorkHub
+                </h2>
+                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#5a36e6] tracking-tight leading-[1.08]">
+                  Team Workspace
+                </h2>
+              </div>
 
-            {/* Paragraph Subtitle */}
-            <p className="mt-6 text-gray-600 text-base sm:text-lg max-w-xl leading-relaxed font-normal">
-              A unified platform to manage teams, assignments, appointments and communication — all in one workspace.
-            </p>
+              {/* Paragraph Subtitle */}
+              <p className="mt-5 text-gray-700 text-base sm:text-lg max-w-xl leading-relaxed font-normal">
+                A unified platform to manage teams, assignments, appointments and communication — all in one workspace.
+              </p>
 
-            {/* Action Buttons Row */}
-            <div className="mt-8 flex items-center gap-4">
-              <button
-                onClick={onLogin}
-                className="px-8 py-3.5 rounded-full bg-[#5a36e6] hover:bg-[#4b2ac9] text-white font-semibold text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <span>Login to Workspace</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
+              {/* Action Buttons Row */}
+              <div className="mt-7 flex items-center gap-4">
+                <button
+                  onClick={onLogin}
+                  className="px-8 py-3.5 rounded-full bg-[#5a36e6] hover:bg-[#4b2ac9] text-white font-semibold text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                >
+                  <span>Login to Workspace</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* 4 Feature Badges (Matching bottom of Screenshot 1) */}
-            <div className="mt-12 sm:mt-16 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
+            <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <Users className="w-5 h-5" />
@@ -761,7 +764,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   setSelectedRequestType(requestTypes[0]);
                   setRequestFormSubmitted(false);
                 }}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <ClipboardCheck className="w-5 h-5" />
@@ -774,7 +777,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {/* Feature 3: Appointment Scheduling */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <Calendar className="w-5 h-5" />
@@ -787,7 +790,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {/* Feature 4: Real-time Messaging */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-purple-100/80 shadow-xs hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
               >
                 <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
                   <MessageSquare className="w-5 h-5" />
@@ -805,8 +808,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </main>
 
       {/* ---------------- FOOTER ---------------- */}
-      <footer className="w-full bg-white/70 border-t border-purple-100/80 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+      <footer className="w-full bg-white/75 backdrop-blur-md border-t border-gray-200/60 py-5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-600">
           <p>© 2026 WorkHub Team Workspace. BGS Digital Health. All rights reserved.</p>
           <div className="flex items-center gap-6">
             <button onClick={() => setShowAboutModal(true)} className="hover:text-[#5a36e6] cursor-pointer">About Platform</button>
