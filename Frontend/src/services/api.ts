@@ -296,6 +296,21 @@ export const api = {
     }
     return res.json();
   },
+  validateSession: async (id?: string, email?: string): Promise<{ valid: boolean; user?: import('../types').User; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/validate-session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, email })
+      });
+      if (!res.ok) {
+        return { valid: false, error: 'User account has been deleted' };
+      }
+      return res.json();
+    } catch (e: any) {
+      return { valid: false, error: e.message || 'Validation failed' };
+    }
+  },
   getUsers: async (): Promise<import('../types').User[]> => {
     const res = await fetch(`${API_BASE}/auth/users`);
     if (!res.ok) throw new Error('Failed to fetch users');

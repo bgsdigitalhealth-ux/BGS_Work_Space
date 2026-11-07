@@ -13,14 +13,17 @@ import {
   AlertCircle,
   ShieldCheck,
   Plus,
-  X
+  X,
+  Users,
+  Search,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { User } from '../../types';
 
 export const AdminSettings: React.FC = () => {
-  const { currentUser, setCurrentUser } = useApp();
+  const { currentUser, setCurrentUser, allUsers } = useApp();
 
   // Admin Profile State
   const [name, setName] = useState(currentUser?.name || 'Admin');
@@ -43,6 +46,21 @@ export const AdminSettings: React.FC = () => {
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [adminActionMsg, setAdminActionMsg] = useState('');
   const [adminActionError, setAdminActionError] = useState('');
+
+  // Total Users Directory State
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
+
+  const regularUsersCount = (allUsers || []).filter(u => u.role === 'user').length;
+  const adminsCount = (allUsers || []).filter(u => u.role === 'admin').length;
+
+  const filteredUsers = (allUsers || []).filter(u => {
+    const matchesSearch = 
+      (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(userSearch.toLowerCase());
+    const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
 
   // Fetch all admins
   const fetchAdmins = async () => {
@@ -187,7 +205,7 @@ export const AdminSettings: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 max-w-7xl w-full">
       {/* Header Banner */}
       <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -198,14 +216,58 @@ export const AdminSettings: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 tracking-tight">Admin Settings & Access Control</h2>
           </div>
           <p className="text-xs text-slate-500">
-            Manage your personal administrator credentials, change your email ID and password, and authorize additional administrator personnel.
+            Manage your personal administrator credentials, change your email ID and password, oversee administrator personnel, and view all registered users.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      {/* Top Summary Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Users</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-slate-900">{allUsers?.length || 0}</span>
+              <span className="text-[11px] text-slate-400">Registered Accounts</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold shrink-0">
+            <Shield className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Administrators</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-slate-900">{admins?.length || 0}</span>
+              <span className="text-[11px] text-slate-400">Privileged Roles</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
+            <UserCheck className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Team Members</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-slate-900">
+                {(allUsers || []).filter(u => u.role === 'user').length}
+              </span>
+              <span className="text-[11px] text-slate-400">Active Staff</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         {/* --- SECTION 1: EDIT ADMIN PROFILE & CREDENTIALS --- */}
-        <div className="lg:col-span-6 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <KeyRound className="w-4 h-4 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-sm">Change Email ID & Password</h3>
@@ -309,7 +371,7 @@ export const AdminSettings: React.FC = () => {
         </div>
 
         {/* --- SECTION 2: MANAGE OTHER ADMINISTRATOR PERSONNEL --- */}
-        <div className="lg:col-span-6 bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-indigo-600" />
@@ -387,6 +449,100 @@ export const AdminSettings: React.FC = () => {
                         </button>
                       )}
                     </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+
+        {/* --- SECTION 3: TOTAL USERS DIRECTORY COLUMN --- */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <Users className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-bold text-slate-900 text-sm">Total Users</h3>
+            </div>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200/60">
+              {(allUsers || []).length} Total
+            </span>
+          </div>
+
+          <p className="text-xs text-slate-500">
+            Complete directory of all registered user accounts with dashboard access.
+          </p>
+
+          {/* Search & Filter */}
+          <div className="space-y-2">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                value={userSearch}
+                onChange={(e) => setUserSearch(e.target.value)}
+                placeholder="Search users by name or email..."
+                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"
+              />
+            </div>
+
+            <div className="flex items-center gap-1.5 pt-1">
+              {(['all', 'admin', 'user'] as const).map(role => (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={() => setUserRoleFilter(role)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition cursor-pointer ${
+                    userRoleFilter === role
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {role === 'all' ? `All (${(allUsers || []).length})` : role === 'admin' ? `Admin (${adminsCount})` : `User (${regularUsersCount})`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Users List */}
+          <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto pr-1">
+            {filteredUsers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-slate-400">
+                No users found matching your search.
+              </div>
+            ) : (
+              filteredUsers.map(u => {
+                const isAdmin = u.role === 'admin';
+                const isCurrentUser = u.email.toLowerCase() === currentUser?.email.toLowerCase();
+                return (
+                  <div key={u.id || u.email} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2.5 truncate">
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        isAdmin 
+                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-2xs' 
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                      }`}>
+                        {u.avatar || (u.name || 'U').charAt(0).toUpperCase()}
+                      </div>
+                      <div className="truncate">
+                        <div className="flex items-center gap-1.5">
+                          <p className="text-xs font-bold text-slate-900 truncate">{u.name}</p>
+                          {isCurrentUser && (
+                            <span className="text-[9px] font-bold bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full">
+                              You
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
+                      </div>
+                    </div>
+
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 border ${
+                      isAdmin 
+                        ? 'bg-purple-50 text-purple-700 border-purple-200/60' 
+                        : 'bg-slate-100 text-slate-600 border-slate-200/60'
+                    }`}>
+                      {isAdmin ? 'Admin' : 'User'}
+                    </span>
                   </div>
                 );
               })

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dataService = require('../seed/dataService');
+const { getIO } = require('../socket');
 
 // --- Real-Time Server-Sent Events (SSE) Engine ---
 let sseClients = [];
@@ -31,6 +32,18 @@ const broadcast = (type, payload = {}) => {
       // stale connection
     }
   });
+
+  // Also broadcast via Socket.IO for instant client synchronization
+  try {
+    const io = getIO();
+    if (io) {
+      io.emit('server_event', { type, payload, timestamp: Date.now() });
+      io.emit(type.toLowerCase(), payload);
+      io.emit(type, payload);
+    }
+  } catch (e) {
+    // ignore
+  }
 };
 
 // --- Authentication (ONLY TWO ROLES: admin and user) ---
@@ -94,6 +107,21 @@ router.post('/auth/login', async (req, res) => {
   }
 });
 
+// Validate user session: check if account still exists or was deleted by admin
+router.all('/auth/validate-session', async (req, res) => {
+  try {
+    const id = req.body?.id || req.query?.id;
+    const email = req.body?.email || req.query?.email;
+    const result = await dataService.validateSession(id, email);
+    if (!result.valid) {
+      return res.status(401).json(result);
+    }
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ valid: false, error: err.message });
+  }
+});
+
 router.get('/auth/users', async (req, res) => {
   try {
     const users = await dataService.getUsers();
@@ -154,7 +182,20 @@ router.delete('/auth/admins/:id', async (req, res) => {
     if (!result.success) {
       return res.status(400).json({ error: result.error });
     }
-    broadcast('ADMIN_DELETED', { id: req.params.id });
+    broadcast('ADMIN_DELETED', { id: req.params.id, ...result });
+    broadcast('USER_DELETED', { id: req.params.id, email: result.deletedUser?.email });
+
+    const io = getIO();
+    if (io) {
+      io.to(`user_${req.params.id}`).emit('session_terminated', {
+        reason: 'Your administrator account has been removed.'
+      });
+      if (result.deletedUser?.email) {
+        io.to(`user_${result.deletedUser.email.toLowerCase()}`).emit('session_terminated', {
+          reason: 'Your administrator account has been removed.'
+        });
+      }
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -334,9 +375,31 @@ router.put('/members/:id', async (req, res) => {
 
 router.delete('/members/:id', async (req, res) => {
   try {
-    await dataService.deleteMember(req.params.id);
-    broadcast('ORG_CHANGED', { entity: 'member', action: 'delete', id: req.params.id });
-    res.json({ success: true, message: 'Member deleted' });
+    const result = await dataService.deleteMember(req.params.id);
+    broadcast('MEMBER_DELETED', { id: req.params.id, ...result });
+    broadcast('ORG_CHANGED', { entity: 'member', action: 'delete', id: req.params.id, ...result });
+
+    if (result && result.deletedUser) {
+      const deletedUser = result.deletedUser;
+      broadcast('USER_DELETED', {
+        id: deletedUser.id,
+        email: deletedUser.email,
+        memberId: req.params.id
+      });
+
+      const io = getIO();
+      if (io) {
+        io.to(`user_${deletedUser.id}`).emit('session_terminated', {
+          reason: 'Your user account has been deleted by an administrator.'
+        });
+        if (deletedUser.email) {
+          io.to(`user_${deletedUser.email.toLowerCase()}`).emit('session_terminated', {
+            reason: 'Your user account has been deleted by an administrator.'
+          });
+        }
+      }
+    }
+    res.json({ success: true, message: 'Member deleted', ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -367,9 +430,10 @@ router.post('/assignments', async (req, res) => {
 
 router.delete('/assignments/:id', async (req, res) => {
   try {
-    await dataService.deleteAssignment(req.params.id);
+    const result = await dataService.deleteAssignment(req.params.id);
     broadcast('ASSIGNMENT_DELETED', { id: req.params.id });
-    res.json({ success: true, message: 'Assignment deleted' });
+    broadcast('WORK_CHANGED', { action: 'delete', id: req.params.id });
+    res.json({ success: true, message: 'Assignment deleted', ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -445,9 +509,10 @@ router.patch('/tasks/:id/toggle', async (req, res) => {
 
 router.delete('/tasks/:id', async (req, res) => {
   try {
-    await dataService.deleteTask(req.params.id);
+    const result = await dataService.deleteTask(req.params.id);
     broadcast('TASK_CHANGED', { action: 'delete', id: req.params.id });
-    res.json({ success: true, message: 'Task deleted' });
+    broadcast('TASK_DELETED', { id: req.params.id });
+    res.json({ success: true, message: 'Task deleted', ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -597,9 +662,10 @@ router.put('/appointments/:id', async (req, res) => {
 
 router.delete('/appointments/:id', async (req, res) => {
   try {
-    await dataService.deleteAppointment(req.params.id);
+    const result = await dataService.deleteAppointment(req.params.id);
     broadcast('APPOINTMENT_CHANGED', { action: 'delete', id: req.params.id });
-    res.json({ success: true, message: 'Appointment deleted' });
+    broadcast('APPOINTMENT_DELETED', { id: req.params.id });
+    res.json({ success: true, message: 'Appointment deleted', ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -617,7 +683,7 @@ router.post(['/reset-data', '/purge-all-data'], async (req, res) => {
 });
 
 // --- Real-Time Messaging Endpoints ---
-const { getIO, getOnlineUsers } = require('../socket');
+const { getOnlineUsers } = require('../socket');
 
 router.get('/messages/online-users', (req, res) => {
   try {

@@ -556,6 +556,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const u = await api.getUsers();
       setAllUsers(u || []);
+      // If currently logged in user is deleted from the system, revoke access immediately
+      if (currentUser && Array.isArray(u) && u.length > 0) {
+        const stillExists = u.some(x => 
+          (currentUser.id && x.id === currentUser.id) || 
+          (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
+        );
+        if (!stillExists) {
+          console.warn('[Session] Current user not found in user database. Terminating session.');
+          logout();
+          alert('Your account has been deleted by an administrator. Access to the dashboard has been revoked.');
+          window.location.href = '/';
+        }
+      }
     } catch (e) {
       console.error(e);
     }
@@ -586,6 +599,27 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     refreshAll();
   }, []);
 
+  // Validate active session on mount and when currentUser changes
+  useEffect(() => {
+    if (!currentUser) return;
+    let isMounted = true;
+    api.validateSession(currentUser.id, currentUser.email).then((res) => {
+      if (!isMounted) return;
+      if (!res.valid) {
+        console.warn('[Session] Session verification failed on startup:', res.error);
+        logout();
+        alert('Your account has been deleted by an administrator. Access denied.');
+        window.location.href = '/';
+      }
+    }).catch((err) => {
+      console.warn('[Session] Session validation notice:', err);
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [currentUser?.id, currentUser?.email]);
+
   // Real-Time Server-Sent Events (SSE) Listener for Two-Way Instant Sync
   useEffect(() => {
     let es: EventSource | null = null;
@@ -595,6 +629,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         try {
           const event = JSON.parse(e.data);
           if (event.type && event.type !== 'CONNECTED') {
+            const payload = event.payload || {};
+            // If user was deleted and matches currentUser, terminate session immediately
+            if (event.type === 'USER_DELETED') {
+              if (currentUser && (
+                (payload.id && (payload.id === currentUser.id || payload.id === (currentUser as any)._id)) ||
+                (payload.email && payload.email.toLowerCase() === (currentUser.email || '').toLowerCase())
+              )) {
+                logout();
+                alert('Your account has been deleted by an administrator. You have been logged out.');
+                window.location.href = '/';
+                return;
+              }
+            }
             // Instant background synchronization across all active browser tabs/windows
             refreshAll();
           }
@@ -761,11 +808,45 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshAppointments();
       };
 
+      const handleSessionTerminated = (data?: { reason?: string }) => {
+        console.warn('[Socket.IO] Session terminated by administrator:', data?.reason);
+        logout();
+        alert(data?.reason || 'Your account has been deleted by an administrator.');
+        window.location.href = '/';
+      };
+
+      const handleUserDeleted = (data?: { id?: string; email?: string }) => {
+        if (!data) return;
+        if (currentUser && (
+          (data.id && (data.id === currentUser.id || data.id === (currentUser as any)._id)) ||
+          (data.email && data.email.toLowerCase() === (currentUser.email || '').toLowerCase())
+        )) {
+          logout();
+          alert('Your account has been deleted by an administrator. You have been logged out.');
+          window.location.href = '/';
+        } else {
+          refreshAll();
+        }
+      };
+
+      const handleRealtimeEntityChange = () => {
+        refreshAll();
+      };
+
       socket.on('conversation_updated', handleUpdate);
       socket.on('new_message', handleUpdate);
       socket.on('messages_read', handleUpdate);
       socket.on('meeting_invitation', handleMeetingEvent);
       socket.on('meeting_popup', handleMeetingEvent);
+      socket.on('session_terminated', handleSessionTerminated);
+      socket.on('user_deleted', handleUserDeleted);
+      socket.on('member_deleted', handleRealtimeEntityChange);
+      socket.on('org_changed', handleRealtimeEntityChange);
+      socket.on('assignment_deleted', handleRealtimeEntityChange);
+      socket.on('task_deleted', handleRealtimeEntityChange);
+      socket.on('appointment_deleted', handleRealtimeEntityChange);
+      socket.on('work_changed', handleRealtimeEntityChange);
+      socket.on('work_done_deleted', handleRealtimeEntityChange);
 
       return () => {
         socket.off('conversation_updated', handleUpdate);
@@ -773,6 +854,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         socket.off('messages_read', handleUpdate);
         socket.off('meeting_invitation', handleMeetingEvent);
         socket.off('meeting_popup', handleMeetingEvent);
+        socket.off('session_terminated', handleSessionTerminated);
+        socket.off('user_deleted', handleUserDeleted);
+        socket.off('member_deleted', handleRealtimeEntityChange);
+        socket.off('org_changed', handleRealtimeEntityChange);
+        socket.off('assignment_deleted', handleRealtimeEntityChange);
+        socket.off('task_deleted', handleRealtimeEntityChange);
+        socket.off('appointment_deleted', handleRealtimeEntityChange);
+        socket.off('work_changed', handleRealtimeEntityChange);
+        socket.off('work_done_deleted', handleRealtimeEntityChange);
       };
     } else {
       setUnreadMessagesCount(0);

@@ -371,6 +371,21 @@ const updateDepartment = async (id, data) => {
 };
 
 const deleteDepartment = async (id) => {
+  // Find members and users belonging to this department
+  const deptMembers = memoryStore.members.filter(m => m.departmentId === id);
+  const deletedEmails = deptMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
+
+  // Remove users associated with those members
+  if (deletedEmails.length > 0) {
+    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
+  }
+
+  // Remove assignments in this department
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.departmentId !== id);
+  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
+    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.departmentId !== id);
+  }
+
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
   memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
@@ -381,6 +396,10 @@ const deleteDepartment = async (id) => {
       await Department.findByIdAndDelete(id);
       await Team.deleteMany({ departmentId: id });
       await Member.deleteMany({ departmentId: id });
+      await Assignment.deleteMany({ departmentId: id });
+      if (deletedEmails.length > 0) {
+        await User.deleteMany({ email: { $in: deletedEmails } });
+      }
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
@@ -445,6 +464,21 @@ const updateTeam = async (id, data) => {
 };
 
 const deleteTeam = async (id) => {
+  // Find members and users belonging to this team
+  const teamMembers = memoryStore.members.filter(m => m.teamId === id);
+  const deletedEmails = teamMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
+
+  if (deletedEmails.length > 0) {
+    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
+  }
+
+  // Remove assignments and tasks in this team
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.teamId !== id);
+  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.teamId !== id);
+  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
+    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.teamId !== id);
+  }
+
   memoryStore.teams = memoryStore.teams.filter(t => t.id !== id);
   memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
   saveStore();
@@ -453,6 +487,11 @@ const deleteTeam = async (id) => {
     try {
       await Team.findByIdAndDelete(id);
       await Member.deleteMany({ teamId: id });
+      await Assignment.deleteMany({ teamId: id });
+      await Task.deleteMany({ teamId: id });
+      if (deletedEmails.length > 0) {
+        await User.deleteMany({ email: { $in: deletedEmails } });
+      }
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
@@ -563,11 +602,22 @@ const updateMember = async (id, data) => {
 
 const deleteMember = async (id) => {
   const member = memoryStore.members.find(m => m.id === id);
+  let deletedUser = null;
   if (member) {
-    memoryStore.users = memoryStore.users.filter(u => u.email.toLowerCase() !== member.email.toLowerCase());
+    deletedUser = (memoryStore.users || []).find(u => u.email.toLowerCase() === member.email.toLowerCase()) || null;
+    memoryStore.users = (memoryStore.users || []).filter(u => u.email.toLowerCase() !== member.email.toLowerCase());
   }
-  memoryStore.members = memoryStore.members.filter(m => m.id !== id);
-  memoryStore.assignments = memoryStore.assignments.filter(a => a.memberId !== id);
+  memoryStore.members = (memoryStore.members || []).filter(m => m.id !== id);
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.memberId !== id && a.assigneeId !== id);
+
+  // Clean up user workspace assigned work so deleted member's work is purged immediately
+  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
+    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => {
+      if (deletedUser && w.userId === deletedUser.id) return false;
+      if (w.memberId === id) return false;
+      return true;
+    });
+  }
   saveStore();
 
   if (getStatus()) {
@@ -577,11 +627,15 @@ const deleteMember = async (id) => {
         await User.findOneAndDelete({ email: dbMem.email.toLowerCase() });
       }
       await Member.findByIdAndDelete(id);
+      await Assignment.deleteMany({ $or: [{ memberId: id }, { assigneeId: id }] });
+      if (deletedUser) {
+        await UserTask.deleteMany({ userId: deletedUser.id });
+      }
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
   }
-  return true;
+  return { success: true, member, deletedUser };
 };
 
 // --- Assignments (4 Formats: user_to_user, admin_to_admin, user_to_admin, admin_to_user) ---
@@ -822,16 +876,28 @@ const createAssignment = async (data) => {
 };
 
 const deleteAssignment = async (id) => {
-  memoryStore.assignments = memoryStore.assignments.filter(a => a.id !== id);
+  const assign = (memoryStore.assignments || []).find(a => a.id === id);
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id);
+
+  // Synchronously delete corresponding task and assignedWork in user workspace
+  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.id !== id && t.assignmentId !== id && (!assign || t.title !== assign.workTitle));
+  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
+    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => 
+      w.id !== id && w.assignmentId !== id && w.taskId !== id && (!assign || w.title !== assign.workTitle)
+    );
+  }
   saveStore();
+
   if (getStatus()) {
     try {
       await Assignment.findByIdAndDelete(id);
+      await Task.deleteMany({ $or: [{ customId: id }, { assignmentId: id }] });
+      await UserTask.deleteMany({ $or: [{ customId: id }, { assignmentId: id }, { taskId: id }] });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
   }
-  return true;
+  return { success: true, id };
 };
 
 // --- Tasks ---
@@ -915,16 +981,27 @@ const toggleTask = async (id) => {
 };
 
 const deleteTask = async (id) => {
-  memoryStore.tasks = memoryStore.tasks.filter(t => t.id !== id);
+  const t = (memoryStore.tasks || []).find(x => x.id === id);
+  memoryStore.tasks = (memoryStore.tasks || []).filter(x => x.id !== id);
+
+  // Synchronously purge from user workspace assigned work
+  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
+    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => 
+      w.id !== id && w.taskId !== id && (!t || w.title !== t.title)
+    );
+  }
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id && (!t || a.workTitle !== t.title));
   saveStore();
+
   if (getStatus()) {
     try {
       await Task.findByIdAndDelete(id);
+      await UserTask.deleteMany({ $or: [{ customId: id }, { taskId: id }] });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }
   }
-  return true;
+  return { success: true, id };
 };
 
 // --- Work Done ---
@@ -1926,7 +2003,8 @@ const deleteAdmin = async (id) => {
     return { success: false, error: 'Cannot delete the only administrator account' };
   }
 
-  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email !== id);
+  const targetAdmin = (memoryStore.users || []).find(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
+  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email.toLowerCase() !== id.toLowerCase());
   saveStore();
 
   if (getStatus()) {
@@ -1937,7 +2015,26 @@ const deleteAdmin = async (id) => {
     }
   }
 
-  return { success: true, message: 'Administrator removed successfully' };
+  return { success: true, message: 'Administrator removed successfully', deletedUser: targetAdmin };
+};
+
+// Validate that an active user/admin session still exists in the system
+const validateSession = async (id, email) => {
+  const users = memoryStore.users || [];
+  let user = null;
+  if (id) {
+    user = users.find(u => u.id === id || u._id === id);
+  }
+  if (!user && email) {
+    user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  }
+
+  if (!user) {
+    return { valid: false, message: 'User account has been deleted by an administrator.' };
+  }
+
+  const { password, ...safeUser } = user;
+  return { valid: true, user: safeUser };
 };
 
 // --- Notifications Engine ---
@@ -2334,17 +2431,25 @@ const deleteAppointment = async (id) => {
   if (!memoryStore.appointments) {
     memoryStore.appointments = [];
   }
+  const apt = memoryStore.appointments.find(a => a.id === id);
   memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
+
+  if (memoryStore.meetings) {
+    memoryStore.meetings = memoryStore.meetings.filter(m => 
+      m.id !== id && m.appointmentId !== id && (!apt || (m.meetingId && m.meetingId !== apt.meetingId))
+    );
+  }
   saveStore();
 
   if (getStatus()) {
     try {
       await Appointment.findOneAndDelete({ $or: [{ customId: id }, { _id: id }] });
+      await Meeting.deleteMany({ $or: [{ customId: id }, { appointmentId: id }] });
     } catch (e) {
       console.warn('Mongo appointment delete error:', e.message);
     }
   }
-  return true;
+  return { success: true, id };
 };
 
 const getAppointmentStats = async (userId = null) => {
@@ -3186,6 +3291,7 @@ module.exports = {
   addUserComment,
   updateUserWorkStatus,
   loginUser,
+  validateSession,
   checkEmail,
   verifyReceiverEmail,
   createPassword,
