@@ -37,6 +37,11 @@ const meetingSchema = new mongoose.Schema({
     lowercase: true,
     trim: true
   },
+  senderNumber: {
+    type: String,
+    default: '',
+    trim: true
+  },
   receiverId: {
     type: String,
     default: ''

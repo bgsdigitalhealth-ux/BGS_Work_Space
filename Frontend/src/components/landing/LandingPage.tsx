@@ -81,6 +81,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [meetingType, setMeetingType] = useState<'one-to-one' | 'one-to-many'>('one-to-one');
   const [meetingSenderName, setMeetingSenderName] = useState('');
   const [meetingSenderEmail, setMeetingSenderEmail] = useState('');
+  const [meetingSenderNumber, setMeetingSenderNumber] = useState('');
   const [meetingReceiverId, setMeetingReceiverId] = useState('');
   const [meetingReceiverName, setMeetingReceiverName] = useState('');
   const [meetingReceiverEmail, setMeetingReceiverEmail] = useState('');
@@ -103,6 +104,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     if (currentUser) {
       if (currentUser.name) setMeetingSenderName(currentUser.name);
       if (currentUser.email) setMeetingSenderEmail(currentUser.email);
+      if ((currentUser as any).phone) setMeetingSenderNumber((currentUser as any).phone);
     }
   }, [currentUser]);
 
@@ -127,8 +129,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     const newRef = `MEET-${meetingMode.toUpperCase()}-${Math.floor(1000 + Math.random() * 9000)}`;
 
     try {
-      const participantsList = [
-        { id: currentUser?.id || meetingSenderEmail, name: meetingSenderName, email: meetingSenderEmail, role: 'host' }
+      const participantsList: Array<{ id: string; name: string; email: string; phone?: string; role: string; }> = [
+        { id: currentUser?.id || meetingSenderEmail, name: meetingSenderName, email: meetingSenderEmail, phone: meetingSenderNumber, role: 'host' }
       ];
 
       if (meetingType === 'one-to-many') {
@@ -161,6 +163,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         senderId: currentUser?.id || meetingSenderEmail,
         senderName: meetingSenderName,
         senderEmail: meetingSenderEmail,
+        senderNumber: meetingSenderNumber,
         receiverId: meetingReceiverId || meetingReceiverEmail,
         receiverName: meetingReceiverName,
         receiverEmail: meetingReceiverEmail,
@@ -189,6 +192,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   // Event Organize Specific State (Matching Event Playfair / Inter ivory-to-sage specification)
   const [eventSenderName, setEventSenderName] = useState('');
   const [eventSenderEmail, setEventSenderEmail] = useState('');
+  const [eventSenderNumber, setEventSenderNumber] = useState('');
   const [eventReceiverName, setEventReceiverName] = useState('');
   const [eventReceiverEmail, setEventReceiverEmail] = useState('');
   const [eventTitle, setEventTitle] = useState('');
@@ -226,14 +230,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     try {
       await api.createAppointment({
         title: `Event: ${eventTitle}`,
-        requestedBy: `${eventSenderName} (${eventSenderEmail})`,
+        requestedBy: `${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? ` • ${eventSenderNumber}` : ''})`,
+        senderEmail: eventSenderEmail,
+        senderNumber: eventSenderNumber,
         department: eventDepartment || 'Institutional Events',
         team: eventReceiverName ? `To: ${eventReceiverName}` : 'Administration Office',
         date: reqDate,
         time: eventTime || '10:00 AM',
         dateTimeDisplay: `${reqDate} • ${eventTime || 'TBD'}`,
         location: 'Campus Auditorium / Conference Hall',
-        purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail})\nReceiver: ${eventReceiverName} (${eventReceiverEmail})\n\nPurpose / Description:\n${eventPurpose}`,
+        purpose: `[Event Organize Request]\nTitle: ${eventTitle}\nDepartment: ${eventDepartment}\nSender: ${eventSenderName} (${eventSenderEmail}${eventSenderNumber ? `, Phone: ${eventSenderNumber}` : ''})\nReceiver: ${eventReceiverName} (${eventReceiverEmail})\n\nPurpose / Description:\n${eventPurpose}`,
         status: 'Scheduled'
       });
     } catch (err) {
@@ -248,6 +254,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   // General Information Specific State (Matching General Information Specification)
   const [infoSenderName, setInfoSenderName] = useState('');
   const [infoSenderEmail, setInfoSenderEmail] = useState('');
+  const [infoSenderNumber, setInfoSenderNumber] = useState('');
   const [infoReceiverName, setInfoReceiverName] = useState('');
   const [infoReceiverEmail, setInfoReceiverEmail] = useState('');
   const [infoSubject, setInfoSubject] = useState('');
@@ -302,14 +309,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     try {
       await api.createAppointment({
         title: infoSubject.trim() || `General Info from ${infoSenderName}`,
-        requestedBy: `${infoSenderName} (${infoSenderEmail})`,
+        requestedBy: `${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? ` • ${infoSenderNumber}` : ''})`,
+        senderEmail: infoSenderEmail,
+        senderNumber: infoSenderNumber,
         department: infoDepartment.trim() || 'General Information',
         team: infoReceiverName ? `To: ${infoReceiverName} (${infoReceiverEmail})` : 'Administration Office',
         date: reqDate,
         time: '10:00 AM',
         dateTimeDisplay: `${reqDate} • General Info`,
         location: 'Office of Administration',
-        purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail})\nReceiver: ${infoReceiverName} (${infoReceiverEmail})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
+        purpose: `[General Information Request]\nSubject: ${infoSubject}\nDepartment: ${infoDepartment || 'Not specified'}\nSender: ${infoSenderName} (${infoSenderEmail}${infoSenderNumber ? `, Phone: ${infoSenderNumber}` : ''})\nReceiver: ${infoReceiverName} (${infoReceiverEmail})\n\nDescription:\n${infoDescription || 'No description provided.'}`,
         status: 'Scheduled'
       });
     } catch (err) {
@@ -391,6 +400,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setReferenceId('');
     setMeetingSenderName(currentUser?.name || '');
     setMeetingSenderEmail(currentUser?.email || '');
+    setMeetingSenderNumber((currentUser as any)?.phone || '');
     setMeetingReceiverId('');
     setMeetingReceiverName('');
     setMeetingReceiverEmail('');
@@ -403,6 +413,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setMeetingPurpose('');
     setEventSenderName('');
     setEventSenderEmail('');
+    setEventSenderNumber('');
     setEventReceiverName('');
     setEventReceiverEmail('');
     setEventTitle('');
@@ -411,6 +422,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setEventPurpose('');
     setInfoSenderName('');
     setInfoSenderEmail('');
+    setInfoSenderNumber('');
     setInfoReceiverName('');
     setInfoReceiverEmail('');
     setInfoSubject('');
@@ -998,6 +1010,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Sender:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingSenderName}</span>
                     </div>
+                    {meetingSenderNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sender Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingSenderNumber}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{meetingReceiverName || meetingReceiverEmail}</span>
@@ -1058,7 +1076,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         )}
                         <div className="h-px bg-[#c6d4c2] flex-1" />
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         <div>
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
                             Sender Name
@@ -1082,6 +1100,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             value={meetingSenderEmail}
                             onChange={(e) => setMeetingSenderEmail(e.target.value)}
                             placeholder="Enter sender email"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1.5 font-inter">
+                            Sender Number
+                          </label>
+                          <input
+                            type="tel"
+                            value={meetingSenderNumber}
+                            onChange={(e) => setMeetingSenderNumber(e.target.value)}
+                            placeholder="Enter sender number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1494,6 +1524,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Sender:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventSenderName}</span>
                     </div>
+                    {eventSenderNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sender Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventSenderNumber}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{eventReceiverName}</span>
@@ -1524,7 +1560,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                         <div className="h-px bg-[#c4d4c0] flex-1" />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                         <div>
                           <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
                             Sender Name
@@ -1549,6 +1585,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             value={eventSenderEmail} 
                             onChange={(e) => setEventSenderEmail(e.target.value)} 
                             placeholder="Enter sender email ID"
+                            className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-[#1a2e22] mb-1 font-inter">
+                            Sender Number
+                          </label>
+                          <input 
+                            type="tel" 
+                            value={eventSenderNumber} 
+                            onChange={(e) => setEventSenderNumber(e.target.value)} 
+                            placeholder="Enter sender number"
                             className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                           />
                         </div>
@@ -1739,6 +1788,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <span className="text-gray-500">Sender:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoSenderName} ({infoSenderEmail})</span>
                     </div>
+                    {infoSenderNumber && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Sender Number:</span>
+                        <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoSenderNumber}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-gray-500">Receiver:</span>
                       <span className="font-semibold text-gray-800 truncate max-w-[170px]">{infoReceiverName} ({infoReceiverEmail})</span>
@@ -1763,7 +1818,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       <div className="h-px bg-[#c4d4c0] flex-1" />
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                       <div>
                         <div className="flex items-center justify-between mb-1">
                           <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
@@ -1782,6 +1837,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             setInfoSenderName(e.target.value);
                             if (infoErrors.senderName) setInfoErrors(prev => ({ ...prev, senderName: undefined }));
                           }} 
+                          placeholder="Enter sender name"
                           className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.senderName ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
                         />
                       </div>
@@ -1804,7 +1860,23 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                             setInfoSenderEmail(e.target.value);
                             if (infoErrors.senderEmail) setInfoErrors(prev => ({ ...prev, senderEmail: undefined }));
                           }} 
+                          placeholder="Enter sender email ID"
                           className={`w-full px-3.5 py-2.5 rounded-xl bg-white border ${infoErrors.senderEmail ? 'border-red-400 focus:ring-red-400' : 'border-[#c4d4c0] focus:border-[#133926] focus:ring-[#133926]'} text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:ring-1 transition-all font-inter`}
+                        />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="block text-xs font-semibold text-[#1a2e22] font-inter">
+                            Sender Number
+                          </label>
+                        </div>
+                        <input 
+                          type="tel" 
+                          value={infoSenderNumber} 
+                          onChange={(e) => setInfoSenderNumber(e.target.value)} 
+                          placeholder="Enter sender number"
+                          className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#c4d4c0] text-xs text-[#1a2e22] placeholder:text-gray-400 focus:outline-none focus:border-[#133926] focus:ring-1 focus:ring-[#133926] transition-all font-inter"
                         />
                       </div>
                     </div>

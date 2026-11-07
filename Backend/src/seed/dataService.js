@@ -2147,6 +2147,7 @@ const createAppointment = async (data) => {
     meetingId: data.meetingId || null,
     joinUrl: data.joinUrl || null,
     senderEmail: data.senderEmail || '',
+    senderNumber: data.senderNumber || data.phone || '',
     receiverId: data.receiverId || '',
     receiverEmail: data.receiverEmail || ''
   };
@@ -2778,6 +2779,7 @@ const createMeeting = async (data) => {
     senderId: data.senderId || data.senderEmail,
     senderName: data.senderName,
     senderEmail: senderEmail,
+    senderNumber: data.senderNumber || data.phone || '',
     receiverId: data.receiverId || data.receiverEmail,
     receiverName: data.receiverName || 'Administration Office',
     receiverEmail: receiverEmail,
@@ -2827,6 +2829,7 @@ const createMeeting = async (data) => {
       meetingId: newMeeting.meetingId,
       joinUrl: newMeeting.joinUrl,
       senderEmail: newMeeting.senderEmail,
+      senderNumber: newMeeting.senderNumber || '',
       receiverEmail: newMeeting.receiverEmail
     };
     await createAppointment(appointmentData);

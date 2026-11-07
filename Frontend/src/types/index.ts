@@ -172,6 +172,7 @@ export interface Appointment {
   meetingId?: string;
   joinUrl?: string;
   senderEmail?: string;
+  senderNumber?: string;
   receiverEmail?: string;
 }
 
