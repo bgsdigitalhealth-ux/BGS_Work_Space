@@ -24,7 +24,8 @@ import {
   Clock,
   Video,
   Copy,
-  Check
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -709,33 +710,34 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
           {/* Left Hero Details */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
-            {/* Frosted Glass Hero Container for crystal-clear readability against the full-cover campus background */}
-            <div className="p-7 sm:p-9 rounded-3xl bg-white/75 backdrop-blur-xl border border-white/80 shadow-2xl shadow-indigo-950/5 max-w-2xl">
+            {/* Liquid Frosted Glass Hero Container */}
+            <div className="p-8 sm:p-11 rounded-3xl bg-white/30 hover:bg-white/35 backdrop-blur-2xl backdrop-saturate-150 border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)] max-w-2xl transition-all duration-300">
               {/* Pill Tag */}
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#5a36e6] mb-3 inline-block">
-                TEAM COLLABORATION PLATFORM
+              <span className="font-['Plus_Jakarta_Sans',sans-serif] text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#5a36e6] bg-purple-500/10 px-3.5 py-1.5 rounded-full border border-purple-400/30 backdrop-blur-md inline-flex items-center gap-2 mb-4 shadow-2xs">
+                <Sparkles className="w-3.5 h-3.5 text-[#5a36e6]" />
+                <span>TEAM COLLABORATION PLATFORM</span>
               </span>
 
-              {/* Headline */}
+              {/* Fancy Editorial Serif Headline */}
               <div className="space-y-1">
-                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-gray-950 tracking-tight leading-[1.08]">
+                <h2 className="font-['Playfair_Display',Georgia,serif] text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-950 tracking-tight leading-[1.05] drop-shadow-xs">
                   WorkHub
                 </h2>
-                <h2 className="text-4xl sm:text-5xl lg:text-6xl font-black text-[#5a36e6] tracking-tight leading-[1.08]">
+                <h2 className="font-['Playfair_Display',Georgia,serif] italic text-5xl sm:text-6xl lg:text-7xl font-semibold text-[#5a36e6] tracking-tight leading-[1.05] drop-shadow-xs">
                   Team Workspace
                 </h2>
               </div>
 
               {/* Paragraph Subtitle */}
-              <p className="mt-5 text-gray-700 text-base sm:text-lg max-w-xl leading-relaxed font-normal">
+              <p className="mt-5 text-gray-800 text-base sm:text-lg max-w-xl leading-relaxed font-normal font-['Plus_Jakarta_Sans',sans-serif]">
                 A unified platform to manage teams, assignments, appointments and communication — all in one workspace.
               </p>
 
               {/* Action Buttons Row */}
-              <div className="mt-7 flex items-center gap-4">
+              <div className="mt-8 flex items-center gap-4">
                 <button
                   onClick={onLogin}
-                  className="px-8 py-3.5 rounded-full bg-[#5a36e6] hover:bg-[#4b2ac9] text-white font-semibold text-sm shadow-xl shadow-purple-600/30 flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+                  className="px-8 py-4 rounded-full bg-gradient-to-r from-[#5a36e6] via-[#6942ed] to-[#7952f5] hover:from-[#4b2ac9] hover:to-[#633ad8] text-white font-semibold text-sm shadow-[0_10px_25px_-5px_rgba(90,54,230,0.5)] flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 hover:shadow-[0_15px_30px_-5px_rgba(90,54,230,0.6)] cursor-pointer"
                 >
                   <span>Login to Workspace</span>
                   <ArrowRight className="w-4 h-4" />
@@ -743,17 +745,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* 4 Feature Badges (Matching bottom of Screenshot 1) */}
+            {/* 4 Feature Badges in matching Frosted Glass */}
             <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <Users className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug">
+                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Team Management
                 </h4>
               </div>
@@ -764,12 +766,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   setSelectedRequestType(requestTypes[0]);
                   setRequestFormSubmitted(false);
                 }}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <ClipboardCheck className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug">
+                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Work Request
                 </h4>
               </div>
@@ -777,12 +779,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {/* Feature 3: Appointment Scheduling */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <Calendar className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug">
+                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Appointment Scheduling
                 </h4>
               </div>
@@ -790,12 +792,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               {/* Feature 4: Real-time Messaging */}
               <div
                 onClick={onLogin}
-                className="p-3.5 rounded-2xl bg-white/85 backdrop-blur-md border border-white/80 shadow-sm hover:shadow-md hover:bg-white transition-all cursor-pointer group"
+                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
               >
-                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
                   <MessageSquare className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug">
+                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Real-time Messaging
                 </h4>
               </div>
