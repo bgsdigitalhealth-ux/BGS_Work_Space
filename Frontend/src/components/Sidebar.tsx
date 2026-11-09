@@ -213,18 +213,6 @@ export const Sidebar: React.FC = () => {
             )}
           </div>
 
-          {/* Appointments Direct Nav Item */}
-          <button
-            onClick={() => handleNavAction(() => {
-              setAdminNav('appointments');
-            })}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'appointments' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
-              }`}
-          >
-            <CalendarIcon className="w-4 h-4 text-slate-400" />
-            <span>Appointments</span>
-          </button>
-
           {/* Messages Link Matching Screenshot */}
           <button
             onClick={() => handleNavAction(() => setAdminNav('messages'))}

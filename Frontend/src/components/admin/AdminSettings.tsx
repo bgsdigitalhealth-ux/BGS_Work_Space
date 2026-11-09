@@ -47,6 +47,7 @@ export const AdminSettings: React.FC = () => {
   const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [adminActionMsg, setAdminActionMsg] = useState('');
   const [adminActionError, setAdminActionError] = useState('');
+  const [adminSearch, setAdminSearch] = useState('');
 
   // Total Users Directory State
   const [userSearch, setUserSearch] = useState('');
@@ -73,6 +74,13 @@ export const AdminSettings: React.FC = () => {
       (u.email || '').toLowerCase().includes(userSearch.toLowerCase());
     const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
     return matchesSearch && matchesRole;
+  });
+
+  const filteredAdmins = (admins || []).filter(a => {
+    return (
+      (a.name || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
+      (a.email || '').toLowerCase().includes(adminSearch.toLowerCase())
+    );
   });
 
   // Open Edit User Modal
@@ -364,9 +372,9 @@ export const AdminSettings: React.FC = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-stretch">
         {/* --- SECTION 1: EDIT ADMIN PROFILE & CREDENTIALS --- */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col justify-between h-full space-y-5">
           <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
             <KeyRound className="w-4 h-4 text-indigo-600" />
             <h3 className="font-bold text-slate-900 text-sm">Change Email ID & Password</h3>
@@ -386,37 +394,38 @@ export const AdminSettings: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSaveProfile} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Administrator Name</label>
-              <div className="relative">
-                <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Admin / Full Name"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
-                />
+          <form onSubmit={handleSaveProfile} className="space-y-4 flex-1 flex flex-col justify-between">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Administrator Name</label>
+                <div className="relative">
+                  <UserIcon className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="text"
+                    required
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Admin / Full Name"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                  />
+                </div>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">Admin Email ID (Login Username)</label>
-              <div className="relative">
-                <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="email"
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@hospital.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
-                />
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">Admin Email ID (Login Username)</label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@hospital.com"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+                  />
+                </div>
+                <p className="text-xs text-slate-500 mt-1">This email ID will be used to log into the Admin Dashboard.</p>
               </div>
-              <p className="text-[11px] text-slate-400 mt-1">This email ID will be used to log into the Admin Dashboard.</p>
-            </div>
 
             <div className="pt-2 border-t border-slate-100">
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -457,9 +466,10 @@ export const AdminSettings: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
 
-            <button
-              type="submit"
+          <button
+            type="submit"
               disabled={savingProfile}
               className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center justify-center gap-2 transition shadow-sm cursor-pointer disabled:opacity-50 mt-4"
             >
@@ -470,7 +480,7 @@ export const AdminSettings: React.FC = () => {
         </div>
 
         {/* --- SECTION 2: MANAGE OTHER ADMINISTRATOR PERSONNEL --- */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-5">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col h-full space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Shield className="w-4 h-4 text-indigo-600" />
@@ -507,13 +517,25 @@ export const AdminSettings: React.FC = () => {
             All personnel listed here have full administrative permissions to manage departments, assign work, and approve deliverables.
           </p>
 
-          <div className="divide-y divide-slate-100">
+          {/* Admin Search Bar (Issue 7: consistent list management pattern) */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            <input
+              type="text"
+              value={adminSearch}
+              onChange={(e) => setAdminSearch(e.target.value)}
+              placeholder="Search administrators..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
+            />
+          </div>
+
+          <div className="divide-y divide-slate-100 flex-1 overflow-y-auto">
             {loadingAdmins ? (
               <div className="py-6 text-center text-xs text-slate-400">Loading administrators...</div>
-            ) : admins.length === 0 ? (
+            ) : filteredAdmins.length === 0 ? (
               <div className="py-6 text-center text-xs text-slate-400">No administrators found.</div>
             ) : (
-              admins.map((adm) => {
+              filteredAdmins.map((adm) => {
                 const isCurrent = adm.email.toLowerCase() === currentUser?.email.toLowerCase();
                 return (
                   <div key={adm.id} className="py-3 flex items-center justify-between gap-3">
@@ -530,7 +552,7 @@ export const AdminSettings: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-500 truncate">{adm.email}</p>
+                        <p className="text-xs text-slate-500 truncate">{adm.email}</p>
                       </div>
                     </div>
 
@@ -540,11 +562,13 @@ export const AdminSettings: React.FC = () => {
                       </span>
                       {!isCurrent && (
                         <button
+                          type="button"
                           onClick={() => handleDeleteAdmin(adm.id, adm.email)}
-                          title="Remove Administrator"
-                          className="p-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 transition cursor-pointer"
+                          title={`Remove administrator ${adm.name}`}
+                          aria-label={`Remove administrator ${adm.name}`}
+                          className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -556,7 +580,7 @@ export const AdminSettings: React.FC = () => {
         </div>
 
         {/* --- SECTION 3: TOTAL USERS DIRECTORY COLUMN --- */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs space-y-4">
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs flex flex-col h-full space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-100">
             <div className="flex items-center gap-2">
               <Users className="w-4 h-4 text-emerald-600" />
@@ -616,7 +640,7 @@ export const AdminSettings: React.FC = () => {
           </div>
 
           {/* Users List */}
-          <div className="divide-y divide-slate-100 max-h-[480px] overflow-y-auto pr-1">
+          <div className="divide-y divide-slate-100 flex-1 overflow-y-auto pr-1">
             {filteredUsers.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-400">
                 No users found matching your search.
@@ -643,7 +667,7 @@ export const AdminSettings: React.FC = () => {
                             </span>
                           )}
                         </div>
-                        <p className="text-[11px] text-slate-400 truncate">{u.email}</p>
+                        <p className="text-xs text-slate-500 truncate">{u.email}</p>
                       </div>
                     </div>
 
@@ -655,25 +679,27 @@ export const AdminSettings: React.FC = () => {
                         {isAdmin ? 'Admin' : 'User'}
                       </span>
 
-                      {/* Edit User Button */}
+                      {/* Edit User Button (Issue 8: >= 40x40px hit area) */}
                       <button
                         type="button"
                         onClick={() => handleOpenEditUser(u)}
                         title={`Edit user ${u.name}`}
-                        className="p-1.5 rounded-lg border border-slate-200 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition cursor-pointer"
+                        aria-label={`Edit user ${u.name}`}
+                        className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-colors shadow-2xs cursor-pointer"
                       >
-                        <Pencil className="w-3.5 h-3.5" />
+                        <Pencil className="w-4 h-4" />
                       </button>
 
-                      {/* Delete User Button */}
+                      {/* Delete User Button (Issue 8: >= 40x40px hit area) */}
                       {!isCurrentUser && (
                         <button
                           type="button"
                           onClick={() => handleDeleteUser(u)}
                           title={`Permanently delete user ${u.name}`}
-                          className="p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition cursor-pointer"
+                          aria-label={`Permanently delete user ${u.name}`}
+                          className="w-10 h-10 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash2 className="w-4 h-4" />
                         </button>
                       )}
                     </div>
@@ -738,7 +764,7 @@ export const AdminSettings: React.FC = () => {
                   placeholder="user@hospital.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
                 />
-                <p className="text-[11px] text-slate-400 mt-1">This email address is required to log in.</p>
+                <p className="text-xs text-slate-500 mt-1">This email address is required to log in.</p>
               </div>
 
               <div>
