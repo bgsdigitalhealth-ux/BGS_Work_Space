@@ -158,69 +158,69 @@ export const AdminAppointments: React.FC = () => {
       {/* Top 5 KPI Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Appointments */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#704fe6] flex items-center justify-center shrink-0">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition">
+          <div className="w-12 h-12 rounded-xl bg-purple-50 text-indigo-600 flex items-center justify-center shrink-0">
             <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Appointments</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.total}</h3>
+            <p className="text-xs font-medium text-slate-500">Total Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.total}</h3>
           </div>
         </div>
 
         {/* Today's Appointments */}
         <div 
           onClick={() => setActiveTab('Today')}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
+          className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Today's Appointments</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.today}</h3>
+            <p className="text-xs font-medium text-slate-500">Today's Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.today}</h3>
           </div>
         </div>
 
         {/* Completed */}
         <div 
           onClick={() => setActiveTab('Completed')}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
+          className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
           <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
             <CheckCircle2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Completed</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.completed}</h3>
+            <p className="text-xs font-medium text-slate-500">Completed Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.completed}</h3>
           </div>
         </div>
 
         {/* Upcoming */}
         <div 
           onClick={() => setActiveTab('Upcoming')}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
+          className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
           <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
             <AlertCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.upcoming}</h3>
+            <p className="text-xs font-medium text-slate-500">Upcoming Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.upcoming}</h3>
           </div>
         </div>
 
         {/* Cancelled */}
         <div 
           onClick={() => setActiveTab('Cancelled')}
-          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
+          className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
           <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center shrink-0">
             <XCircle className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cancelled</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.cancelled}</h3>
+            <p className="text-xs font-medium text-slate-500">Cancelled Appointments</p>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{stats.cancelled}</h3>
           </div>
         </div>
       </div>
@@ -334,41 +334,41 @@ export const AdminAppointments: React.FC = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead>
-                <tr className="border-b border-gray-100 text-gray-400 font-bold uppercase tracking-wider text-[11px]">
-                  <th className="pb-3 pl-2">#</th>
-                  <th className="pb-3">Appointment Title</th>
-                  <th className="pb-3">Requested By</th>
-                  <th className="pb-3">Department / Team</th>
-                  <th className="pb-3">Date & Time</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right pr-2">Actions</th>
+                <tr className="border-b border-slate-200 text-slate-700 font-bold text-xs">
+                  <th className="pb-3.5 pl-2 font-bold text-slate-700">#</th>
+                  <th className="pb-3.5 font-bold text-slate-700">Appointment Title</th>
+                  <th className="pb-3.5 font-bold text-slate-700">Requested By</th>
+                  <th className="pb-3.5 font-bold text-slate-700">Department / Team</th>
+                  <th className="pb-3.5 font-bold text-slate-700">Date & Time</th>
+                  <th className="pb-3.5 font-bold text-slate-700">Status</th>
+                  <th className="pb-3.5 text-right pr-2 font-bold text-slate-700">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50 font-medium text-gray-700">
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredAppointments.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-10 text-gray-400">
+                    <td colSpan={7} className="text-center py-10 text-slate-400">
                       No appointments found matching this criteria.
                     </td>
                   </tr>
                 ) : (
                   filteredAppointments.map((apt, idx) => (
-                    <tr key={apt.id} className="hover:bg-purple-50/40 transition group">
-                      <td className="py-4 pl-2 font-bold text-gray-400">{idx + 1}</td>
+                    <tr key={apt.id} className="hover:bg-slate-50/70 transition group">
+                      <td className="py-4 pl-2 font-bold text-slate-400">{idx + 1}</td>
                       <td className="py-4 pr-3">
-                        <span className="font-bold text-gray-900 group-hover:text-[#5a36e6] transition">
+                        <span className="font-bold text-slate-900 group-hover:text-indigo-600 transition">
                           {apt.title}
                         </span>
                       </td>
-                      <td className="py-4 whitespace-nowrap text-gray-800 font-semibold">
+                      <td className="py-4 whitespace-nowrap text-slate-800 font-semibold">
                         {apt.requestedBy}
                       </td>
-                      <td className="py-4 whitespace-nowrap text-gray-500">
+                      <td className="py-4 whitespace-nowrap text-slate-500">
                         {apt.department} / {apt.team}
                       </td>
-                      <td className="py-4 whitespace-nowrap text-gray-600">
+                      <td className="py-4 whitespace-nowrap text-slate-600">
                         <div className="flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
                           <span>{apt.dateTimeDisplay || `${apt.date}, ${apt.time}`}</span>
                         </div>
                       </td>
@@ -376,38 +376,52 @@ export const AdminAppointments: React.FC = () => {
                         {getStatusBadge(apt.status)}
                       </td>
                       <td className="py-4 text-right pr-2 whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 text-gray-400">
-                          {(apt.joinUrl || (apt.location && apt.location.startsWith('/meet/'))) && (
-                            <a
-                              href={apt.joinUrl || apt.location}
-                              className="px-2 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[10px] flex items-center gap-1 transition-all shadow-xs"
-                              title="Join Video Meeting"
-                            >
-                              <Video className="w-3 h-3" />
-                              <span>Join</span>
-                            </a>
-                          )}
+                        <div className="inline-flex items-center justify-end gap-1.5 text-slate-400">
+                          {/* Standard consistent scan line: View, Edit, Delete first */}
                           <button
+                            type="button"
                             onClick={() => setViewingItem(apt)}
-                            className="p-1.5 rounded-lg hover:text-[#5a36e6] hover:bg-white transition"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-slate-100 transition-colors cursor-pointer"
                             title="View Details"
+                            aria-label="View Details"
                           >
                             <Eye className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => openEditModal(apt)}
-                            className="p-1.5 rounded-lg hover:text-blue-600 hover:bg-white transition"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-blue-600 hover:bg-slate-100 transition-colors cursor-pointer"
                             title="Edit Appointment"
+                            aria-label="Edit Appointment"
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => handleDeleteAppointment(apt.id)}
-                            className="p-1.5 rounded-lg hover:text-red-600 hover:bg-white transition"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                             title="Delete Appointment"
+                            aria-label="Delete Appointment"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>
+
+                          {/* Join button placed at the end so vertical scan line is never broken */}
+                          {(apt.joinUrl || (apt.location && apt.location.startsWith('/meet/'))) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const url = apt.joinUrl || apt.location;
+                                if (url) window.location.href = url;
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-2xs transition-colors cursor-pointer ml-1"
+                              title="Join Video Meeting"
+                              aria-label="Join Video Meeting"
+                            >
+                              <Video className="w-3.5 h-3.5" />
+                              <span>Join</span>
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
