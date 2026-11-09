@@ -717,8 +717,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <button
               onClick={() => {
                 setActiveCategory('requests');
-                const el = document.getElementById('content-pages-section');
-                if (el) el.scrollIntoView({ behavior: 'smooth' });
+                setSelectedRequestType(requestTypes[2]);
+                setRequestFormSubmitted(false);
               }}
               onMouseEnter={handleOtherNavHover}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
@@ -1149,8 +1149,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       type="button"
                       onClick={() => {
                         setMegaMenuOpen(false);
-                        const el = document.getElementById('content-pages-section');
-                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                        handleDeptClick(departments[0]);
                       }}
                       className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
                     >
@@ -1426,126 +1425,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </section>
 
-      {/* ---------------- CONTENT PAGES GRID (Content pages [1] in Figma Diagram) ---------------- */}
-      <section id="content-pages-section" className="w-full bg-[#f8fafc]/90 py-12 lg:py-16 relative z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between mb-8 pb-3 border-b border-slate-200">
-            <div className="flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#5a36e6] text-white text-xs font-bold flex items-center justify-center">1</span>
-              <div>
-                <h3 className="text-xl font-bold text-slate-900 tracking-tight">Content Pages &amp; Service Hubs</h3>
-                <p className="text-xs text-slate-500">Linked sub-pages under the active Category [1] structure</p>
-              </div>
-            </div>
-            <span className="text-xs text-slate-400 font-semibold hidden sm:inline">4 Primary Hubs</span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Content Page Card 1 */}
-            <div
-              onClick={() => handleDeptClick(departments[1])}
-              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
-            >
-              <div className="space-y-2 flex-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-[#5a36e6] uppercase tracking-wider">
-                  Care Delivery
-                </span>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-[#5a36e6] transition-colors">
-                  Clinical &amp; Surgical Specialties
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Inpatient care, outpatient surgical management, emergency response units, and specialized consultations.
-                </p>
-                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-[#5a36e6]">
-                  <span>Explore Clinical Hub</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-              <div className="w-20 h-20 rounded-2xl bg-purple-50 text-[#5a36e6] flex items-center justify-center shrink-0 border border-purple-100 shadow-2xs group-hover:scale-105 transition-transform">
-                <Stethoscope className="w-9 h-9" />
-              </div>
-            </div>
-
-            {/* Content Page Card 2 */}
-            <div
-              onClick={() => handleDeptClick(departments[2])}
-              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
-            >
-              <div className="space-y-2 flex-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">
-                  Diagnostics
-                </span>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
-                  Pathology &amp; Laboratory Systems
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Clinical biochemistry, microbiology specimen handling, radiology imaging reports, and automated informatics.
-                </p>
-                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-emerald-700">
-                  <span>View Diagnostic Labs</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-              <div className="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-2xs group-hover:scale-105 transition-transform">
-                <FlaskConical className="w-9 h-9" />
-              </div>
-            </div>
-
-            {/* Content Page Card 3 */}
-            <div
-              onClick={() => {
-                setSelectedRequestType(requestTypes[0]);
-                setRequestFormSubmitted(false);
-              }}
-              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
-            >
-              <div className="space-y-2 flex-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 uppercase tracking-wider">
-                  Coordination
-                </span>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-sky-700 transition-colors">
-                  Work Requests &amp; Meeting Coordination
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Direct appointment requests, institutional event approvals, task assignments, and dual WhatsApp notifications.
-                </p>
-                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-sky-700">
-                  <span>Open Request Center</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-              <div className="w-20 h-20 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 border border-sky-100 shadow-2xs group-hover:scale-105 transition-transform">
-                <Calendar className="w-9 h-9" />
-              </div>
-            </div>
-
-            {/* Content Page Card 4 */}
-            <div
-              onClick={onLogin}
-              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
-            >
-              <div className="space-y-2 flex-1">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
-                  Governance
-                </span>
-                <h4 className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
-                  Administration &amp; Team Roster
-                </h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
-                  Role-based access permissions, team assignments, deliverable verification, and system settings.
-                </p>
-                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-amber-700">
-                  <span>Sign In to Dashboard</span>
-                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-              <div className="w-20 h-20 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-2xs group-hover:scale-105 transition-transform">
-                <ShieldCheck className="w-9 h-9" />
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ---------------- MULTI-COLUMN FOOTER (Footer in Figma Diagram) ---------------- */}
       <footer className="w-full bg-slate-950 text-white border-t border-slate-800 pt-12 pb-8 relative z-20">
