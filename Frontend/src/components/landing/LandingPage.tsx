@@ -1389,7 +1389,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Institutional Architecture
               </span>
               <h3 className="font-['Playfair_Display',Georgia,serif] text-3xl sm:text-4xl font-bold text-slate-900 leading-tight">
-                Unified Governance &amp; Collaborative Workflows
+                Unified Collaborative &amp; Workflows
               </h3>
               <p className="text-sm text-slate-600 leading-relaxed">
                 WorkHub bridges administrative oversight, multi-departmental coordination, staff task tracking, and patient scheduling into a coherent, high-reliability workspace.
