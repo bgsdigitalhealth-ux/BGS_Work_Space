@@ -64,39 +64,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   }, [contextDepartments]);
   const [activeCategory, setActiveCategory] = useState<'overview' | 'departments' | 'requests' | 'appointments' | 'about'>('departments');
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+  const isOverTriggerRef = useRef(false);
+  const isOverMenuRef = useRef(false);
   const megaMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleMenuMouseEnter = () => {
+  const cancelCloseTimer = () => {
     if (megaMenuTimeoutRef.current) {
       clearTimeout(megaMenuTimeoutRef.current);
       megaMenuTimeoutRef.current = null;
     }
+  };
+
+  const scheduleClose = (delay = 200) => {
+    cancelCloseTimer();
+    megaMenuTimeoutRef.current = setTimeout(() => {
+      if (!isOverTriggerRef.current && !isOverMenuRef.current) {
+        setMegaMenuOpen(false);
+      }
+    }, delay);
+  };
+
+  const handleTriggerEnter = () => {
+    isOverTriggerRef.current = true;
+    cancelCloseTimer();
     setActiveCategory('departments');
     setMegaMenuOpen(true);
   };
 
-  const handleMenuMouseLeave = () => {
-    if (megaMenuTimeoutRef.current) {
-      clearTimeout(megaMenuTimeoutRef.current);
-    }
-    megaMenuTimeoutRef.current = setTimeout(() => {
-      setMegaMenuOpen(false);
-    }, 220);
+  const handleTriggerLeave = () => {
+    isOverTriggerRef.current = false;
+    scheduleClose(350);
+  };
+
+  const handleMenuEnter = () => {
+    isOverMenuRef.current = true;
+    cancelCloseTimer();
+    setMegaMenuOpen(true);
+  };
+
+  const handleMenuLeave = () => {
+    isOverMenuRef.current = false;
+    scheduleClose(180);
   };
 
   const handleOtherNavHover = () => {
-    if (megaMenuTimeoutRef.current) {
-      clearTimeout(megaMenuTimeoutRef.current);
-      megaMenuTimeoutRef.current = null;
-    }
+    isOverTriggerRef.current = false;
+    isOverMenuRef.current = false;
+    cancelCloseTimer();
     setMegaMenuOpen(false);
   };
 
   useEffect(() => {
     return () => {
-      if (megaMenuTimeoutRef.current) {
-        clearTimeout(megaMenuTimeoutRef.current);
-      }
+      cancelCloseTimer();
     };
   }, []);
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
@@ -719,8 +739,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* Subtle edge-to-edge ambient filter so the full architectural campus covers the webpage */}
       <div className="absolute inset-0 bg-slate-900/[0.04] backdrop-contrast-[1.01] pointer-events-none z-0" />
 
-      {/* ---------------- TOP NAVIGATION BAR ---------------- */}
-      <header className="w-full bg-white/80 backdrop-blur-md border-b border-gray-200/50 sticky top-0 z-50 transition-all">
+      {/* ---------------- TOP NAVIGATION BAR & MEGA-MENU WRAPPER ---------------- */}
+      <div
+        className="sticky top-0 z-50 w-full"
+        onMouseLeave={handleMenuLeave}
+      >
+        <header className="w-full bg-white/80 backdrop-blur-md border-b border-gray-200/50 transition-all">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 
           {/* Left Brand Logo & Title */}
@@ -766,8 +790,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 setActiveCategory('departments');
                 setMegaMenuOpen(!megaMenuOpen);
               }}
-              onMouseEnter={handleMenuMouseEnter}
-              onMouseLeave={handleMenuMouseLeave}
+              onMouseEnter={handleTriggerEnter}
+              onMouseLeave={handleTriggerLeave}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                 activeCategory === 'departments'
                   ? 'bg-slate-900 text-white font-bold shadow-xs'
@@ -995,11 +1019,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         )}
       </header>
 
-      {/* ---------------- MEGA-MENU SUB-NAVIGATION BAR (Menu navigation [1] in Figma Diagram) ---------------- */}
+      {/* ---------------- MEGA-MENU SUB-NAVIGATION BAR (Menu navigation in Figma Diagram) ---------------- */}
       {megaMenuOpen && (
         <section
-          onMouseEnter={handleMenuMouseEnter}
-          onMouseLeave={handleMenuMouseLeave}
+          onMouseEnter={handleMenuEnter}
+          onMouseLeave={handleMenuLeave}
           className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200"
         >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
@@ -1214,6 +1238,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </section>
       )}
+      </div>
 
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
