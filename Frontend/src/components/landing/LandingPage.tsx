@@ -1534,15 +1534,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <ul className="space-y-2 text-xs text-slate-400">
                 <li className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>support@bgsdigitalhealth.org</span>
+                  <a href="mailto:bgsmchhospitalnagarur@gmail.com" className="hover:text-white transition-colors">
+                    bgsmchhospitalnagarur@gmail.com
+                  </a>
                 </li>
                 <li className="flex items-center gap-2">
                   <Phone className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>+91 (080) 2674-8900</span>
+                  <a href="tel:789974697" className="hover:text-white transition-colors">
+                    789974697
+                  </a>
                 </li>
                 <li className="flex items-center gap-2">
                   <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <span>BGS MCH Hospital, Nagarur</span>
+                  <span>Digital Health and Ai Center</span>
                 </li>
                 <li className="pt-1">
                   <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1.5">
@@ -1644,19 +1648,19 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Contact & Support</h3>
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Contact &amp; Support</h3>
             <div className="space-y-3 text-xs text-gray-600">
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-50/60 border border-purple-100">
+              <a href="mailto:bgsmchhospitalnagarur@gmail.com" className="flex items-center gap-3 p-3 rounded-xl bg-purple-50/60 border border-purple-100 hover:bg-purple-100/60 transition-colors">
                 <Mail className="w-4 h-4 text-[#5a36e6] shrink-0" />
-                <span>support@bgsdigitalhealth.org</span>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-50/60 border border-purple-100">
+                <span className="font-medium text-gray-800">bgsmchhospitalnagarur@gmail.com</span>
+              </a>
+              <a href="tel:789974697" className="flex items-center gap-3 p-3 rounded-xl bg-purple-50/60 border border-purple-100 hover:bg-purple-100/60 transition-colors">
                 <Phone className="w-4 h-4 text-[#5a36e6] shrink-0" />
-                <span>+91 (080) 2674-8900</span>
-              </div>
+                <span className="font-medium text-gray-800">789974697</span>
+              </a>
               <div className="flex items-center gap-3 p-3 rounded-xl bg-purple-50/60 border border-purple-100">
                 <MapPin className="w-4 h-4 text-[#5a36e6] shrink-0" />
-                <span>BGS Hospital & Research Institute, Digital Health Division</span>
+                <span className="font-medium text-gray-800">Digital Health and Ai Center</span>
               </div>
             </div>
 
