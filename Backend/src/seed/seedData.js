@@ -34,45 +34,12 @@ const initialData = {
     {
       id: 'usr-admin',
       name: 'Admin',
-      email: 'dynamicsajjan@gamil.com',
-      password: 'Apple9844?',
-      hasPassword: true,
-      role: 'admin',
-      avatar: 'A',
-      title: 'Administrator'
-    },
-    {
-      id: 'usr-admin-alias',
-      name: 'Admin',
       email: 'dynamicsajjan@gmail.com',
       password: 'Apple9844?',
       hasPassword: true,
       role: 'admin',
       avatar: 'A',
       title: 'Administrator'
-    },
-    {
-      id: 'usr-admin-backup',
-      name: 'Admin',
-      email: 'admin@company.com',
-      password: 'Apple9844?',
-      hasPassword: true,
-      role: 'admin',
-      avatar: 'A',
-      title: 'Administrator'
-    },
-    {
-      id: 'usr-user',
-      name: 'Team Member',
-      email: 'user@company.com',
-      password: 'user123',
-      role: 'user',
-      memberId: '',
-      department: '',
-      team: '',
-      teamRole: 'Team Member',
-      avatar: 'TM',
-      title: 'Team Member'
     },
     {
       id: 'usr-hari',

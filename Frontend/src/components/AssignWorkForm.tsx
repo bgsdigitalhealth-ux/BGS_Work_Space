@@ -38,7 +38,7 @@ export const AssignWorkForm: React.FC = () => {
       }
     } else {
       // admin_to_admin
-      const otherAdmins = adminUsers.length > 0 ? adminUsers : [{ id: 'usr-admin', name: 'Admin', email: 'dynamicsajjan@gamil.com', role: 'admin' }];
+      const otherAdmins = adminUsers.length > 0 ? adminUsers : [{ id: 'usr-admin', name: 'Admin', email: 'dynamicsajjan@gmail.com', role: 'admin' }];
       const defaultAdmin = otherAdmins.find(a => a.id !== currentUser?.id) || otherAdmins[0];
       if (defaultAdmin) {
         setTargetId(defaultAdmin.id);
@@ -99,7 +99,7 @@ export const AssignWorkForm: React.FC = () => {
         assignerId: currentUser?.id || 'usr-admin',
         assignerName: currentUser?.name || 'Admin',
         assignerRole: 'admin',
-        assignerEmail: currentUser?.email || 'admin@company.com',
+        assignerEmail: currentUser?.email || 'dynamicsajjan@gmail.com',
         assigneeId: targetId,
         assigneeName: targetName,
         assigneeRole: assignMode === 'admin_to_admin' ? 'admin' : 'user',
@@ -209,7 +209,7 @@ export const AssignWorkForm: React.FC = () => {
                     </option>
                   ))}
                   {adminUsers.length === 0 && (
-                    <option value="usr-admin">Admin (dynamicsajjan@gamil.com)</option>
+                    <option value="usr-admin">Admin (dynamicsajjan@gmail.com)</option>
                   )}
                 </select>
               )}

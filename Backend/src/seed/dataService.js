@@ -43,10 +43,20 @@ const loadStore = () => {
       const parsed = JSON.parse(raw);
       if (parsed) {
         memoryStore = { ...initialData, ...parsed };
+        const bannedEmails = [
+          'bgsmchhospitalnagarur@gmail.com',
+          'dynamicsajjan@gamil.com',
+          'admin@company.com',
+          'user@company.com'
+        ];
         if (!Array.isArray(memoryStore.deletedEmails)) {
-          memoryStore.deletedEmails = ['bgsmchhospitalnagarur@gmail.com'];
-        } else if (!memoryStore.deletedEmails.includes('bgsmchhospitalnagarur@gmail.com')) {
-          memoryStore.deletedEmails.push('bgsmchhospitalnagarur@gmail.com');
+          memoryStore.deletedEmails = [...bannedEmails];
+        } else {
+          for (const b of bannedEmails) {
+            if (!memoryStore.deletedEmails.includes(b)) {
+              memoryStore.deletedEmails.push(b);
+            }
+          }
         }
 
         // Strictly purge any deleted emails from users and members so they can never resurface
@@ -73,7 +83,7 @@ const loadStore = () => {
     console.warn('[Storage] Disk read error, initializing default store:', e.message);
   }
   memoryStore = JSON.parse(JSON.stringify(initialData));
-  memoryStore.deletedEmails = ['bgsmchhospitalnagarur@gmail.com'];
+  memoryStore.deletedEmails = ['bgsmchhospitalnagarur@gmail.com', 'dynamicsajjan@gamil.com', 'admin@company.com', 'user@company.com'];
   memoryStore.users = (memoryStore.users || []).filter(u => !memoryStore.deletedEmails.includes((u.email || '').toLowerCase()));
   saveStore();
 };
@@ -129,7 +139,8 @@ const clearAllData = async () => {
       await Message.deleteMany({});
       await UserTask.deleteMany({});
       await WorkHistory.deleteMany({});
-      await User.deleteMany({ email: { $nin: ['dynamicsajjan@gamil.com', 'dynamicsajjan@gmail.com'] } });
+      await User.deleteMany({ email: { $nin: ['dynamicsajjan@gmail.com', 'rpy6425@gmail.com'] } });
+      await User.deleteMany({ email: { $in: ['dynamicsajjan@gamil.com', 'admin@company.com', 'user@company.com'] } });
       console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
     } catch (e) {
       console.warn('[Storage] Mongo wipe error:', e.message);
@@ -227,7 +238,7 @@ const initMongoSeed = async () => {
     // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
     await loadFromMongo();
 
-    // 2. Ensure base login accounts (dynamicsajjan@gamil.com, etc.) exist unless deleted
+    // 2. Ensure base login accounts (dynamicsajjan@gmail.com, etc.) exist unless deleted
     for (const u of initialData.users) {
       if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(u.email.toLowerCase())) continue;
       const exists = await User.findOne({ email: u.email.toLowerCase() });

@@ -386,7 +386,7 @@ export const Modals: React.FC = () => {
                   required
                   value={memEmail}
                   onChange={(e) => setMemEmail(e.target.value)}
-                  placeholder="e.g. john@company.com"
+                  placeholder="e.g. member@hospital.com"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                 />
               </div>

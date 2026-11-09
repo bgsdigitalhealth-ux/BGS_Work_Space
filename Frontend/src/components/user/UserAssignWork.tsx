@@ -70,7 +70,7 @@ export const UserAssignWork: React.FC = () => {
       }
     } else {
       // user_to_admin
-      const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Admin', email: 'dynamicsajjan@gamil.com' };
+      const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Admin', email: 'dynamicsajjan@gmail.com' };
       setTargetId(defaultAdmin.id);
       setTargetName(defaultAdmin.name);
       setEmail(defaultAdmin.email);
@@ -266,7 +266,7 @@ export const UserAssignWork: React.FC = () => {
                         </option>
                       ))}
                       {adminUsers.length === 0 && (
-                        <option value="usr-admin">Admin (dynamicsajjan@gamil.com)</option>
+                        <option value="usr-admin">Admin (dynamicsajjan@gmail.com)</option>
                       )}
                     </select>
                   )}

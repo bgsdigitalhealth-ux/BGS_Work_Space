@@ -150,7 +150,7 @@ export const UserSidebar: React.FC = () => {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-xs text-white font-bold truncate group-hover:text-[#a58df8] transition-colors">{currentUser?.name || 'Team Member'}</p>
-              <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'User'}</p>
+              <p className="text-xs text-indigo-200/90 font-normal truncate mt-0.5">{currentUser?.email || 'User'}</p>
             </div>
           </div>
           <button

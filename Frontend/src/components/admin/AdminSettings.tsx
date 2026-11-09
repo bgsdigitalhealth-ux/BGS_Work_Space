@@ -411,7 +411,7 @@ export const AdminSettings: React.FC = () => {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@company.com"
+                  placeholder="admin@hospital.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-10 pr-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
                 />
               </div>
@@ -735,7 +735,7 @@ export const AdminSettings: React.FC = () => {
                   required
                   value={editUserEmail}
                   onChange={(e) => setEditUserEmail(e.target.value)}
-                  placeholder="user@company.com"
+                  placeholder="user@hospital.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
                 />
                 <p className="text-[11px] text-slate-400 mt-1">This email address is required to log in.</p>
@@ -846,7 +846,7 @@ export const AdminSettings: React.FC = () => {
                   required
                   value={newAdminEmail}
                   onChange={(e) => setNewAdminEmail(e.target.value)}
-                  placeholder="name@company.com"
+                  placeholder="name@hospital.com"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
                 />
               </div>
