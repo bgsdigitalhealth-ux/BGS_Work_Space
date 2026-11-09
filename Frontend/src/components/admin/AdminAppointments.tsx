@@ -396,6 +396,35 @@ export const AdminAppointments: React.FC = () => {
                           >
                             <Edit2 className="w-4 h-4" />
                           </button>
+                          {apt.status !== 'Cancelled' ? (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Are you sure you want to cancel the appointment "${apt.title}"?`)) {
+                                  await handleUpdateAppointment(apt.id, { status: 'Cancelled' });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Cancel Appointment"
+                              aria-label="Cancel Appointment"
+                            >
+                              <XCircle className="w-4 h-4" />
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (window.confirm(`Do you want to restore and schedule "${apt.title}"?`)) {
+                                  await handleUpdateAppointment(apt.id, { status: 'Scheduled' });
+                                }
+                              }}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
+                              title="Restore Appointment"
+                              aria-label="Restore Appointment"
+                            >
+                              <CheckCircle2 className="w-4 h-4" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDeleteAppointment(apt.id)}
@@ -554,6 +583,22 @@ export const AdminAppointments: React.FC = () => {
                 />
               </div>
 
+              {editingItem && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1">Appointment Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as any })}
+                    className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl p-2.5 focus:ring-2 focus:ring-[#5a36e6] focus:outline-none font-semibold text-gray-800"
+                  >
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
+              )}
+
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
@@ -624,13 +669,67 @@ export const AdminAppointments: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end pt-4">
-              <button
-                onClick={() => setViewingItem(null)}
-                className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold text-xs hover:bg-gray-200 transition"
-              >
-                Close
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-gray-100 mt-4">
+              <div>
+                {viewingItem.status !== 'Cancelled' ? (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (window.confirm(`Are you sure you want to cancel the appointment "${viewingItem.title}"?`)) {
+                        await handleUpdateAppointment(viewingItem.id, { status: 'Cancelled' });
+                        setViewingItem(prev => prev ? { ...prev, status: 'Cancelled' } : null);
+                      }
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                  >
+                    <XCircle className="w-4 h-4 text-rose-600" />
+                    <span>Cancel Appointment</span>
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-rose-600 flex items-center gap-1">
+                      <XCircle className="w-4 h-4" />
+                      Cancelled
+                    </span>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (window.confirm(`Do you want to restore and schedule "${viewingItem.title}"?`)) {
+                          await handleUpdateAppointment(viewingItem.id, { status: 'Scheduled' });
+                          setViewingItem(prev => prev ? { ...prev, status: 'Scheduled' } : null);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                      <span>Restore</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-2">
+                {(viewingItem.joinUrl || (viewingItem.location && viewingItem.location.startsWith('/meet/'))) && viewingItem.status !== 'Cancelled' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const url = viewingItem.joinUrl || viewingItem.location;
+                      if (url) window.location.href = url;
+                    }}
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-xs"
+                  >
+                    <Video className="w-4 h-4" />
+                    <span>Join Call</span>
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setViewingItem(null)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 font-bold text-xs hover:bg-gray-200 transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>

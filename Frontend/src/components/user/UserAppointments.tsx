@@ -9,7 +9,6 @@ import {
   ChevronLeft, 
   ChevronRight, 
   MapPin, 
-  MoreVertical,
   CalendarCheck,
   Video
 } from 'lucide-react';
@@ -22,6 +21,7 @@ export const UserAppointments: React.FC = () => {
     selectedAppointmentDate, 
     setSelectedAppointmentDate,
     handleCreateAppointment,
+    handleUpdateAppointment,
     currentUser
   } = useApp();
 
@@ -323,13 +323,39 @@ export const UserAppointments: React.FC = () => {
                           ? 'bg-purple-50 text-[#5a36e6] border border-purple-200' 
                           : apt.status === 'Completed'
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                          : apt.status === 'Cancelled'
+                          ? 'bg-rose-50 text-rose-600 border border-rose-200'
                           : 'bg-amber-50 text-amber-600 border border-amber-200'
                       }`}>
                         {isToday ? 'Today' : apt.status}
                       </span>
-                      <button className="text-gray-400 hover:text-gray-700 p-1">
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
+                      {apt.status !== 'Cancelled' ? (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Are you sure you want to cancel the appointment "${apt.title}"?`)) {
+                              await handleUpdateAppointment(apt.id, { status: 'Cancelled' });
+                            }
+                          }}
+                          className="text-gray-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition cursor-pointer"
+                          title="Cancel Appointment"
+                        >
+                          <XCircle className="w-4 h-4" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (window.confirm(`Do you want to restore and schedule "${apt.title}"?`)) {
+                              await handleUpdateAppointment(apt.id, { status: 'Scheduled' });
+                            }
+                          }}
+                          className="text-rose-400 hover:text-emerald-600 p-1 rounded-lg hover:bg-emerald-50 transition cursor-pointer"
+                          title="Restore Appointment"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
