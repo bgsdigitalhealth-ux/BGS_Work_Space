@@ -161,6 +161,18 @@ interface AppContextType {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+export const BANNED_EMAILS = [
+  'bgsmchhospitalnagarur@gmail.com',
+  'dynamicsajjan@gamil.com',
+  'admin@company.com',
+  'user@company.com'
+];
+
+export const isBannedEmail = (email?: string): boolean => {
+  if (!email) return false;
+  return BANNED_EMAILS.includes(email.trim().toLowerCase());
+};
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Session / Authentication state: default to stored user or null (Login Page)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -596,10 +608,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const fetchAllUsers = async () => {
     try {
       const u = await api.getUsers();
-      setAllUsers(u || []);
+      const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
+      setAllUsers(sanitized);
       // If currently logged in user is deleted from the system, revoke access immediately
-      if (currentUser && Array.isArray(u) && u.length > 0) {
-        const stillExists = u.some(x => 
+      if (currentUser && Array.isArray(sanitized) && sanitized.length > 0) {
+        const stillExists = sanitized.some(x => 
           (currentUser.id && x.id === currentUser.id) || 
           (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
         );

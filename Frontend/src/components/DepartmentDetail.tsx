@@ -24,6 +24,7 @@ export const DepartmentDetail: React.FC = () => {
   const {
     selectedDepartment,
     selectedTeam,
+    setSelectedTeam,
     activeTab,
     setActiveTab,
     teamSubTab,
@@ -200,9 +201,39 @@ export const DepartmentDetail: React.FC = () => {
 
       {/* Main Tab Content Display */}
       {activeTab === 'Teams' && (
-        <div className="flex flex-col lg:flex-row gap-4 items-stretch flex-1">
-          <TeamList />
-          <MembersTable />
+        <div className={`flex flex-col ${teamSubTab === 'Roles' ? 'w-full' : 'lg:flex-row'} gap-4 items-stretch flex-1`}>
+          {teamSubTab !== 'Roles' && <TeamList />}
+          <div className="flex-1 min-w-0">
+            {teamSubTab === 'Roles' && (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200/60 shadow-2xs">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-slate-500">Active Team:</span>
+                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
+                    {selectedTeam?.name || 'Select Team'}
+                  </span>
+                </div>
+                {teams.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <label htmlFor="team-switcher" className="text-xs text-slate-500 font-medium">Switch Team:</label>
+                    <select
+                      id="team-switcher"
+                      value={selectedTeam?.id || ''}
+                      onChange={(e) => {
+                        const found = teams.find(t => t.id === e.target.value);
+                        if (found) setSelectedTeam(found);
+                      }}
+                      className="text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
+                    >
+                      {teams.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+            )}
+            <MembersTable />
+          </div>
         </div>
       )}
 

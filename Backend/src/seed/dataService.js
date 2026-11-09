@@ -24,6 +24,19 @@ const DATA_FILE = path.join(__dirname, '../../data/db.json');
 // Persistent Disk Store engine
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
+const BANNED_EMAILS = [
+  'bgsmchhospitalnagarur@gmail.com',
+  'dynamicsajjan@gamil.com',
+  'admin@company.com',
+  'user@company.com'
+];
+
+const isBannedEmail = (email) => {
+  if (!email) return false;
+  const clean = String(email).trim().toLowerCase();
+  return BANNED_EMAILS.includes(clean);
+};
+
 const saveStore = () => {
   try {
     const dir = path.dirname(DATA_FILE);
@@ -1758,8 +1771,8 @@ const createPassword = async (email, password) => {
 const loginUser = async (email, password) => {
   const cleanEmail = (email || '').trim().toLowerCase();
 
-  // Reject permanently deleted users
-  if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+  // Reject permanently deleted users or banned accounts
+  if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail))) {
     return {
       success: false,
       error: 'This account has been deleted by an administrator. Access revoked.'
@@ -1850,7 +1863,9 @@ const getUsers = async () => {
     try {
       const list = await User.find().select('-password').lean();
       if (list.length > 0) {
-        return list.map(u => ({ ...u, id: u.customId || u._id.toString() }));
+        return list
+          .filter(u => !isBannedEmail(u.email))
+          .map(u => ({ ...u, id: u.customId || u._id.toString() }));
       }
     } catch (e) {
       console.warn('Mongo read error:', e.message);
@@ -1860,7 +1875,9 @@ const getUsers = async () => {
   if (!memoryStore.users) {
     memoryStore.users = JSON.parse(JSON.stringify(initialData.users || []));
   }
-  return memoryStore.users.map(({ password, ...u }) => u);
+  return (memoryStore.users || [])
+    .filter(u => !isBannedEmail(u.email))
+    .map(({ password, ...u }) => u);
 };
 
 // --- Admin Management & Profile Settings ---
@@ -2018,7 +2035,9 @@ const getAdmins = async () => {
     try {
       const list = await User.find({ role: 'admin' }).select('-password').lean();
       if (list.length > 0) {
-        return list.map(u => ({ ...u, id: u.customId || u._id.toString() }));
+        return list
+          .filter(u => !isBannedEmail(u.email))
+          .map(u => ({ ...u, id: u.customId || u._id.toString() }));
       }
     } catch (e) {
       console.warn('Mongo getAdmins error:', e.message);
@@ -2026,7 +2045,7 @@ const getAdmins = async () => {
   }
 
   return (memoryStore.users || [])
-    .filter(u => u.role === 'admin')
+    .filter(u => u.role === 'admin' && !isBannedEmail(u.email))
     .map(({ password, ...u }) => u);
 };
 

@@ -19,7 +19,7 @@ import {
   UserCheck,
   Pencil
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isBannedEmail } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { User } from '../../types';
 
@@ -65,10 +65,11 @@ export const AdminSettings: React.FC = () => {
   const [userActionMsg, setUserActionMsg] = useState('');
   const [userActionError, setUserActionError] = useState('');
 
-  const regularUsersCount = (allUsers || []).filter(u => u.role === 'user').length;
-  const adminsCount = (allUsers || []).filter(u => u.role === 'admin').length;
+  const regularUsersCount = (allUsers || []).filter(u => u.role === 'user' && !isBannedEmail(u.email)).length;
+  const adminsCount = (allUsers || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email)).length;
 
   const filteredUsers = (allUsers || []).filter(u => {
+    if (isBannedEmail(u.email)) return false;
     const matchesSearch =
       (u.name || '').toLowerCase().includes(userSearch.toLowerCase()) ||
       (u.email || '').toLowerCase().includes(userSearch.toLowerCase());
@@ -77,6 +78,7 @@ export const AdminSettings: React.FC = () => {
   });
 
   const filteredAdmins = (admins || []).filter(a => {
+    if (isBannedEmail(a.email)) return false;
     return (
       (a.name || '').toLowerCase().includes(adminSearch.toLowerCase()) ||
       (a.email || '').toLowerCase().includes(adminSearch.toLowerCase())
@@ -174,7 +176,8 @@ export const AdminSettings: React.FC = () => {
     try {
       setLoadingAdmins(true);
       const list = await api.getAdmins();
-      setAdmins(list);
+      const sanitized = (list || []).filter(a => !isBannedEmail(a.email));
+      setAdmins(sanitized);
     } catch (e) {
       console.error(e);
     } finally {

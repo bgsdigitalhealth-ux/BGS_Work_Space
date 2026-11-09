@@ -93,7 +93,7 @@ export const Sidebar: React.FC = () => {
               setTeamSubTab('Members');
               scrollToSection('stats-overview');
             })}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${adminNav === 'dashboard' && activeTab === 'Teams' && teamSubTab === 'Members'
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${adminNav === 'dashboard'
               ? 'text-white bg-indigo-600 shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
@@ -235,12 +235,9 @@ export const Sidebar: React.FC = () => {
           {/* Reports */}
           <button
             onClick={() => handleNavAction(() => {
-              setAdminNav('dashboard');
-              setActiveTab('Teams');
-              setTeamSubTab('Roles');
-              scrollToSection('department-detail');
+              setAdminNav('reports');
             })}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${teamSubTab === 'Roles' && adminNav === 'dashboard' ? 'text-white bg-indigo-600/80' : 'text-slate-300 hover:text-white hover:bg-white/5'
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'reports' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
             <FileBarChart className="w-4 h-4 text-slate-400" />

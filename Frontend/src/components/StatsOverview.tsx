@@ -81,7 +81,7 @@ export const StatsOverview: React.FC = () => {
   ];
 
   return (
-    <div id="stats-overview" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6">
+    <div id="stats-overview" className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3 mb-4">
       {cards.map((card, idx) => {
         const IconComponent = card.icon;
         return (
@@ -89,22 +89,22 @@ export const StatsOverview: React.FC = () => {
             key={idx}
             onClick={card.action}
             title={card.hint}
-            className="group bg-white rounded-2xl p-4 border border-slate-200/60 shadow-xs flex items-center justify-between text-left hover:border-indigo-300 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+            className="group bg-white rounded-xl py-2.5 px-3 border border-slate-200/70 shadow-2xs flex items-center justify-between text-left hover:border-indigo-300 hover:shadow-xs transition-all cursor-pointer"
           >
-            <div className="flex items-center gap-3.5">
-              <div className={`w-12 h-12 rounded-xl ${card.bgColor} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
-                <IconComponent className={`w-6 h-6 ${card.iconColor}`} />
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className={`w-8 h-8 rounded-lg ${card.bgColor} flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform`}>
+                <IconComponent className={`w-4 h-4 ${card.iconColor}`} />
               </div>
-              <div>
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider group-hover:text-indigo-600 transition-colors">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate group-hover:text-indigo-600 transition-colors">
                   {card.title}
                 </p>
-                <h3 className="text-2xl font-bold text-slate-900 mt-0.5">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
                   {card.value}
                 </h3>
               </div>
             </div>
-            <ArrowUpRight className="w-4 h-4 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:text-indigo-600 transition-all shrink-0 -mr-1" />
+            <ArrowUpRight className="w-3.5 h-3.5 text-slate-300 opacity-0 group-hover:opacity-100 group-hover:text-indigo-600 transition-all shrink-0 ml-1" />
           </button>
         );
       })}
