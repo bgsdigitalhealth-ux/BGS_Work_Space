@@ -5,9 +5,7 @@ import {
   LayoutGrid,
   Stethoscope,
   FlaskConical,
-  GraduationCap,
   Users,
-  Settings,
   Building2,
   Calendar,
   ClipboardCheck,
@@ -31,6 +29,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
+import { Department } from '../../types';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -38,7 +37,31 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
-  const { currentUser } = useApp();
+  const { currentUser, departments: contextDepartments } = useApp();
+  const [liveDepartments, setLiveDepartments] = useState<Department[]>([]);
+
+  const fetchLiveDepartments = async () => {
+    try {
+      const data = await api.getDepartments();
+      if (Array.isArray(data)) {
+        setLiveDepartments(data);
+      }
+    } catch (err) {
+      console.warn('Notice loading live departments:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchLiveDepartments();
+    const interval = setInterval(fetchLiveDepartments, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (contextDepartments && contextDepartments.length > 0) {
+      setLiveDepartments(contextDepartments);
+    }
+  }, [contextDepartments]);
   const [activeCategory, setActiveCategory] = useState<'overview' | 'departments' | 'requests' | 'appointments' | 'about'>('departments');
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const megaMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -622,20 +645,67 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setInfoErrors({});
   };
 
-  // Departments List matching Screenshot 2
-  const departments = [
-    { id: 'all', title: 'All Departments', icon: LayoutGrid, desc: 'Central directory of all hospital & administrative departments.' },
-    { id: 'clinical', title: 'Clinical Departments', icon: Stethoscope, desc: 'Inpatient & outpatient clinical care, surgical specialties & emergency medicine.' },
-    { id: 'pre-para', title: 'Pre & Para Clinical', icon: FlaskConical, desc: 'Pathology, microbiology, biochemistry, pharmacology & diagnostic labs.' },
-    { id: 'academic', title: 'Academic & Research', icon: GraduationCap, desc: 'Medical education, clinical trials, postgraduate training & research journals.' },
-    { id: 'admin', title: 'Administration', icon: Users, desc: 'Operations, HR, hospital superintendence & institutional leadership.' },
-    { id: 'support', title: 'Support Services', icon: Settings, desc: 'Biomedical engineering, IT systems, infrastructure maintenance & safety.' },
-    { id: 'hospital', title: 'Hospital Services', icon: Building2, desc: 'Pharmacy, blood bank, nursing administration & radiology services.' },
-    { id: 'other', title: 'Other Departments', icon: Calendar, desc: 'Community medicine, health camps & interdepartmental projects.' },
+  // Department Icon Mapper supporting string names or React elements
+  const getDeptIcon = (iconName: any): React.ElementType => {
+    if (typeof iconName === 'function') return iconName;
+    if (iconName && typeof iconName === 'object' && 'render' in iconName) return iconName;
+    const name = String(iconName || '').toLowerCase();
+    switch (name) {
+      case 'code':
+        return LayoutGrid;
+      case 'palette':
+        return Sparkles;
+      case 'megaphone':
+        return MessageSquare;
+      case 'stethoscope':
+      case 'clinical':
+        return Stethoscope;
+      case 'flask':
+      case 'diagnostics':
+        return FlaskConical;
+      case 'calendar':
+        return Calendar;
+      case 'shield':
+        return ShieldCheck;
+      case 'users':
+        return Users;
+      case 'layers':
+      case 'hospital':
+      default:
+        return Building2;
+    }
+  };
+
+  const fallbackCol1 = [
+    { id: 'clinical', name: 'Clinical Medicine & Outpatient', icon: 'stethoscope', description: 'Inpatient & outpatient clinical care, surgical specialties & emergency medicine.' },
+    { id: 'emergency', name: 'Emergency & Trauma Services', icon: 'stethoscope', description: '24/7 acute trauma stabilization, emergency triage and critical ambulance response.' },
+    { id: 'surgery', name: 'General Surgery & Critical Care', icon: 'stethoscope', description: 'Advanced surgical suites, intensive care coordination and post-op care.' },
+    { id: 'pediatrics', name: 'Pediatrics & Maternal Health', icon: 'stethoscope', description: 'Specialized neonatal care, pediatric medicine and maternal wellness.' },
   ];
 
-  const handleDeptClick = (dept: typeof departments[0]) => {
-    setSelectedDeptInfo({ title: dept.title, desc: dept.desc, icon: dept.icon });
+  const fallbackCol2 = [
+    { id: 'pathology', name: 'Pathology & Microbiology Labs', icon: 'flask', description: 'Comprehensive diagnostic pathology, histology, microbiology cultures and automated analysis.' },
+    { id: 'radiology', name: 'Radiology & Advanced Imaging', icon: 'flask', description: 'Digital X-ray, multi-slice CT, 3T MRI, ultrasound and interventional radiology services.' },
+    { id: 'biochem', name: 'Clinical Biochemistry Diagnostics', icon: 'flask', description: 'High-throughput automated clinical biochemistry, hormone assays and toxicology screening.' },
+    { id: 'digital-ai', name: 'Digital AI & Health Informatics', icon: 'code', description: 'Institutional artificial intelligence, health informatics and electronic health record integration.' },
+  ];
+
+  const hasLiveDepts = liveDepartments.length > 0;
+  const col1Depts = hasLiveDepts
+    ? (liveDepartments.length > 4 ? liveDepartments.slice(0, Math.ceil(liveDepartments.length / 2)) : liveDepartments)
+    : fallbackCol1;
+
+  const col2Depts = hasLiveDepts && liveDepartments.length > 4
+    ? liveDepartments.slice(Math.ceil(liveDepartments.length / 2))
+    : fallbackCol2;
+
+  const allAvailableDepts = hasLiveDepts ? liveDepartments : [...fallbackCol1, ...fallbackCol2];
+
+  const handleDeptClick = (dept: { id?: string; name?: string; title?: string; description?: string; desc?: string; icon?: any }) => {
+    const title = dept.name || dept.title || 'Department';
+    const desc = dept.description || dept.desc || 'Department workspace, assigned teams and member roster.';
+    const icon = getDeptIcon(dept.icon || dept.name || dept.title);
+    setSelectedDeptInfo({ title, desc, icon });
     setMegaMenuOpen(false);
   };
 
@@ -706,11 +776,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               title="Hover or click to toggle navigation menu"
             >
               <span>Departments</span>
-              <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
-                activeCategory === 'departments' ? 'bg-[#5a36e6] text-white' : 'bg-gray-200 text-gray-700'
-              }`}>
-                1
-              </span>
               <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${megaMenuOpen ? 'rotate-180' : ''}`} />
             </button>
 
@@ -865,8 +930,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Departments
               </div>
               <div className="grid grid-cols-1 gap-1 pl-1">
-                {departments.slice(0, 5).map(dept => {
-                  const Icon = dept.icon;
+                {allAvailableDepts.slice(0, 6).map(dept => {
+                  const Icon = getDeptIcon(dept.icon);
                   return (
                     <button
                       key={dept.id}
@@ -877,7 +942,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-purple-50 hover:text-[#5a36e6] text-left transition-colors cursor-pointer"
                     >
                       <Icon className="w-4 h-4 text-purple-600 shrink-0" />
-                      <span>{dept.title}</span>
+                      <span>{dept.name}</span>
                     </button>
                   );
                 })}
@@ -940,7 +1005,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#5a36e6] text-white text-xs font-bold flex items-center justify-center">1</span>
+                <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-[#a78bfa] flex items-center justify-center border border-purple-500/30 shrink-0">
+                  <Building2 className="w-4 h-4" />
+                </div>
                 <div>
                   <h3 className="text-sm font-bold text-white tracking-wide uppercase">Department &amp; Service Directory</h3>
                   <p className="text-xs text-slate-400">Institutional navigation across clinical care, diagnostic labs, requests, and governance</p>
@@ -958,103 +1025,59 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
             {/* 4 Multi-Column Menu Navigation Groups matching Figma wireframe */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {/* Column 1: Clinical Departments */}
+              {/* Column 1: Hospital Departments (Live Sync from Database) */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-purple-400 font-bold text-xs uppercase tracking-wider">
-                  <Stethoscope className="w-3.5 h-3.5" />
-                  <span>Clinical Care</span>
+                  <Building2 className="w-3.5 h-3.5" />
+                  <span>Hospital Departments</span>
                 </div>
                 <ul className="space-y-2 text-xs text-slate-300">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[1])}
-                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Clinical Medicine &amp; Outpatient</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[1])}
-                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Emergency &amp; Trauma Services</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[1])}
-                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>General Surgery &amp; Critical Care</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[1])}
-                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Pediatrics &amp; Maternal Health</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
+                  {col1Depts.map((dept) => {
+                    const Icon = getDeptIcon(dept.icon);
+                    return (
+                      <li key={dept.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeptClick(dept)}
+                          className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Icon className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                            <span className="truncate">{dept.name}</span>
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 
-              {/* Column 2: Diagnostic & Research */}
+              {/* Column 2: Specialized & Diagnostic Services (Or 2nd Half of Live Departments) */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-emerald-400 font-bold text-xs uppercase tracking-wider">
                   <FlaskConical className="w-3.5 h-3.5" />
-                  <span>Diagnostics &amp; Research</span>
+                  <span>{hasLiveDepts && liveDepartments.length > 4 ? 'Allied Departments' : 'Diagnostics & Research'}</span>
                 </div>
                 <ul className="space-y-2 text-xs text-slate-300">
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[2])}
-                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Pathology &amp; Microbiology Labs</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[2])}
-                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Radiology &amp; Advanced Imaging</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[3])}
-                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Clinical Biochemistry Diagnostics</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => handleDeptClick(departments[3])}
-                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
-                    >
-                      <span>Digital AI &amp; Health Informatics</span>
-                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
-                    </button>
-                  </li>
+                  {col2Depts.map((dept) => {
+                    const Icon = getDeptIcon(dept.icon);
+                    return (
+                      <li key={dept.id}>
+                        <button
+                          type="button"
+                          onClick={() => handleDeptClick(dept)}
+                          className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Icon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="truncate">{dept.name}</span>
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
 
@@ -1149,7 +1172,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       type="button"
                       onClick={() => {
                         setMegaMenuOpen(false);
-                        handleDeptClick(departments[0]);
+                        if (allAvailableDepts.length > 0) {
+                          handleDeptClick(allAvailableDepts[0]);
+                        }
                       }}
                       className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
                     >
@@ -1486,26 +1511,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="space-y-3">
               <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300">Departments</h5>
               <ul className="space-y-2 text-xs text-slate-400">
-                <li>
-                  <button onClick={() => handleDeptClick(departments[1])} className="hover:text-white transition cursor-pointer">
-                    Clinical Medicine
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => handleDeptClick(departments[2])} className="hover:text-white transition cursor-pointer">
-                    Diagnostic Pathology
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => handleDeptClick(departments[3])} className="hover:text-white transition cursor-pointer">
-                    Academic &amp; Research
-                  </button>
-                </li>
-                <li>
-                  <button onClick={() => handleDeptClick(departments[4])} className="hover:text-white transition cursor-pointer">
-                    Hospital Administration
-                  </button>
-                </li>
+                {allAvailableDepts.slice(0, 5).map((d) => (
+                  <li key={d.id}>
+                    <button onClick={() => handleDeptClick(d)} className="hover:text-white transition cursor-pointer">
+                      {d.name}
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -2921,8 +2933,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                           onChange={(e) => setReqDepartment(e.target.value)}
                           className="w-full px-3 py-2 rounded-xl border border-gray-200 text-xs bg-white focus:outline-none focus:ring-2 focus:ring-[#00a884]"
                         >
-                          {departments.filter(d => d.id !== 'all').map((d) => (
-                            <option key={d.id} value={d.title}>{d.title}</option>
+                          {allAvailableDepts.map((d) => (
+                            <option key={d.id} value={d.name}>{d.name}</option>
                           ))}
                           <option value="Administration Office">Administration Office</option>
                           <option value="External / Visiting Faculty">External / Visiting Faculty</option>
