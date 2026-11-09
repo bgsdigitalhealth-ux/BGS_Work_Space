@@ -36,6 +36,71 @@ const isBannedEmail = (email) => {
   return BANNED_EMAILS.includes(clean);
 };
 
+// Check if an email is currently registered / active in users or members (memoryStore, initialData, or MongoDB Atlas)
+const isEmailCurrentlyActive = async (email) => {
+  if (!email) return false;
+  const clean = String(email).trim().toLowerCase();
+  if (isBannedEmail(clean)) return false;
+
+  const inUsers = (memoryStore.users || []).some(u => (u.email || '').toLowerCase() === clean);
+  const inMembers = (memoryStore.members || []).some(m => (m.email || '').toLowerCase() === clean);
+  const inInitial = (initialData.users || []).some(u => (u.email || '').toLowerCase() === clean);
+  if (inUsers || inMembers || inInitial) return true;
+
+  if (getStatus()) {
+    try {
+      const dbUser = await User.findOne({ email: clean }).lean();
+      if (dbUser) return true;
+      const dbMember = await Member.findOne({ email: clean }).lean();
+      if (dbMember) return true;
+    } catch (e) {
+      // ignore
+    }
+  }
+  return false;
+};
+
+// Remove email from deletedEmails when admin re-enters or restores an account
+const unmarkDeletedEmail = (email) => {
+  if (!email) return;
+  const clean = String(email).trim().toLowerCase();
+  if (Array.isArray(memoryStore.deletedEmails)) {
+    const origLen = memoryStore.deletedEmails.length;
+    memoryStore.deletedEmails = memoryStore.deletedEmails.filter(e => e.toLowerCase() !== clean);
+    if (memoryStore.deletedEmails.length !== origLen) {
+      saveStore();
+    }
+  }
+};
+
+// Mark an email as deleted when admin deletes an account
+const markDeletedEmail = (email) => {
+  if (!email) return;
+  const clean = String(email).trim().toLowerCase();
+  if (!Array.isArray(memoryStore.deletedEmails)) {
+    memoryStore.deletedEmails = [];
+  }
+  if (!memoryStore.deletedEmails.includes(clean)) {
+    memoryStore.deletedEmails.push(clean);
+    saveStore();
+  }
+};
+
+// Check if an email is deleted (if admin re-entered it or it's active in users/members, it is verified as valid and NOT deleted)
+const isEmailDeleted = async (email) => {
+  if (!email) return false;
+  const clean = String(email).trim().toLowerCase();
+  if (isBannedEmail(clean)) return true;
+
+  const active = await isEmailCurrentlyActive(clean);
+  if (active) {
+    unmarkDeletedEmail(clean);
+    return false;
+  }
+
+  return Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.includes(clean);
+};
+
 const saveStore = () => {
   try {
     const dir = path.dirname(DATA_FILE);
@@ -63,8 +128,15 @@ const loadStore = () => {
         if (!Array.isArray(memoryStore.deletedEmails)) {
           memoryStore.deletedEmails = [...bannedEmails];
         } else {
-          // Ensure legitimate hospital email is never in deletedEmails
-          memoryStore.deletedEmails = memoryStore.deletedEmails.filter(e => e.toLowerCase() !== 'bgsmchhospitalnagarur@gmail.com');
+          // Ensure legitimate hospital email and active accounts are never in deletedEmails
+          memoryStore.deletedEmails = memoryStore.deletedEmails.filter(e => {
+            const clean = e.toLowerCase();
+            if (clean === 'bgsmchhospitalnagarur@gmail.com') return false;
+            const inUsers = (memoryStore.users || []).some(u => (u.email || '').toLowerCase() === clean);
+            const inMembers = (memoryStore.members || []).some(m => (m.email || '').toLowerCase() === clean);
+            const inInit = (initialData.users || []).some(u => (u.email || '').toLowerCase() === clean);
+            return !inUsers && !inMembers && !inInit;
+          });
           for (const b of bannedEmails) {
             if (!memoryStore.deletedEmails.includes(b)) {
               memoryStore.deletedEmails.push(b);
@@ -242,35 +314,46 @@ const loadFromMongo = async () => {
 const initMongoSeed = async () => {
   if (!getStatus()) return;
   try {
-    // 0. Purge all deleted accounts from MongoDB Atlas permanently
-    if (memoryStore.deletedEmails && memoryStore.deletedEmails.length > 0) {
-      await User.deleteMany({ email: { $in: memoryStore.deletedEmails } }).catch(() => {});
-      await Member.deleteMany({ email: { $in: memoryStore.deletedEmails } }).catch(() => {});
+    // 0. Purge permanently banned dummy fake accounts from MongoDB Atlas
+    if (BANNED_EMAILS && BANNED_EMAILS.length > 0) {
+      await User.deleteMany({ email: { $in: BANNED_EMAILS } }).catch(() => {});
+      await Member.deleteMany({ email: { $in: BANNED_EMAILS } }).catch(() => {});
+    }
+
+    // Purge emails in deletedEmails that are truly deleted (not active in users/members)
+    if (Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.length > 0) {
+      const trulyDeleted = [];
+      for (const dEmail of memoryStore.deletedEmails) {
+        if (!isEmailCurrentlyActive(dEmail)) {
+          trulyDeleted.push(dEmail);
+        }
+      }
+      if (trulyDeleted.length > 0) {
+        await User.deleteMany({ email: { $in: trulyDeleted } }).catch(() => {});
+        await Member.deleteMany({ email: { $in: trulyDeleted } }).catch(() => {});
+      }
     }
 
     // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
     await loadFromMongo();
 
-    // 2. Ensure base login accounts (dynamicsajjan@gmail.com, etc.) exist unless deleted
+    // 2. Ensure base login accounts (initialData.users) exist and are verified with active credentials
     for (const u of initialData.users) {
-      if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(u.email.toLowerCase())) continue;
-      const exists = await User.findOne({ email: u.email.toLowerCase() });
-      if (!exists) {
-        await User.create({
-          customId: u.id,
+      if (isBannedEmail(u.email)) continue;
+      unmarkDeletedEmail(u.email);
+      await User.findOneAndUpdate(
+        { email: u.email.toLowerCase() },
+        {
           name: u.name,
-          email: u.email,
+          email: u.email.toLowerCase(),
           password: u.password,
           hasPassword: Boolean(u.hasPassword),
           role: u.role,
-          memberId: u.memberId || '',
-          department: u.department || '',
-          team: u.team || '',
-          teamRole: u.teamRole || '',
           avatar: u.avatar || '',
           title: u.title || ''
-        });
-      }
+        },
+        { upsert: true, new: true }
+      ).catch(() => {});
     }
     console.log('[Seed] Base authorized users verified in MongoDB Atlas.');
     await syncToMongo();
@@ -590,9 +673,9 @@ const createMember = async (data) => {
   // Automatically register a dynamic user login account for this member (password to be set by member on first login)
   const cleanEmail = (data.email || '').trim().toLowerCase();
 
-  // If this email was previously marked as deleted, un-delete it since it is now explicitly registered
-  if (cleanEmail && memoryStore.deletedEmails) {
-    memoryStore.deletedEmails = memoryStore.deletedEmails.filter(e => e.toLowerCase() !== cleanEmail);
+  // If this email was previously marked as deleted, re-entry by admin verifies and restores it to valid
+  if (cleanEmail) {
+    unmarkDeletedEmail(cleanEmail);
   }
 
   let existingUser = memoryStore.users.find(u => u.email.toLowerCase() === cleanEmail);
@@ -644,6 +727,9 @@ const createMember = async (data) => {
 };
 
 const updateMember = async (id, data) => {
+  if (data && data.email) {
+    unmarkDeletedEmail(data.email);
+  }
   const index = memoryStore.members.findIndex(m => m.id === id);
   if (index !== -1) {
     memoryStore.members[index] = { ...memoryStore.members[index], ...data };
@@ -666,11 +752,8 @@ const deleteMember = async (id) => {
   let deletedUser = null;
   const targetEmail = (member ? member.email : '').toLowerCase();
 
-  if (!Array.isArray(memoryStore.deletedEmails)) {
-    memoryStore.deletedEmails = [];
-  }
-  if (targetEmail && !memoryStore.deletedEmails.includes(targetEmail)) {
-    memoryStore.deletedEmails.push(targetEmail);
+  if (targetEmail) {
+    markDeletedEmail(targetEmail);
   }
 
   if (member) {
@@ -1547,8 +1630,8 @@ const checkEmail = async (email) => {
     return { exists: false, error: 'Please enter an email address.' };
   }
 
-  // Reject permanently deleted users
-  if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+  // Reject permanently deleted users (if re-entered by admin, isEmailDeleted automatically restores to valid)
+  if (await isEmailDeleted(cleanEmail)) {
     return {
       exists: false,
       error: 'This account has been deleted by an administrator. Access revoked.'
@@ -1808,15 +1891,8 @@ const loginUser = async (email, password) => {
     };
   }
 
-  // If this email is active in users or members, ensure it is un-deleted
-  const isRegisteredInMemory = (memoryStore.users || []).some(u => (u.email || '').toLowerCase() === cleanEmail) ||
-                              (memoryStore.members || []).some(m => (m.email || '').toLowerCase() === cleanEmail) ||
-                              (initialData.users || []).some(u => (u.email || '').toLowerCase() === cleanEmail);
-
-  if (isRegisteredInMemory && memoryStore.deletedEmails) {
-    memoryStore.deletedEmails = memoryStore.deletedEmails.filter(e => e.toLowerCase() !== cleanEmail);
-    saveStore();
-  } else if (!isRegisteredInMemory && memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+  // Reject accounts deleted by admin (if re-entered by admin, isEmailDeleted automatically restores to valid)
+  if (await isEmailDeleted(cleanEmail)) {
     return {
       success: false,
       error: 'This account has been deleted by an administrator. Access revoked.'
@@ -2170,11 +2246,8 @@ const deleteAdmin = async (id) => {
   const targetAdmin = (memoryStore.users || []).find(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
   const adminEmail = (targetAdmin ? targetAdmin.email : id).toLowerCase();
 
-  if (!Array.isArray(memoryStore.deletedEmails)) {
-    memoryStore.deletedEmails = [];
-  }
-  if (adminEmail && !memoryStore.deletedEmails.includes(adminEmail)) {
-    memoryStore.deletedEmails.push(adminEmail);
+  if (adminEmail) {
+    markDeletedEmail(adminEmail);
   }
 
   memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email.toLowerCase() !== adminEmail);
@@ -2200,7 +2273,7 @@ const deleteAdmin = async (id) => {
 // Validate that an active user/admin session still exists in the system
 const validateSession = async (id, email) => {
   const cleanEmail = (email || '').trim().toLowerCase();
-  if (cleanEmail && memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+  if (cleanEmail && (await isEmailDeleted(cleanEmail))) {
     return { valid: false, message: 'User account has been deleted by an administrator. Access revoked.' };
   }
 
@@ -2322,11 +2395,8 @@ const deleteUser = async (id) => {
   const targetId = user.id;
 
   // 0. Record in permanent deleted blacklist
-  if (!Array.isArray(memoryStore.deletedEmails)) {
-    memoryStore.deletedEmails = [];
-  }
-  if (targetEmail && !memoryStore.deletedEmails.includes(targetEmail)) {
-    memoryStore.deletedEmails.push(targetEmail);
+  if (targetEmail) {
+    markDeletedEmail(targetEmail);
   }
 
   // 1. Remove user from memoryStore.users
