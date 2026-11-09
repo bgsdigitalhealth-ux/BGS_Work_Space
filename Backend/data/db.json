@@ -21,6 +21,33 @@
   "workDone": [],
   "appointments": [
     {
+      "id": "apt-1794196683419-957",
+      "title": "Hospital Planning Meeting",
+      "requestedBy": "Admin (dynamicsajjan@gmail.com • 9876543210)",
+      "userId": "usr-user",
+      "department": "Administration",
+      "team": "To: Hari",
+      "date": "2026-11-10",
+      "time": "11:00 AM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "10 Nov 2026, 11:00 AM",
+      "location": "Online (Video Meet)",
+      "purpose": "Review quarterly hospital planning",
+      "status": "Scheduled",
+      "isToday": false,
+      "meetingId": null,
+      "joinUrl": null,
+      "referenceId": "MTG-HARI-99",
+      "formType": "Meeting",
+      "senderName": "Admin",
+      "senderEmail": "dynamicsajjan@gmail.com",
+      "senderNumber": "9876543210",
+      "receiverId": "",
+      "receiverName": "Hari",
+      "receiverEmail": "rpy6425@gmail.com",
+      "receiverNumber": "9123456780"
+    },
+    {
       "id": "apt-1794196010635-307",
       "title": "Strategy Review",
       "requestedBy": "Sajjan (sajjan@example.com • 9876543210)",
@@ -132,6 +159,32 @@
     }
   ],
   "notifications": [
+    {
+      "id": "notif-1794196683420-919",
+      "recipientRole": "user",
+      "recipientUserId": null,
+      "recipientEmail": "rpy6425@gmail.com",
+      "referenceId": "MTG-HARI-99",
+      "title": "New Meeting Request 📬",
+      "message": "You received a Meeting request from Admin. Reference: MTG-HARI-99",
+      "timestamp": "09 Nov 2026, 09:28 AM",
+      "read": false,
+      "link": "appointments",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1794196683419-443",
+      "recipientRole": "admin",
+      "recipientUserId": null,
+      "recipientEmail": "",
+      "referenceId": "MTG-HARI-99",
+      "title": "New Meeting Request 📋",
+      "message": "Admin (dynamicsajjan@gmail.com) submitted a Meeting request for Hari. Reference: MTG-HARI-99",
+      "timestamp": "09 Nov 2026, 09:28 AM",
+      "read": false,
+      "link": "appointments",
+      "actionUrl": ""
+    },
     {
       "id": "notif-1794196010637-5",
       "recipientRole": "user",
@@ -393,6 +446,20 @@
       "team": "",
       "teamRole": "Team Member",
       "avatar": "TM",
+      "title": "Team Member"
+    },
+    {
+      "id": "usr-hari",
+      "name": "Hari",
+      "email": "rpy6425@gmail.com",
+      "password": "user123",
+      "hasPassword": true,
+      "role": "user",
+      "memberId": "",
+      "department": "",
+      "team": "",
+      "teamRole": "Team Member",
+      "avatar": "H",
       "title": "Team Member"
     }
   ],

@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const departmentSchema = new mongoose.Schema({
+  customId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   name: {
     type: String,
     required: true,

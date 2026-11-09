@@ -73,6 +73,20 @@ const initialData = {
       teamRole: 'Team Member',
       avatar: 'TM',
       title: 'Team Member'
+    },
+    {
+      id: 'usr-hari',
+      name: 'Hari',
+      email: 'rpy6425@gmail.com',
+      password: 'user123',
+      hasPassword: true,
+      role: 'user',
+      memberId: '',
+      department: '',
+      team: '',
+      teamRole: 'Team Member',
+      avatar: 'H',
+      title: 'Team Member'
     }
   ]
 };

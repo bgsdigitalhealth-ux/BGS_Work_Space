@@ -709,6 +709,30 @@ router.post('/appointments', async (req, res) => {
         data: created
       });
       io.emit('new_notification', { recipientRole: 'admin', data: created });
+
+      // Targeted real-time notifications for Receiver
+      if (created.receiverId) {
+        io.to(`user_${created.receiverId}`).emit('receiver_notification', {
+          title: `New ${created.formType} Request 📬`,
+          message: `You received a ${created.formType} request from ${created.senderName}. Reference: ${created.referenceId}`,
+          data: created
+        });
+        io.to(`user_${created.receiverId}`).emit('new_notification', {
+          recipientRole: 'user',
+          data: created
+        });
+      }
+      if (created.receiverEmail) {
+        io.to(`user_${created.receiverEmail.toLowerCase()}`).emit('receiver_notification', {
+          title: `New ${created.formType} Request 📬`,
+          message: `You received a ${created.formType} request from ${created.senderName}. Reference: ${created.referenceId}`,
+          data: created
+        });
+        io.to(`user_${created.receiverEmail.toLowerCase()}`).emit('new_notification', {
+          recipientRole: 'user',
+          data: created
+        });
+      }
     }
     res.status(201).json(created);
   } catch (err) {
@@ -927,6 +951,30 @@ router.post('/meetings', async (req, res) => {
         data: meeting
       });
       io.emit('new_notification', { recipientRole: 'admin', data: meeting });
+
+      // Targeted real-time notifications for Meeting Receiver
+      if (meeting.receiverId) {
+        io.to(`user_${meeting.receiverId}`).emit('receiver_notification', {
+          title: `New Video Meeting Scheduled 📹`,
+          message: `${meeting.senderName} scheduled a meeting with you: "${meeting.title}"`,
+          data: meeting
+        });
+        io.to(`user_${meeting.receiverId}`).emit('new_notification', {
+          recipientRole: 'user',
+          data: meeting
+        });
+      }
+      if (meeting.receiverEmail) {
+        io.to(`user_${meeting.receiverEmail.toLowerCase()}`).emit('receiver_notification', {
+          title: `New Video Meeting Scheduled 📹`,
+          message: `${meeting.senderName} scheduled a meeting with you: "${meeting.title}"`,
+          data: meeting
+        });
+        io.to(`user_${meeting.receiverEmail.toLowerCase()}`).emit('new_notification', {
+          recipientRole: 'user',
+          data: meeting
+        });
+      }
     }
     res.status(201).json(meeting);
   } catch (err) {

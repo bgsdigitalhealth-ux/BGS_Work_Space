@@ -31,11 +31,19 @@ const appointmentSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  senderName: {
+    type: String,
+    default: ''
+  },
   senderEmail: {
     type: String,
     default: ''
   },
   senderNumber: {
+    type: String,
+    default: ''
+  },
+  receiverName: {
     type: String,
     default: ''
   },
