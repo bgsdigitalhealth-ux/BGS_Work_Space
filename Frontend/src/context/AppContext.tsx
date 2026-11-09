@@ -156,7 +156,7 @@ interface AppContextType {
   setUserToast: (toast: { id: string; title: string; message: string; timestamp: Date } | null) => void;
   wppStatus: any;
   fetchWppStatus: () => Promise<void>;
-  restartWpp: () => Promise<void>;
+  restartWpp: (clean?: boolean) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -242,9 +242,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const restartWpp = async () => {
+  const restartWpp = async (clean: boolean = false) => {
     try {
-      await api.restartWpp();
+      await api.restartWpp(clean);
       await fetchWppStatus();
     } catch (e) {
       console.warn(e);

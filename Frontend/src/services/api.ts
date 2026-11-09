@@ -644,10 +644,11 @@ export const api = {
     return res.json();
   },
 
-  restartWpp: async (): Promise<any> => {
+  restartWpp: async (clean: boolean = false): Promise<any> => {
     const res = await fetch(`${API_BASE}/wpp/restart`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clean })
     });
     if (!res.ok) throw new Error('Failed to restart WPPConnect session');
     return res.json();

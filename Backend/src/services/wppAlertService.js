@@ -38,6 +38,7 @@ const DEFAULT_SETTINGS = {
 
 let alertSettings = { ...DEFAULT_SETTINGS };
 let activeIncidentId = null;
+let lastActionRequiredAt = null;
 
 // Load persisted settings
 const loadSettings = () => {
@@ -382,6 +383,12 @@ const onConnect = () => {
 // Alert when human intervention is needed (e.g. fresh QR scan)
 const onActionRequired = async ({ reason = 'QR code scan required' } = {}) => {
   if (!alertSettings.enabled) return;
+
+  // Rate limit: Send at most once every 5 minutes to prevent spamming notifications on every QR refresh
+  if (lastActionRequiredAt && (Date.now() - lastActionRequiredAt) < 300000) {
+    return;
+  }
+  lastActionRequiredAt = Date.now();
 
   const title = 'Action Required: Scan WhatsApp QR Code';
   const message = `Manual intervention needed for WhatsApp Service: ${reason}. Please sign in to scan the QR code.`;

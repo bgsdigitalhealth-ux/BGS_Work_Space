@@ -25,6 +25,7 @@
     "express": "^4.21.2",
     "mongoose": "^8.9.5",
     "nodemailer": "^10.4.0",
+    "puppeteer": "^24.4.1",
     "socket.io": "^4.8.4"
   },
   "devDependencies": {

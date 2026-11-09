@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: Backend
-    buildCommand: npm install
+    buildCommand: npm install && (npx puppeteer browsers install chrome || true)
     startCommand: npm start
     healthCheckPath: /health
     envVars:
@@ -13,6 +13,8 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: PUPPETEER_CACHE_DIR
+        value: /opt/render/.cache/puppeteer
       - key: MONGODB_URI
         sync: false
 

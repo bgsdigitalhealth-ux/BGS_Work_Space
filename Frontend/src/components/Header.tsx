@@ -83,15 +83,18 @@ export const Header: React.FC = () => {
     setShowWppModal(true);
   };
 
-  const handleRestartWpp = async () => {
+  const handleRestartWpp = async (clean: boolean = false) => {
     try {
       setRestartingWpp(true);
-      await restartWpp();
-      setTimeout(async () => {
-        await fetchWppStatus();
-        await fetchStoredMessages();
-        setRestartingWpp(false);
-      }, 2000);
+      await restartWpp(clean);
+      const pollDelays = [1500, 3000, 5000, 8000, 12000];
+      pollDelays.forEach(delay => {
+        setTimeout(async () => {
+          await fetchWppStatus();
+          await fetchStoredMessages();
+        }, delay);
+      });
+      setTimeout(() => setRestartingWpp(false), 3500);
     } catch (e) {
       setRestartingWpp(false);
     }
@@ -455,6 +458,8 @@ export const Header: React.FC = () => {
                             ? 'bg-blue-100 text-blue-700'
                             : isWppActionRequired
                             ? 'bg-amber-100 text-amber-800'
+                            : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                            ? 'bg-indigo-100 text-indigo-700'
                             : 'bg-slate-200 text-slate-700'
                         }`}>
                           {isWppReady
@@ -463,6 +468,8 @@ export const Header: React.FC = () => {
                             ? `Reconnecting (Attempt ${wppStatus?.reconnectAttempts || 1})`
                             : isWppActionRequired
                             ? 'Action Required'
+                            : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                            ? 'Starting Browser...'
                             : 'Disconnected'}
                         </span>
                       </div>
@@ -473,6 +480,8 @@ export const Header: React.FC = () => {
                           ? 'Automatic background reconnection is in progress with bounded exponential backoff.'
                           : isWppActionRequired
                           ? 'Scan the live QR code below on your phone to link your WhatsApp session.'
+                          : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                          ? 'Initializing headless browser engine and preparing WhatsApp Web QR code...'
                           : 'Session disconnected. Click restart to start the session, or wait for background reconnection.'}
                       </p>
                     </div>
@@ -480,7 +489,7 @@ export const Header: React.FC = () => {
 
                   <button
                     type="button"
-                    onClick={handleRestartWpp}
+                    onClick={() => handleRestartWpp(false)}
                     disabled={restartingWpp}
                     className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-xs font-bold text-slate-700 transition shadow-xs shrink-0 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
                   >
@@ -488,6 +497,34 @@ export const Header: React.FC = () => {
                     <span>{restartingWpp ? 'Restarting...' : 'Restart'}</span>
                   </button>
                 </div>
+
+                {/* Diagnostic Notice if Backend reports an error */}
+                {wppStatus?.lastError && !isWppReady && (
+                  <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 mb-4 text-xs text-amber-900 flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-bold text-[11px] uppercase tracking-wider text-amber-800">
+                          Backend Initialization Notice
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => handleRestartWpp(true)}
+                          disabled={restartingWpp}
+                          className="text-[10px] text-indigo-700 hover:text-indigo-950 font-bold underline cursor-pointer"
+                        >
+                          Clean Reset & Retry
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-amber-900/90 font-mono mt-1 break-words bg-white/70 p-2 rounded-lg border border-amber-200/50">
+                        {wppStatus.lastError}
+                      </p>
+                      <p className="text-[10px] text-amber-700 mt-1.5">
+                        Note: Cloud container instances without Google Chrome or display libraries require Puppeteer bundled Chromium with sandbox bypass flags.
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* QR Code Presentation */}
                 {isWppActionRequired && hasWppQr && wppStatus?.qrCode ? (
@@ -541,16 +578,36 @@ export const Header: React.FC = () => {
                 ) : (
                   <div className="text-center p-6 bg-slate-50 rounded-2xl border border-slate-200 mb-5">
                     <p className="text-xs text-slate-600 mb-3">
-                      Click restart to start the WPPConnect session and display the live QR code.
+                      {wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                        ? 'Starting headless browser process and waiting for WhatsApp Web QR code...'
+                        : 'Click start to launch the WPPConnect session and generate a fresh live QR code.'}
                     </p>
-                    <button
-                      type="button"
-                      onClick={handleRestartWpp}
-                      disabled={restartingWpp}
-                      className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
-                    >
-                      {restartingWpp ? 'Starting Session...' : 'Start WhatsApp Session'}
-                    </button>
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleRestartWpp(false)}
+                        disabled={restartingWpp || wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {restartingWpp || wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING' ? (
+                          <>
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                            <span>Starting Session...</span>
+                          </>
+                        ) : (
+                          <span>Start WhatsApp Session</span>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRestartWpp(true)}
+                        disabled={restartingWpp}
+                        className="px-3 py-2 rounded-xl bg-white border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-medium transition cursor-pointer"
+                        title="Clear lock files and attempt fresh start"
+                      >
+                        Clean Reset
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>

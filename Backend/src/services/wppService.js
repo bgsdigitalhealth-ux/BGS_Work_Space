@@ -15,6 +15,10 @@ let latestQrCode = null;
 let isInitializing = false;
 let messageStore = [];
 
+// Error & Diagnostic Tracking
+let lastInitError = null;
+let lastInitErrorTime = null;
+
 // Reconnection Engine State
 let isManualStop = false;
 let isReconnecting = false;
@@ -93,8 +97,34 @@ const formatWhatsAppNumber = (rawPhone) => {
   return `${digits}@c.us`;
 };
 
-// Check if executable path for Chrome or Edge exists
+// Clean up stale Chromium lock files in the session profile directory
+const cleanStaleSessionLocks = (sessionName = SESSION_NAME) => {
+  try {
+    const tokenDir = path.resolve(process.cwd(), 'tokens', sessionName);
+    if (fs.existsSync(tokenDir)) {
+      const lockFiles = ['SingletonLock', 'SingletonCookie', 'SingletonSocket', 'DevToolsActivePort'];
+      for (const file of lockFiles) {
+        const filePath = path.join(tokenDir, file);
+        if (fs.existsSync(filePath)) {
+          try {
+            fs.unlinkSync(filePath);
+            console.log(`[WPPConnect] Removed stale lock file: ${file}`);
+          } catch (e) {
+            // ignore
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[WPPConnect] Notice cleaning stale locks:', err.message);
+  }
+};
+
+// Check if executable path for Chrome, Edge, or Chromium exists
 const getChromeExecutablePath = () => {
+  if (process.env.PUPPETEER_EXECUTABLE_PATH && fs.existsSync(process.env.PUPPETEER_EXECUTABLE_PATH)) {
+    return process.env.PUPPETEER_EXECUTABLE_PATH;
+  }
   if (process.env.CHROME_BIN && fs.existsSync(process.env.CHROME_BIN)) {
     return process.env.CHROME_BIN;
   }
@@ -107,6 +137,47 @@ const getChromeExecutablePath = () => {
     ];
     for (const p of chromePaths) {
       if (fs.existsSync(p)) return p;
+    }
+  } else if (process.platform === 'linux') {
+    const linuxPaths = [
+      '/usr/bin/google-chrome',
+      '/usr/bin/google-chrome-stable',
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/snap/bin/chromium'
+    ];
+    for (const p of linuxPaths) {
+      if (fs.existsSync(p)) return p;
+    }
+    // Check Puppeteer cache directory on Render (/opt/render/.cache/puppeteer)
+    const renderCachePaths = [
+      '/opt/render/.cache/puppeteer',
+      path.join(process.env.HOME || '/root', '.cache/puppeteer')
+    ];
+    for (const cacheDir of renderCachePaths) {
+      if (fs.existsSync(cacheDir)) {
+        try {
+          const findChromeRecursive = (dir, depth = 0) => {
+            if (depth > 5) return null;
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+              if (entry.isFile() && (entry.name === 'chrome' || entry.name === 'chromium')) {
+                return full;
+              }
+              if (entry.isDirectory()) {
+                const sub = findChromeRecursive(full, depth + 1);
+                if (sub) return sub;
+              }
+            }
+            return null;
+          };
+          const found = findChromeRecursive(cacheDir);
+          if (found) return found;
+        } catch (e) {
+          // ignore
+        }
+      }
     }
   }
   return undefined;
@@ -215,15 +286,20 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
 
   console.log(`[WPPConnect] Starting WPPConnect session: "${SESSION_NAME}"...`);
 
+  // Clean stale lock files from previous unexpected exits
+  cleanStaleSessionLocks(SESSION_NAME);
+
   try {
     const wppconnect = require('@wppconnect-team/wppconnect');
     const executablePath = getChromeExecutablePath();
+    console.log(`[WPPConnect] Detected browser executable: ${executablePath || 'Puppeteer bundled default'}`);
 
     wppClient = await wppconnect.create({
       session: SESSION_NAME,
       autoClose: 0, // Disable auto close timeout so QR code remains available until scanned
       catchQR: (base64Qr, asciiQR, attempts) => {
         latestQrCode = base64Qr;
+        lastInitError = null;
         console.log(`[WPPConnect] QR code generated for session "${SESSION_NAME}" (attempt ${attempts})`);
         handleActionRequired(base64Qr, 'QR code scan required to connect session');
       },
@@ -233,6 +309,7 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
         if (statusSession === 'isLogged' || statusSession === 'inChat' || statusSession === 'chatsAvailable' || statusSession === 'qrReadSuccess') {
           sessionStatus = 'CONNECTED';
           latestQrCode = null;
+          lastInitError = null;
           reconnectAttempts = 0;
           clearExistingReconnectTimer();
           wppAlertService.onConnect();
@@ -268,9 +345,10 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
           emitStatus('wpp_status', { status: statusSession, session });
         }
       },
-      headless: 'new',
+      headless: true,
       devtools: false,
-      useChrome: true,
+      useChrome: false,
+      useInsecureChromiumArgs: true,
       debug: false,
       logQR: false,
       browserArgs: [
@@ -280,13 +358,25 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
         '--disable-accelerated-2d-canvas',
         '--no-first-run',
         '--no-zygote',
-        '--disable-gpu'
+        '--single-process',
+        '--disable-gpu',
+        '--disable-software-rasterizer',
+        '--disable-extensions',
+        '--mute-audio',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-breakpad',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-ipc-flooding-protection',
+        '--disable-renderer-backgrounding',
+        '--memory-pressure-off'
       ],
       puppeteerOptions: executablePath ? { executablePath } : {}
     });
 
     sessionStatus = 'CONNECTED';
     latestQrCode = null;
+    lastInitError = null;
     reconnectAttempts = 0;
     clearExistingReconnectTimer();
     console.log(`[WPPConnect] Session "${SESSION_NAME}" is connected and ready!`);
@@ -296,8 +386,16 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
   } catch (err) {
     wppClient = null;
     sessionStatus = 'DISCONNECTED';
-    console.warn('[WPPConnect] Session initialization notice:', err.message);
-    emitStatus('wpp_status', { status: 'DISCONNECTED', error: err.message, session: SESSION_NAME });
+    lastInitError = err.message || String(err);
+    lastInitErrorTime = new Date().toISOString();
+    console.warn('[WPPConnect] Session initialization notice:', lastInitError);
+    emitStatus('wpp_status', {
+      status: 'DISCONNECTED',
+      error: lastInitError,
+      lastError: lastInitError,
+      lastErrorTime: lastInitErrorTime,
+      session: SESSION_NAME
+    });
 
     // Schedule automatic background reconnection if not manually stopped
     if (!isManualStop) {
@@ -532,6 +630,14 @@ const getServiceStatus = () => {
     reconnectAttempts,
     nextReconnectAt,
     isManualStop,
+    lastError: lastInitError,
+    lastErrorTime: lastInitErrorTime,
+    environment: {
+      platform: process.platform,
+      arch: process.arch,
+      nodeVersion: process.version,
+      hasCustomChrome: Boolean(getChromeExecutablePath())
+    },
     totalMessages: messageStore.length,
     pendingMessages: pendingCount,
     sentMessages: sentCount,
@@ -544,11 +650,12 @@ const getMessages = () => {
 };
 
 // Restart WPPConnect Session on demand (manual click handler)
-const restartWppSession = async () => {
-  console.log(`[WPPConnect] Manual restart of WPPConnect session requested: "${SESSION_NAME}"...`);
+const restartWppSession = async ({ clean = false } = {}) => {
+  console.log(`[WPPConnect] Manual restart of WPPConnect session requested: "${SESSION_NAME}" (clean: ${clean})...`);
   isManualStop = false;
   clearExistingReconnectTimer();
   reconnectAttempts = 0;
+  lastInitError = null;
 
   if (wppClient) {
     try {
@@ -559,9 +666,13 @@ const restartWppSession = async () => {
     wppClient = null;
   }
 
+  if (clean) {
+    cleanStaleSessionLocks(SESSION_NAME);
+  }
+
   isInitializing = false;
   latestQrCode = null;
-  sessionStatus = 'DISCONNECTED';
+  sessionStatus = 'RESTARTING';
   emitStatus('wpp_status', { status: 'RESTARTING', session: SESSION_NAME });
 
   setTimeout(() => {

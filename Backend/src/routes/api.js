@@ -1034,7 +1034,8 @@ router.get('/wpp/messages', (req, res) => {
 router.post('/wpp/restart', async (req, res) => {
   try {
     const wppService = require('../services/wppService');
-    const result = await wppService.restartWppSession();
+    const clean = req.body?.clean === true || req.query?.clean === 'true';
+    const result = await wppService.restartWppSession({ clean });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
