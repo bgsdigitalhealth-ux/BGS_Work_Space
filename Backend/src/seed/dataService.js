@@ -43,11 +43,21 @@ const loadStore = () => {
       const parsed = JSON.parse(raw);
       if (parsed) {
         memoryStore = { ...initialData, ...parsed };
+        if (!Array.isArray(memoryStore.deletedEmails)) {
+          memoryStore.deletedEmails = ['bgsmchhospitalnagarur@gmail.com'];
+        } else if (!memoryStore.deletedEmails.includes('bgsmchhospitalnagarur@gmail.com')) {
+          memoryStore.deletedEmails.push('bgsmchhospitalnagarur@gmail.com');
+        }
+
+        // Strictly purge any deleted emails from users and members so they can never resurface
+        memoryStore.users = (memoryStore.users || []).filter(u => !memoryStore.deletedEmails.includes((u.email || '').toLowerCase()));
+        memoryStore.members = (memoryStore.members || []).filter(m => !memoryStore.deletedEmails.includes((m.email || '').toLowerCase()));
+
         if (!memoryStore.users || memoryStore.users.length === 0) {
-          memoryStore.users = JSON.parse(JSON.stringify(initialData.users));
+          memoryStore.users = JSON.parse(JSON.stringify(initialData.users)).filter(u => !memoryStore.deletedEmails.includes((u.email || '').toLowerCase()));
         } else {
           for (const u of initialData.users) {
-            if (!memoryStore.users.some(x => x.email.toLowerCase() === u.email.toLowerCase())) {
+            if (!memoryStore.deletedEmails.includes(u.email.toLowerCase()) && !memoryStore.users.some(x => x.email.toLowerCase() === u.email.toLowerCase())) {
               memoryStore.users.unshift(u);
             }
           }
@@ -63,6 +73,8 @@ const loadStore = () => {
     console.warn('[Storage] Disk read error, initializing default store:', e.message);
   }
   memoryStore = JSON.parse(JSON.stringify(initialData));
+  memoryStore.deletedEmails = ['bgsmchhospitalnagarur@gmail.com'];
+  memoryStore.users = (memoryStore.users || []).filter(u => !memoryStore.deletedEmails.includes((u.email || '').toLowerCase()));
   saveStore();
 };
 
@@ -150,7 +162,13 @@ const loadFromMongo = async () => {
     const mems = await Member.find().lean();
     if (mems && mems.length > 0) {
       for (const m of mems) {
-        if (!memoryStore.members.some(x => x.email.toLowerCase() === m.email.toLowerCase())) {
+        const cleanEmail = (m.email || '').toLowerCase();
+        if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+          // Permanently purge from MongoDB Atlas
+          await Member.deleteOne({ _id: m._id }).catch(() => {});
+          continue;
+        }
+        if (!memoryStore.members.some(x => x.email.toLowerCase() === cleanEmail)) {
           memoryStore.members.push({ ...m, id: m.customId || m._id.toString() });
         }
       }
@@ -158,7 +176,13 @@ const loadFromMongo = async () => {
     const usrs = await User.find().lean();
     if (usrs && usrs.length > 0) {
       for (const u of usrs) {
-        const idx = memoryStore.users.findIndex(x => x.email.toLowerCase() === u.email.toLowerCase());
+        const cleanEmail = (u.email || '').toLowerCase();
+        if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+          // Permanently purge from MongoDB Atlas
+          await User.deleteOne({ _id: u._id }).catch(() => {});
+          continue;
+        }
+        const idx = memoryStore.users.findIndex(x => x.email.toLowerCase() === cleanEmail);
         if (idx === -1) {
           memoryStore.users.push({ ...u, id: u.customId || u._id.toString() });
         } else if (u.hasPassword && !memoryStore.users[idx].hasPassword) {
@@ -194,11 +218,18 @@ const loadFromMongo = async () => {
 const initMongoSeed = async () => {
   if (!getStatus()) return;
   try {
+    // 0. Purge all deleted accounts from MongoDB Atlas permanently
+    if (memoryStore.deletedEmails && memoryStore.deletedEmails.length > 0) {
+      await User.deleteMany({ email: { $in: memoryStore.deletedEmails } }).catch(() => {});
+      await Member.deleteMany({ email: { $in: memoryStore.deletedEmails } }).catch(() => {});
+    }
+
     // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
     await loadFromMongo();
 
-    // 2. Ensure base login accounts (dynamicsajjan@gamil.com, etc.) exist
+    // 2. Ensure base login accounts (dynamicsajjan@gamil.com, etc.) exist unless deleted
     for (const u of initialData.users) {
+      if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(u.email.toLowerCase())) continue;
       const exists = await User.findOne({ email: u.email.toLowerCase() });
       if (!exists) {
         await User.create({
@@ -603,18 +634,28 @@ const updateMember = async (id, data) => {
 const deleteMember = async (id) => {
   const member = memoryStore.members.find(m => m.id === id);
   let deletedUser = null;
-  if (member) {
-    deletedUser = (memoryStore.users || []).find(u => u.email.toLowerCase() === member.email.toLowerCase()) || null;
-    memoryStore.users = (memoryStore.users || []).filter(u => u.email.toLowerCase() !== member.email.toLowerCase());
+  const targetEmail = (member ? member.email : '').toLowerCase();
+
+  if (!Array.isArray(memoryStore.deletedEmails)) {
+    memoryStore.deletedEmails = [];
   }
-  memoryStore.members = (memoryStore.members || []).filter(m => m.id !== id);
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.memberId !== id && a.assigneeId !== id);
+  if (targetEmail && !memoryStore.deletedEmails.includes(targetEmail)) {
+    memoryStore.deletedEmails.push(targetEmail);
+  }
+
+  if (member) {
+    deletedUser = (memoryStore.users || []).find(u => u.email.toLowerCase() === targetEmail) || null;
+    memoryStore.users = (memoryStore.users || []).filter(u => u.email.toLowerCase() !== targetEmail);
+  }
+  memoryStore.members = (memoryStore.members || []).filter(m => m.id !== id && (!m.email || m.email.toLowerCase() !== targetEmail));
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.memberId !== id && a.assigneeId !== id && (!a.assigneeEmail || a.assigneeEmail.toLowerCase() !== targetEmail));
 
   // Clean up user workspace assigned work so deleted member's work is purged immediately
   if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => {
       if (deletedUser && w.userId === deletedUser.id) return false;
       if (w.memberId === id) return false;
+      if (targetEmail && w.assigneeEmail && w.assigneeEmail.toLowerCase() === targetEmail) return false;
       return true;
     });
   }
@@ -622,14 +663,19 @@ const deleteMember = async (id) => {
 
   if (getStatus()) {
     try {
-      const dbMem = await Member.findById(id);
-      if (dbMem) {
-        await User.findOneAndDelete({ email: dbMem.email.toLowerCase() });
+      const mongoose = require('mongoose');
+      if (targetEmail) {
+        await User.deleteMany({ email: targetEmail }).catch(() => {});
+        await Member.deleteMany({ email: targetEmail }).catch(() => {});
       }
-      await Member.findByIdAndDelete(id);
-      await Assignment.deleteMany({ $or: [{ memberId: id }, { assigneeId: id }] });
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        await Member.findByIdAndDelete(id).catch(() => {});
+      } else {
+        await Member.deleteMany({ customId: id }).catch(() => {});
+      }
+      await Assignment.deleteMany({ $or: [{ memberId: id }, { assigneeId: id }] }).catch(() => {});
       if (deletedUser) {
-        await UserTask.deleteMany({ userId: deletedUser.id });
+        await UserTask.deleteMany({ userId: deletedUser.id }).catch(() => {});
       }
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
@@ -1448,6 +1494,14 @@ const checkEmail = async (email) => {
     return { exists: false, error: 'Please enter an email address.' };
   }
 
+  // Reject permanently deleted users
+  if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+    return {
+      exists: false,
+      error: 'This account has been deleted by an administrator. Access revoked.'
+    };
+  }
+
   // 1. Check MongoDB Atlas first if connected
   if (getStatus()) {
     try {
@@ -1505,6 +1559,14 @@ const checkEmail = async (email) => {
 const verifyReceiverEmail = async (email) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   if (!cleanEmail) {
+    return {
+      exists: false,
+      error: 'Invalid receiver email. Enter the email address of a registered user.'
+    };
+  }
+
+  // Reject permanently deleted users
+  if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
     return {
       exists: false,
       error: 'Invalid receiver email. Enter the email address of a registered user.'
@@ -1684,6 +1746,14 @@ const createPassword = async (email, password) => {
 
 const loginUser = async (email, password) => {
   const cleanEmail = (email || '').trim().toLowerCase();
+
+  // Reject permanently deleted users
+  if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+    return {
+      success: false,
+      error: 'This account has been deleted by an administrator. Access revoked.'
+    };
+  }
 
   // Check MongoDB Atlas first if connected
   if (getStatus()) {
@@ -2004,12 +2074,27 @@ const deleteAdmin = async (id) => {
   }
 
   const targetAdmin = (memoryStore.users || []).find(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
-  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email.toLowerCase() !== id.toLowerCase());
+  const adminEmail = (targetAdmin ? targetAdmin.email : id).toLowerCase();
+
+  if (!Array.isArray(memoryStore.deletedEmails)) {
+    memoryStore.deletedEmails = [];
+  }
+  if (adminEmail && !memoryStore.deletedEmails.includes(adminEmail)) {
+    memoryStore.deletedEmails.push(adminEmail);
+  }
+
+  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email.toLowerCase() !== adminEmail);
+  memoryStore.members = (memoryStore.members || []).filter(m => m.id !== id && (!m.email || m.email.toLowerCase() !== adminEmail));
   saveStore();
 
   if (getStatus()) {
     try {
-      await User.findOneAndDelete({ $or: [{ customId: id }, { _id: id }, { email: id }] });
+      const mongoose = require('mongoose');
+      const orConditions = [{ email: adminEmail }];
+      if (id) orConditions.push({ customId: id });
+      if (mongoose.Types.ObjectId.isValid(id)) orConditions.push({ _id: id });
+      await User.deleteMany({ $or: orConditions }).catch(() => {});
+      await Member.deleteMany({ $or: orConditions }).catch(() => {});
     } catch (e) {
       console.warn('Mongo deleteAdmin error:', e.message);
     }
@@ -2020,13 +2105,18 @@ const deleteAdmin = async (id) => {
 
 // Validate that an active user/admin session still exists in the system
 const validateSession = async (id, email) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  if (cleanEmail && memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+    return { valid: false, message: 'User account has been deleted by an administrator. Access revoked.' };
+  }
+
   const users = memoryStore.users || [];
   let user = null;
   if (id) {
     user = users.find(u => u.id === id || u._id === id);
   }
-  if (!user && email) {
-    user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+  if (!user && cleanEmail) {
+    user = users.find(u => u.email.toLowerCase() === cleanEmail);
   }
 
   if (!user) {
@@ -2132,6 +2222,14 @@ const deleteUser = async (id) => {
   const targetEmail = (user.email || '').toLowerCase();
   const targetId = user.id;
 
+  // 0. Record in permanent deleted blacklist
+  if (!Array.isArray(memoryStore.deletedEmails)) {
+    memoryStore.deletedEmails = [];
+  }
+  if (targetEmail && !memoryStore.deletedEmails.includes(targetEmail)) {
+    memoryStore.deletedEmails.push(targetEmail);
+  }
+
   // 1. Remove user from memoryStore.users
   memoryStore.users = (memoryStore.users || []).filter(u =>
     u.id !== targetId &&
@@ -2161,33 +2259,28 @@ const deleteUser = async (id) => {
 
   saveStore();
 
-  // 5. Delete from MongoDB Atlas if active
+  // 5. Delete from MongoDB Atlas if active (safe against CastError)
   if (getStatus()) {
     try {
-      await User.deleteMany({
-        $or: [
-          { customId: targetId },
-          { _id: targetId },
-          { email: targetEmail }
-        ]
-      });
-      await Member.deleteMany({
-        $or: [
-          { customId: user.memberId },
-          { email: targetEmail }
-        ]
-      });
-      await Assignment.deleteMany({
-        $or: [
-          { memberId: user.memberId },
-          { assigneeId: targetId }
-        ]
-      });
-      await UserTask.deleteMany({
-        $or: [
-          { userId: targetId }
-        ]
-      });
+      const mongoose = require('mongoose');
+      const userOr = [{ email: targetEmail }];
+      if (targetId) userOr.push({ customId: targetId });
+      if (mongoose.Types.ObjectId.isValid(targetId)) userOr.push({ _id: targetId });
+      await User.deleteMany({ $or: userOr }).catch(() => {});
+
+      const memberOr = [{ email: targetEmail }];
+      if (user.memberId) memberOr.push({ customId: user.memberId });
+      if (mongoose.Types.ObjectId.isValid(user.memberId)) memberOr.push({ _id: user.memberId });
+      await Member.deleteMany({ $or: memberOr }).catch(() => {});
+
+      const assignOr = [{ assigneeEmail: targetEmail }];
+      if (user.memberId) assignOr.push({ memberId: user.memberId });
+      if (targetId) assignOr.push({ assigneeId: targetId });
+      await Assignment.deleteMany({ $or: assignOr }).catch(() => {});
+
+      if (targetId) {
+        await UserTask.deleteMany({ $or: [{ userId: targetId }, { assigneeEmail: targetEmail }] }).catch(() => {});
+      }
     } catch (e) {
       console.warn('Mongo deleteUser error:', e.message);
     }
@@ -2201,16 +2294,32 @@ const deleteUser = async (id) => {
 };
 
 // --- Notifications Engine ---
-const getNotifications = async (role = 'all', userId = null) => {
+const getNotifications = async (role = 'all', userId = null, email = null) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanUserId = (userId || '').trim();
+
   if (getStatus()) {
     try {
-      const filter = {};
-      if (role && role !== 'all') {
-        filter.$or = [{ recipientRole: role }, { recipientRole: 'all' }];
-        if (userId) {
-          filter.$or.push({ recipientUserId: userId });
+      const orClauses = [];
+      if (role === 'admin') {
+        orClauses.push({ recipientRole: 'admin' });
+        orClauses.push({ recipientRole: 'all' });
+      } else if (role === 'user') {
+        orClauses.push({ recipientRole: 'all' });
+        if (cleanUserId) {
+          orClauses.push({ recipientUserId: cleanUserId });
         }
+        if (cleanEmail) {
+          orClauses.push({ recipientEmail: cleanEmail });
+        }
+        orClauses.push({ recipientRole: 'user', recipientUserId: null, recipientEmail: '' });
+      } else {
+        if (role && role !== 'all') orClauses.push({ recipientRole: role });
+        if (cleanUserId) orClauses.push({ recipientUserId: cleanUserId });
+        if (cleanEmail) orClauses.push({ recipientEmail: cleanEmail });
       }
+
+      const filter = orClauses.length > 0 ? { $or: orClauses } : {};
       const list = await Notification.find(filter).sort({ createdAt: -1 }).lean();
       return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
     } catch (e) {
@@ -2222,8 +2331,18 @@ const getNotifications = async (role = 'all', userId = null) => {
     memoryStore.notifications = [];
   }
   let list = memoryStore.notifications;
-  if (role && role !== 'all') {
-    list = list.filter(n => n.recipientRole === role || n.recipientRole === 'all' || (userId && n.recipientUserId === userId));
+  if (role === 'admin') {
+    list = list.filter(n => n.recipientRole === 'admin' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail === cleanEmail));
+  } else if (role === 'user') {
+    list = list.filter(n => {
+      if (n.recipientRole === 'all') return true;
+      if (cleanUserId && n.recipientUserId === cleanUserId) return true;
+      if (cleanEmail && n.recipientEmail && n.recipientEmail.toLowerCase() === cleanEmail) return true;
+      if (n.recipientRole === 'user' && !n.recipientUserId && !n.recipientEmail) return true;
+      return false;
+    });
+  } else if (role && role !== 'all') {
+    list = list.filter(n => n.recipientRole === role || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId));
   }
   return list;
 };
@@ -2233,11 +2352,14 @@ const createNotification = (data) => {
     id: generateId('notif'),
     recipientRole: data.recipientRole || 'user',
     recipientUserId: data.recipientUserId || null,
+    recipientEmail: (data.recipientEmail || '').toLowerCase().trim(),
+    referenceId: data.referenceId || '',
     title: data.title || 'Notification',
     message: data.message || '',
     timestamp: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     read: false,
-    link: data.link || ''
+    link: data.link || '',
+    actionUrl: data.actionUrl || ''
   };
 
   if (!memoryStore.notifications) {
@@ -2251,6 +2373,8 @@ const createNotification = (data) => {
       customId: newNotif.id,
       recipientRole: newNotif.recipientRole,
       recipientUserId: newNotif.recipientUserId,
+      recipientEmail: newNotif.recipientEmail,
+      referenceId: newNotif.referenceId,
       title: newNotif.title,
       message: newNotif.message,
       timestamp: newNotif.timestamp,
@@ -2537,6 +2661,35 @@ const createAppointment = async (data) => {
       createdResult = { ...created.toObject(), id: created._id.toString() };
     } catch (e) {
       console.warn('Mongo appointment create error:', e.message);
+    }
+  }
+
+  // 1. Create Persistent Notification for Administrator (Real-time toast & badge update)
+  try {
+    await createNotification({
+      recipientRole: 'admin',
+      title: `New ${newApt.formType} Request 📋`,
+      message: `${newApt.senderName} (${newApt.senderEmail || newApt.senderNumber || 'User'}) submitted a ${newApt.formType} request for ${newApt.receiverName}. Reference: ${newApt.referenceId}`,
+      link: 'appointments',
+      referenceId: newApt.referenceId
+    });
+  } catch (notifErr) {
+    console.warn('[Notification] Admin appointment notif error:', notifErr.message);
+  }
+
+  // 2. Create Persistent Notification for Receiver
+  if (newApt.receiverId || newApt.receiverEmail) {
+    try {
+      await createNotification({
+        recipientRole: 'user',
+        recipientUserId: newApt.receiverId,
+        title: `New ${newApt.formType} Request 📬`,
+        message: `You received a ${newApt.formType} request from ${newApt.senderName}. Reference: ${newApt.referenceId}`,
+        link: 'appointments',
+        referenceId: newApt.referenceId
+      });
+    } catch (notifErr) {
+      console.warn('[Notification] Receiver appointment notif error:', notifErr.message);
     }
   }
 
@@ -3248,6 +3401,16 @@ const issueMeetingInvitation = async (meeting) => {
     actionUrl: meeting.joinUrl,
     meetingId: meeting.meetingId
   });
+
+  // Also save persistent notification for Administrator
+  await createNotification({
+    recipientRole: 'admin',
+    title: 'New Video Meeting Scheduled 📹',
+    message: `${meeting.senderName} scheduled a meeting with ${meeting.receiverName}: "${meeting.title}" on ${meeting.date} at ${meeting.time}`,
+    link: 'appointments',
+    actionUrl: meeting.joinUrl,
+    meetingId: meeting.meetingId
+  }).catch(() => {});
 
   // Also save confirmation notification for sender
   await createNotification({

@@ -15,23 +15,38 @@
       "description": "Team responsible for department objectives."
     }
   ],
-  "members": [
-    {
-      "id": "mem-1793883051504-277",
-      "name": "BGS",
-      "email": "bgsmchhospitalnagarur@gmail.com",
-      "phone": "9630258741",
-      "role": "Developer",
-      "assignedWork": "",
-      "teamId": "team-1793883026560-20",
-      "departmentId": "dept-1793883008547-55",
-      "avatar": "B"
-    }
-  ],
+  "members": [],
   "assignments": [],
   "tasks": [],
   "workDone": [],
   "appointments": [
+    {
+      "id": "apt-1794196010635-307",
+      "title": "Strategy Review",
+      "requestedBy": "Sajjan (sajjan@example.com • 9876543210)",
+      "userId": "usr-user",
+      "department": "Administration",
+      "team": "To: Hari",
+      "date": "2026-11-10",
+      "time": "10:00 AM",
+      "endTime": "12:00 PM",
+      "dateTimeDisplay": "10 Nov 2026, 10:00 AM",
+      "location": "Online (Video Meet)",
+      "purpose": "Review departmental deliverables",
+      "status": "Scheduled",
+      "isToday": false,
+      "meetingId": null,
+      "joinUrl": null,
+      "referenceId": "TEST-MTG-101",
+      "formType": "Meeting",
+      "senderName": "Sajjan",
+      "senderEmail": "sajjan@example.com",
+      "senderNumber": "9876543210",
+      "receiverId": "",
+      "receiverName": "Hari",
+      "receiverEmail": "rpy6425@gmail.com",
+      "receiverNumber": "9123456780"
+    },
     {
       "id": "apt-1793959653265-30",
       "title": "Department Multi-Staff Briefing",
@@ -117,6 +132,32 @@
     }
   ],
   "notifications": [
+    {
+      "id": "notif-1794196010637-5",
+      "recipientRole": "user",
+      "recipientUserId": null,
+      "recipientEmail": "",
+      "referenceId": "TEST-MTG-101",
+      "title": "New Meeting Request 📬",
+      "message": "You received a Meeting request from Sajjan. Reference: TEST-MTG-101",
+      "timestamp": "09 Nov 2026, 09:16 AM",
+      "read": false,
+      "link": "appointments",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1794196010636-830",
+      "recipientRole": "admin",
+      "recipientUserId": null,
+      "recipientEmail": "",
+      "referenceId": "TEST-MTG-101",
+      "title": "New Meeting Request 📋",
+      "message": "Sajjan (sajjan@example.com) submitted a Meeting request for Hari. Reference: TEST-MTG-101",
+      "timestamp": "09 Nov 2026, 09:16 AM",
+      "read": false,
+      "link": "appointments",
+      "actionUrl": ""
+    },
     {
       "id": "notif-1794030197620-106",
       "recipientRole": "user",
@@ -353,20 +394,6 @@
       "teamRole": "Team Member",
       "avatar": "TM",
       "title": "Team Member"
-    },
-    {
-      "id": "usr-1793883051504-379",
-      "name": "BGS",
-      "email": "bgsmchhospitalnagarur@gmail.com",
-      "password": "Apple2026?",
-      "hasPassword": true,
-      "role": "user",
-      "memberId": "mem-1793883051504-277",
-      "department": "Digital AI",
-      "team": "AI team",
-      "teamRole": "Developer",
-      "avatar": "B",
-      "title": "Developer"
     }
   ],
   "meetings": [
@@ -572,5 +599,8 @@
       "createdAt": "2026-11-06T10:03:48.505Z",
       "updatedAt": "2026-11-06T10:03:48.505Z"
     }
+  ],
+  "deletedEmails": [
+    "bgsmchhospitalnagarur@gmail.com"
   ]
 }

@@ -115,6 +115,7 @@ const initWppSession = async () => {
 
     wppClient = await wppconnect.create({
       session: SESSION_NAME,
+      autoClose: 0, // Disable auto close timeout so QR code remains available until scanned
       catchQR: (base64Qr, asciiQR, attempts) => {
         latestQrCode = base64Qr;
         sessionStatus = 'QR_READY';
@@ -129,6 +130,8 @@ const initWppSession = async () => {
           latestQrCode = null;
           // Trigger queue retry upon successful login/connection
           setTimeout(() => processPendingQueue(), 3000);
+        } else if (statusSession === 'autocloseCalled' || statusSession === 'browserClose' || statusSession === 'qrReadError' || statusSession === 'serverClose') {
+          wppClient = null;
         }
       },
       headless: 'new',
@@ -334,14 +337,42 @@ const getServiceStatus = () => {
     qrCode: latestQrCode,
     totalMessages: messageStore.length,
     pendingMessages: messageStore.filter(m => m.status === 'pending').length,
-    sentMessages: messageStore.filter(m => m.status === 'sent').length
+    sentMessages: messageStore.filter(m => m.status === 'sent').length,
+    messages: messageStore.slice(-50).reverse()
   };
+};
+
+const getMessages = () => {
+  return messageStore.slice(-100).reverse();
+};
+
+// Restart WPPConnect Session on demand
+const restartWppSession = async () => {
+  console.log(`[WPPConnect] Restarting WPPConnect session: "${SESSION_NAME}"...`);
+  if (wppClient) {
+    try {
+      await wppClient.close();
+    } catch (e) {
+      // ignore
+    }
+    wppClient = null;
+  }
+  isInitializing = false;
+  latestQrCode = null;
+  sessionStatus = 'DISCONNECTED';
+  emitStatus('wpp_status', { status: 'RESTARTING', session: SESSION_NAME });
+  setTimeout(() => {
+    initWppSession();
+  }, 1000);
+  return { success: true, message: 'WPPConnect restart initiated' };
 };
 
 module.exports = {
   initWppSession,
+  restartWppSession,
   sendWorkRequestNotifications,
   getServiceStatus,
+  getMessages,
   formatWhatsAppNumber,
   processPendingQueue
 };

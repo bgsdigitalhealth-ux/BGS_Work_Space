@@ -87,6 +87,10 @@ const appointmentSchema = new mongoose.Schema({
   isToday: {
     type: Boolean,
     default: false
+  },
+  whatsappMessages: {
+    type: Array,
+    default: []
   }
 }, { timestamps: true });
 

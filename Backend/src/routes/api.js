@@ -258,8 +258,8 @@ router.delete('/auth/admins/:id', async (req, res) => {
 // --- Notifications Engine ---
 router.get('/notifications', async (req, res) => {
   try {
-    const { role, userId } = req.query;
-    const list = await dataService.getNotifications(role, userId);
+    const { role, userId, email } = req.query;
+    const list = await dataService.getNotifications(role, userId, email);
     res.json(list);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -696,6 +696,20 @@ router.post('/appointments', async (req, res) => {
   try {
     const created = await dataService.createAppointment(req.body);
     broadcast('APPOINTMENT_CHANGED', { action: 'create', data: created });
+    broadcast('ADMIN_NOTIFICATION', {
+      title: `New ${created.formType} Request 📋`,
+      message: `${created.senderName} submitted a ${created.formType} request for ${created.receiverName}`,
+      data: created
+    });
+    const io = getIO();
+    if (io) {
+      io.emit('admin_notification', {
+        title: `New ${created.formType} Request 📋`,
+        message: `${created.senderName} submitted a ${created.formType} request for ${created.receiverName}. Reference: ${created.referenceId}`,
+        data: created
+      });
+      io.emit('new_notification', { recipientRole: 'admin', data: created });
+    }
     res.status(201).json(created);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -900,6 +914,20 @@ router.post('/meetings', async (req, res) => {
   try {
     const meeting = await dataService.createMeeting(req.body);
     broadcast('MEETINGS_UPDATED', { meetingId: meeting.meetingId });
+    broadcast('ADMIN_NOTIFICATION', {
+      title: `New Video Meeting Scheduled 📹`,
+      message: `${meeting.senderName} scheduled a meeting with ${meeting.receiverName}: "${meeting.title}"`,
+      data: meeting
+    });
+    const io = getIO();
+    if (io) {
+      io.emit('admin_notification', {
+        title: `New Video Meeting Scheduled 📹`,
+        message: `${meeting.senderName} scheduled a meeting with ${meeting.receiverName}: "${meeting.title}"`,
+        data: meeting
+      });
+      io.emit('new_notification', { recipientRole: 'admin', data: meeting });
+    }
     res.status(201).json(meeting);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -941,6 +969,25 @@ router.get('/wpp/status', (req, res) => {
   try {
     const wppService = require('../services/wppService');
     res.json(wppService.getServiceStatus());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/wpp/messages', (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    res.json(wppService.getMessages());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wpp/restart', async (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    const result = await wppService.restartWppSession();
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

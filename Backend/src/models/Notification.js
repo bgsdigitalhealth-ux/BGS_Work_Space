@@ -15,6 +15,14 @@ const notificationSchema = new mongoose.Schema({
     type: String,
     default: null
   },
+  recipientEmail: {
+    type: String,
+    default: ''
+  },
+  referenceId: {
+    type: String,
+    default: ''
+  },
   title: {
     type: String,
     required: true

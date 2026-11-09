@@ -148,6 +148,15 @@ interface AppContextType {
 
   // Redirect / Scroll helper
   scrollToSection: (sectionId: string) => void;
+
+  // Real-time Admin & User Toast & WPPConnect
+  adminToast: { id: string; title: string; message: string; timestamp: Date } | null;
+  setAdminToast: (toast: { id: string; title: string; message: string; timestamp: Date } | null) => void;
+  userToast: { id: string; title: string; message: string; timestamp: Date } | null;
+  setUserToast: (toast: { id: string; title: string; message: string; timestamp: Date } | null) => void;
+  wppStatus: any;
+  fetchWppStatus: () => Promise<void>;
+  restartWpp: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -207,6 +216,37 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Notifications state
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [adminToast, setAdminToast] = useState<{ id: string; title: string; message: string; timestamp: Date } | null>(null);
+  const [userToast, setUserToast] = useState<{ id: string; title: string; message: string; timestamp: Date } | null>(null);
+
+  // WPPConnect Status
+  const [wppStatus, setWppStatus] = useState<any>(null);
+
+  const fetchWppStatus = async () => {
+    try {
+      const res = await api.getWppStatus();
+      setWppStatus(res);
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  const restartWpp = async () => {
+    try {
+      await api.restartWpp();
+      await fetchWppStatus();
+    } catch (e) {
+      console.warn(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchWppStatus();
+    const interval = setInterval(() => {
+      fetchWppStatus();
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
@@ -397,7 +437,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const role = currentUser ? currentUser.role : 'all';
       const userId = currentUser ? currentUser.id : undefined;
-      const data = await api.getNotifications(role, userId);
+      const email = currentUser ? currentUser.email : undefined;
+      const data = await api.getNotifications(role, userId, email);
       setNotifications(data);
     } catch (e) {
       console.error(e);
@@ -833,6 +874,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshAll();
       };
 
+      const handleAdminNotification = (payload: any) => {
+        refreshNotifications();
+        refreshAppointments();
+        refreshAll();
+        if (currentUser?.role === 'admin') {
+          setAdminToast({
+            id: String(Date.now()),
+            title: payload?.title || 'New Form Submitted',
+            message: payload?.message || 'A new request has arrived.',
+            timestamp: new Date()
+          });
+        }
+      };
+
+      const handleReceiverNotification = (payload: any) => {
+        refreshNotifications();
+        refreshAppointments();
+        refreshUserWorkspace();
+        setUserToast({
+          id: String(Date.now()),
+          title: payload?.title || 'New Request Received 📋',
+          message: payload?.message || 'You have received a new request.',
+          timestamp: new Date()
+        });
+      };
+
+      const handleNewNotification = () => {
+        refreshNotifications();
+      };
+
+      const handleWppStatus = (data: any) => {
+        setWppStatus((prev: any) => ({ ...(prev || {}), ...data }));
+      };
+
+      socket.on('admin_notification', handleAdminNotification);
+      socket.on('receiver_notification', handleReceiverNotification);
+      socket.on('new_notification', handleNewNotification);
+      socket.on('notification_received', handleNewNotification);
+      socket.on('wpp_status', handleWppStatus);
+      socket.on('wpp_message_sent', fetchWppStatus);
+
       socket.on('conversation_updated', handleUpdate);
       socket.on('new_message', handleUpdate);
       socket.on('messages_read', handleUpdate);
@@ -849,6 +931,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       socket.on('work_done_deleted', handleRealtimeEntityChange);
 
       return () => {
+        socket.off('admin_notification', handleAdminNotification);
+        socket.off('receiver_notification', handleReceiverNotification);
+        socket.off('new_notification', handleNewNotification);
+        socket.off('notification_received', handleNewNotification);
+        socket.off('wpp_status', handleWppStatus);
+        socket.off('wpp_message_sent', fetchWppStatus);
+
         socket.off('conversation_updated', handleUpdate);
         socket.off('new_message', handleUpdate);
         socket.off('messages_read', handleUpdate);
@@ -972,7 +1061,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshNotifications,
         unreadMessagesCount,
         refreshUnreadMessagesCount,
-        scrollToSection
+        scrollToSection,
+        adminToast,
+        setAdminToast,
+        userToast,
+        setUserToast,
+        wppStatus,
+        fetchWppStatus,
+        restartWpp
       }}
     >
       {children}

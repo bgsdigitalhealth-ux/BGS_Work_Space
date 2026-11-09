@@ -1,15 +1,78 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu } from 'lucide-react';
+import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
-  const { userNav, setUserNav, currentUser, logout, unreadNotificationCount, setMobileSidebarOpen } = useApp();
+  const {
+    userNav,
+    setUserNav,
+    currentUser,
+    logout,
+    unreadNotificationCount,
+    setMobileSidebarOpen,
+    userToast,
+    setUserToast
+  } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
 
   return (
-    <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+    <>
+      {/* Real-time Floating Receiver Notification Toast Banner */}
+      {userToast && (
+        <div className="fixed top-5 right-5 z-50 max-w-md w-full animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className="bg-white/95 backdrop-blur-md rounded-2xl p-4 border border-emerald-200 shadow-2xl shadow-emerald-900/15 flex items-start gap-3.5 relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500 animate-pulse" />
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+              <Bell className="w-5 h-5 animate-bounce" />
+            </div>
+            <div className="flex-1 min-w-0 pr-6">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                  New Request
+                </span>
+                <span className="text-[11px] text-slate-400">Just now</span>
+              </div>
+              <h4 className="text-xs font-bold text-slate-900 mt-1 leading-snug">
+                {userToast.title}
+              </h4>
+              <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+                {userToast.message}
+              </p>
+              <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUserToast(null);
+                    setUserNav('appointments');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <span>View in Appointments</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserToast(null)}
+                  className="px-2.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-800 text-xs font-semibold hover:bg-slate-100 transition cursor-pointer"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setUserToast(null)}
+              className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
       {/* Dynamic Title / Breadcrumb with Mobile Menu Toggle */}
       <div className="flex items-center gap-3">
         <button
@@ -207,5 +270,6 @@ export const UserHeader: React.FC = () => {
         </div>
       </div>
     </header>
+    </>
   );
 };

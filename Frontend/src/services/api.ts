@@ -394,10 +394,11 @@ export const api = {
   },
 
   // Notifications
-  getNotifications: async (role?: string, userId?: string): Promise<import('../types').Notification[]> => {
+  getNotifications: async (role?: string, userId?: string, email?: string): Promise<import('../types').Notification[]> => {
     const params = new URLSearchParams();
     if (role) params.append('role', role);
     if (userId) params.append('userId', userId);
+    if (email) params.append('email', email);
     const res = await fetch(`${API_BASE}/notifications?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch notifications');
     return res.json();
@@ -640,6 +641,21 @@ export const api = {
   getWppStatus: async (): Promise<any> => {
     const res = await fetch(`${API_BASE}/wpp/status`);
     if (!res.ok) throw new Error('Failed to fetch WPPConnect status');
+    return res.json();
+  },
+
+  restartWpp: async (): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/restart`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to restart WPPConnect session');
+    return res.json();
+  },
+
+  getWppMessages: async (): Promise<any[]> => {
+    const res = await fetch(`${API_BASE}/wpp/messages`);
+    if (!res.ok) throw new Error('Failed to fetch WhatsApp messages');
     return res.json();
   }
 };
