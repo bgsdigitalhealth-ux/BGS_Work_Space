@@ -1041,10 +1041,61 @@ router.post('/wpp/restart', async (req, res) => {
   }
 });
 
+router.post('/wpp/stop', async (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    const result = await wppService.stopWppSession();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wpp/flush', async (req, res) => {
+  try {
+    const wppService = require('../services/wppService');
+    const result = await wppService.flushPendingQueue();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/wpp/send-notifications', async (req, res) => {
   try {
     const wppService = require('../services/wppService');
     const result = await wppService.sendWorkRequestNotifications(req.body);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// WhatsApp Disconnection Alert Settings & Testing
+router.get('/wpp/alerts/settings', (req, res) => {
+  try {
+    const wppAlertService = require('../services/wppAlertService');
+    res.json(wppAlertService.getSettingsWithConfig());
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wpp/alerts/settings', (req, res) => {
+  try {
+    const wppAlertService = require('../services/wppAlertService');
+    const updated = wppAlertService.updateSettings(req.body);
+    res.json({ success: true, settings: updated });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/wpp/alerts/test', async (req, res) => {
+  try {
+    const wppAlertService = require('../services/wppAlertService');
+    const channel = req.body?.channel || 'all';
+    const result = await wppAlertService.sendTestAlert(channel);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

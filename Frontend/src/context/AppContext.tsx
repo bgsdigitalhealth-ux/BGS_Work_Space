@@ -13,7 +13,7 @@ import {
   Appointment,
   AppointmentStats,
   User,
-  Notification
+  type Notification
 } from '../types';
 import { api, API_BASE } from '../services/api';
 import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
@@ -920,12 +920,32 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setWppStatus((prev: any) => ({ ...(prev || {}), ...data }));
       };
 
+      const handleWppAlert = (data: any) => {
+        setAdminToast({
+          id: `wpp-alt-${Date.now()}`,
+          title: data.title || '⚠️ WhatsApp Disconnected',
+          message: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
+          timestamp: new Date()
+        });
+        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+          try {
+            new Notification(data.title || 'WhatsApp Disconnected', {
+              body: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
+              icon: '/favicon.ico'
+            });
+          } catch (e) {
+            // ignore
+          }
+        }
+      };
+
       socket.on('admin_notification', handleAdminNotification);
       socket.on('receiver_notification', handleReceiverNotification);
       socket.on('new_notification', handleNewNotification);
       socket.on('notification_received', handleNewNotification);
       socket.on('wpp_status', handleWppStatus);
       socket.on('wpp_message_sent', fetchWppStatus);
+      socket.on('wpp_disconnection_alert', handleWppAlert);
 
       socket.on('conversation_updated', handleUpdate);
       socket.on('new_message', handleUpdate);
@@ -949,6 +969,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         socket.off('notification_received', handleNewNotification);
         socket.off('wpp_status', handleWppStatus);
         socket.off('wpp_message_sent', fetchWppStatus);
+        socket.off('wpp_disconnection_alert', handleWppAlert);
 
         socket.off('conversation_updated', handleUpdate);
         socket.off('new_message', handleUpdate);

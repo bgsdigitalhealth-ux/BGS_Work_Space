@@ -903,6 +903,29 @@ const createAssignment = async (data) => {
     link: assigneeRole === 'admin' ? 'tasks' : 'assigned-work'
   });
 
+  // 6b. Automatically trigger WhatsApp notifications for Assigned Work (fail-safe)
+  try {
+    const wppService = require('../services/wppService');
+    const assignerMember = (memoryStore.members || []).find(m => m.id === data.assignerId || m.userId === data.assignerId || m.email === data.assignerEmail);
+    const assigneeMember = (memoryStore.members || []).find(m => m.id === targetUserId || m.userId === targetUserId || m.email === assigneeEmail);
+    const senderPhone = data.assignerPhone || (assignerMember && assignerMember.phone) || '';
+    const receiverPhone = data.assigneePhone || (assigneeMember && assigneeMember.phone) || '';
+
+    if (senderPhone || receiverPhone) {
+      wppService.sendWorkRequestNotifications({
+        formType: 'Work Assignment',
+        referenceId: newAssign.id,
+        senderName: assignerName,
+        senderNumber: senderPhone,
+        receiverName: assigneeName || 'Team Member',
+        receiverNumber: receiverPhone,
+        agreedToNotifications: true
+      }).catch(err => console.warn('[WPPConnect] Assignment notification warning:', err.message));
+    }
+  } catch (wppErr) {
+    console.warn('[WPPConnect] Error calling wppService for assignment:', wppErr.message);
+  }
+
   // 7. Persist into MongoDB Atlas if connected
   if (getStatus()) {
     try {
@@ -3385,6 +3408,17 @@ const createMeeting = async (data) => {
     ? data.participantEmails.map(e => (e || '').toLowerCase().trim()).filter(Boolean)
     : [senderEmail, receiverEmail].filter(Boolean);
 
+  let meetingSenderNumber = data.senderNumber || data.phone || '';
+  if (!meetingSenderNumber) {
+    const senderMember = (memoryStore.members || []).find(m => m.id === data.senderId || m.userId === data.senderId || m.email === senderEmail);
+    if (senderMember && senderMember.phone) meetingSenderNumber = senderMember.phone;
+  }
+  let meetingReceiverNumber = data.receiverNumber || '';
+  if (!meetingReceiverNumber) {
+    const receiverMember = (memoryStore.members || []).find(m => m.id === data.receiverId || m.userId === data.receiverId || m.email === receiverEmail);
+    if (receiverMember && receiverMember.phone) meetingReceiverNumber = receiverMember.phone;
+  }
+
   const newMeeting = {
     id: generateId('meet'),
     customId: data.customId || ('meet_' + Date.now()),
@@ -3395,11 +3429,11 @@ const createMeeting = async (data) => {
     senderId: data.senderId || data.senderEmail,
     senderName: data.senderName,
     senderEmail: senderEmail,
-    senderNumber: data.senderNumber || data.phone || '',
+    senderNumber: meetingSenderNumber,
     receiverId: data.receiverId || data.receiverEmail,
     receiverName: data.receiverName || 'Administration Office',
     receiverEmail: receiverEmail,
-    receiverNumber: data.receiverNumber || '',
+    receiverNumber: meetingReceiverNumber,
     participants: participants,
     participantEmails: participantEmails,
     date: data.date,

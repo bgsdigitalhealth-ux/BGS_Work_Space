@@ -657,5 +657,40 @@ export const api = {
     const res = await fetch(`${API_BASE}/wpp/messages`);
     if (!res.ok) throw new Error('Failed to fetch WhatsApp messages');
     return res.json();
+  },
+
+  flushWppQueue: async (): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/flush`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) throw new Error('Failed to flush WhatsApp message queue');
+    return res.json();
+  },
+
+  getWppAlertSettings: async (): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/alerts/settings`);
+    if (!res.ok) throw new Error('Failed to fetch alert settings');
+    return res.json();
+  },
+
+  updateWppAlertSettings: async (settings: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/alerts/settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(settings)
+    });
+    if (!res.ok) throw new Error('Failed to update alert settings');
+    return res.json();
+  },
+
+  sendWppAlertTest: async (channel: string = 'all'): Promise<any> => {
+    const res = await fetch(`${API_BASE}/wpp/alerts/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel })
+    });
+    if (!res.ok) throw new Error('Failed to send test alert');
+    return res.json();
   }
 };

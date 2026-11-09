@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const wppAlertService = require('./wppAlertService');
 
 // Storage file for persistent queue & delivery tracking
 const DATA_DIR = path.join(__dirname, '../../data');
@@ -9,10 +10,20 @@ const QUEUE_FILE = path.join(DATA_DIR, 'wpp_messages.json');
 const SESSION_NAME = process.env.WPP_SESSION_NAME || 'bgs_workhub';
 
 let wppClient = null;
-let sessionStatus = 'DISCONNECTED';
+let sessionStatus = 'DISCONNECTED'; // 'CONNECTED' | 'DISCONNECTED' | 'RECONNECTING' | 'ACTION_REQUIRED' | 'QR_READY'
 let latestQrCode = null;
 let isInitializing = false;
 let messageStore = [];
+
+// Reconnection Engine State
+let isManualStop = false;
+let isReconnecting = false;
+let reconnectAttempts = 0;
+let reconnectTimer = null;
+let nextReconnectAt = null;
+
+// Queue Engine State
+let isQueueProcessing = false;
 
 // Ensure data folder exists
 try {
@@ -101,11 +112,106 @@ const getChromeExecutablePath = () => {
   return undefined;
 };
 
+// Check if client is authenticated and ready to send
+const isClientReady = () => {
+  return wppClient !== null && (
+    sessionStatus === 'CONNECTED' ||
+    sessionStatus === 'isLogged' ||
+    sessionStatus === 'inChat' ||
+    sessionStatus === 'chatsAvailable'
+  );
+};
+
+// Clear any existing reconnect timer safely
+const clearExistingReconnectTimer = () => {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
+  nextReconnectAt = null;
+};
+
+// Schedule background reconnection with bounded exponential backoff & jitter
+const scheduleAutoReconnect = () => {
+  if (isManualStop) {
+    console.log('[WPPConnect] Session deliberately stopped. Skipping auto-reconnect.');
+    return;
+  }
+
+  if (isClientReady() || isInitializing || isReconnecting) {
+    return;
+  }
+
+  clearExistingReconnectTimer();
+
+  reconnectAttempts += 1;
+  // Bounded exponential backoff: 5s, 7.5s, 11.2s, 16.8s... capped at 120s
+  const baseDelay = Math.min(120000, Math.round(5000 * Math.pow(1.5, Math.min(reconnectAttempts - 1, 10))));
+  const jitter = Math.floor(Math.random() * 2000); // 0-2000ms jitter
+  const totalDelay = baseDelay + jitter;
+
+  nextReconnectAt = new Date(Date.now() + totalDelay).toISOString();
+  sessionStatus = 'RECONNECTING';
+
+  console.log(`[WPPConnect] Scheduling background reconnect attempt #${reconnectAttempts} in ${Math.round(totalDelay / 1000)}s...`);
+  emitStatus('wpp_status', {
+    status: 'RECONNECTING',
+    reconnectAttempts,
+    nextReconnectInMs: totalDelay,
+    session: SESSION_NAME
+  });
+
+  reconnectTimer = setTimeout(async () => {
+    reconnectTimer = null;
+    nextReconnectAt = null;
+    await executeReconnectAttempt();
+  }, totalDelay);
+};
+
+// Execute a single reconnection attempt safely
+const executeReconnectAttempt = async () => {
+  if (isManualStop || isClientReady() || isInitializing) return;
+
+  isReconnecting = true;
+  try {
+    console.log(`[WPPConnect] Executing reconnect attempt #${reconnectAttempts}...`);
+    await initWppSession({ isAutoRetry: true });
+  } catch (err) {
+    console.warn(`[WPPConnect] Reconnect attempt #${reconnectAttempts} failed:`, err.message);
+  } finally {
+    isReconnecting = false;
+  }
+};
+
+// Transition to Action Required when QR scan or human intervention is needed
+const handleActionRequired = (qrCode = null, reason = 'QR code scan required') => {
+  clearExistingReconnectTimer();
+  sessionStatus = 'ACTION_REQUIRED';
+  if (qrCode) {
+    latestQrCode = qrCode;
+  }
+  console.log(`[WPPConnect] Status changed to ACTION_REQUIRED: ${reason}`);
+  emitStatus('wpp_status', {
+    status: 'ACTION_REQUIRED',
+    qrCode: latestQrCode,
+    reason,
+    session: SESSION_NAME
+  });
+  wppAlertService.onActionRequired({ qrCode: latestQrCode, reason });
+};
+
 // Initialize WPPConnect Client Session asynchronously
-const initWppSession = async () => {
-  if (wppClient || isInitializing) return;
+const initWppSession = async ({ isAutoRetry = false } = {}) => {
+  if (wppClient || isInitializing) {
+    console.log('[WPPConnect] Session is already initialized or initialization in progress.');
+    return;
+  }
+
   isInitializing = true;
-  sessionStatus = 'CONNECTING';
+  if (!isAutoRetry) {
+    sessionStatus = 'CONNECTING';
+    emitStatus('wpp_status', { status: 'CONNECTING', session: SESSION_NAME });
+  }
 
   console.log(`[WPPConnect] Starting WPPConnect session: "${SESSION_NAME}"...`);
 
@@ -118,20 +224,48 @@ const initWppSession = async () => {
       autoClose: 0, // Disable auto close timeout so QR code remains available until scanned
       catchQR: (base64Qr, asciiQR, attempts) => {
         latestQrCode = base64Qr;
-        sessionStatus = 'QR_READY';
         console.log(`[WPPConnect] QR code generated for session "${SESSION_NAME}" (attempt ${attempts})`);
-        emitStatus('wpp_status', { status: 'QR_READY', qrCode: base64Qr, session: SESSION_NAME });
+        handleActionRequired(base64Qr, 'QR code scan required to connect session');
       },
       statusFind: (statusSession, session) => {
         console.log(`[WPPConnect] Session status change: ${statusSession}`);
-        sessionStatus = statusSession;
-        emitStatus('wpp_status', { status: statusSession, session });
-        if (statusSession === 'isLogged' || statusSession === 'inChat' || statusSession === 'qrReadSuccess') {
+
+        if (statusSession === 'isLogged' || statusSession === 'inChat' || statusSession === 'chatsAvailable' || statusSession === 'qrReadSuccess') {
+          sessionStatus = 'CONNECTED';
           latestQrCode = null;
-          // Trigger queue retry upon successful login/connection
-          setTimeout(() => processPendingQueue(), 3000);
-        } else if (statusSession === 'autocloseCalled' || statusSession === 'browserClose' || statusSession === 'qrReadError' || statusSession === 'serverClose') {
+          reconnectAttempts = 0;
+          clearExistingReconnectTimer();
+          wppAlertService.onConnect();
+          emitStatus('wpp_status', { status: 'CONNECTED', session });
+          // Automatically trigger queued message delivery upon successful login/connection
+          setTimeout(() => processPendingQueue(), 2500);
+        } else if (statusSession === 'qrReadError' || statusSession === 'autocloseCalled') {
           wppClient = null;
+          handleActionRequired(latestQrCode, 'Authentication expired or QR read failed');
+        } else if (statusSession === 'browserClose' || statusSession === 'serverClose' || statusSession === 'DISCONNECTED') {
+          const wasConnected = isClientReady();
+          wppClient = null;
+          sessionStatus = 'DISCONNECTED';
+          emitStatus('wpp_status', { status: 'DISCONNECTED', session });
+
+          // Disconnection Alert: Notify administrators immediately upon unexpected disconnection
+          if (wasConnected && !isManualStop) {
+            wppAlertService.onDisconnect({
+              incidentDetails: {
+                session: SESSION_NAME,
+                reason: statusSession,
+                timestamp: new Date().toISOString()
+              }
+            });
+          }
+
+          // Trigger automatic background reconnection
+          if (!isManualStop) {
+            scheduleAutoReconnect();
+          }
+        } else {
+          sessionStatus = statusSession;
+          emitStatus('wpp_status', { status: statusSession, session });
         }
       },
       headless: 'new',
@@ -152,34 +286,35 @@ const initWppSession = async () => {
     });
 
     sessionStatus = 'CONNECTED';
+    latestQrCode = null;
+    reconnectAttempts = 0;
+    clearExistingReconnectTimer();
     console.log(`[WPPConnect] Session "${SESSION_NAME}" is connected and ready!`);
+    wppAlertService.onConnect();
     emitStatus('wpp_status', { status: 'CONNECTED', session: SESSION_NAME });
     processPendingQueue();
   } catch (err) {
+    wppClient = null;
     sessionStatus = 'DISCONNECTED';
     console.warn('[WPPConnect] Session initialization notice:', err.message);
     emitStatus('wpp_status', { status: 'DISCONNECTED', error: err.message, session: SESSION_NAME });
+
+    // Schedule automatic background reconnection if not manually stopped
+    if (!isManualStop) {
+      scheduleAutoReconnect();
+    }
   } finally {
     isInitializing = false;
   }
 };
 
-// Check if client is authenticated and ready to send
-const isClientReady = () => {
-  return wppClient !== null && (
-    sessionStatus === 'CONNECTED' ||
-    sessionStatus === 'isLogged' ||
-    sessionStatus === 'inChat' ||
-    sessionStatus === 'chatsAvailable'
-  );
-};
-
-// Send single message through WPPConnect or retain in pending queue
+// Send single message through WPPConnect or retain in durable queue
 const dispatchMessage = async (entry) => {
   const destination = formatWhatsAppNumber(entry.to);
   if (!destination) {
     entry.status = 'failed';
     entry.error = 'Invalid phone number format';
+    entry.lastError = 'Invalid phone number format';
     entry.updatedAt = new Date().toISOString();
     saveQueue();
     return entry;
@@ -192,8 +327,14 @@ const dispatchMessage = async (entry) => {
       entry.sentAt = new Date().toISOString();
       entry.updatedAt = new Date().toISOString();
       entry.error = null;
+      entry.lastError = null;
       console.log(`[WPPConnect] Sent message to ${entry.recipientType} (${destination}) for ref ${entry.referenceId}`);
-      emitStatus('wpp_message_sent', { id: entry.id, referenceId: entry.referenceId, recipientType: entry.recipientType, status: 'sent' });
+      emitStatus('wpp_message_sent', {
+        id: entry.id,
+        referenceId: entry.referenceId,
+        recipientType: entry.recipientType,
+        status: 'sent'
+      });
     } catch (sendErr) {
       console.warn(`[WPPConnect] Error delivering to ${destination}:`, sendErr.message);
       entry.status = 'pending';
@@ -211,23 +352,73 @@ const dispatchMessage = async (entry) => {
   return entry;
 };
 
-// Process all pending messages in queue
+// Process all pending messages in queue sequentially with concurrency lock
 const processPendingQueue = async () => {
-  const pending = messageStore.filter(m => m.status === 'pending' && (m.retries || 0) < 10);
+  if (isQueueProcessing) {
+    console.log('[WPPConnect] Queue processing is already in progress. Skipping duplicate run.');
+    return;
+  }
+
+  const pending = messageStore.filter(m => m.status === 'pending' && (m.retries || 0) < 15);
   if (pending.length === 0) return;
 
-  console.log(`[WPPConnect] Processing ${pending.length} pending WhatsApp message(s)...`);
-  for (const item of pending) {
-    await dispatchMessage(item);
+  isQueueProcessing = true;
+  console.log(`[WPPConnect] Beginning automatic queued-message delivery for ${pending.length} pending items...`);
+
+  try {
+    for (const item of pending) {
+      // If session disconnects again during delivery, pause sending and retain remaining queue
+      if (!isClientReady()) {
+        console.warn('[WPPConnect] Session lost during queue processing. Pausing queue delivery until reconnected.');
+        break;
+      }
+
+      await dispatchMessage(item);
+      // Wait 1 second between items to prevent rate limits or race conditions
+      await new Promise(res => setTimeout(res, 1000));
+    }
+  } catch (queueErr) {
+    console.warn('[WPPConnect] Error in queue delivery loop:', queueErr.message);
+  } finally {
+    isQueueProcessing = false;
   }
 };
 
-// Background retry worker every 25 seconds
+// Manually flush the queue (send pending messages without deleting message log)
+const flushPendingQueue = async () => {
+  console.log('[WPPConnect] Manual queue flush requested.');
+  // Reset retries count for failed/pending messages so they can be re-attempted
+  messageStore.forEach(m => {
+    if (m.status === 'pending') {
+      m.retries = 0;
+    }
+  });
+  saveQueue();
+
+  const count = messageStore.filter(m => m.status === 'pending').length;
+  if (!isClientReady()) {
+    return {
+      success: false,
+      message: 'WhatsApp session is not connected. Queued messages will deliver automatically once reconnected.',
+      pendingCount: count
+    };
+  }
+
+  // Trigger processing
+  processPendingQueue();
+  return {
+    success: true,
+    message: `Queue flush initiated for ${count} pending message(s).`,
+    pendingCount: count
+  };
+};
+
+// Periodic background check every 30 seconds
 setInterval(() => {
   if (isClientReady()) {
     processPendingQueue();
   }
-}, 25000);
+}, 30000);
 
 /**
  * Enqueue and send work request notification with deduplication
@@ -256,6 +447,7 @@ const enqueueAndSend = async ({ id, referenceId, recipientType, name, to, text, 
     formType,
     status: 'pending',
     retries: 0,
+    lastError: null,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
@@ -267,15 +459,14 @@ const enqueueAndSend = async ({ id, referenceId, recipientType, name, to, text, 
 };
 
 /**
- * Send WhatsApp notifications to Sender and Receiver for Work Requests
- * (Meeting, Event Organize, General Information)
+ * Send WhatsApp notifications to Sender and Receiver for Work Requests, Meetings, and Events
  */
 const sendWorkRequestNotifications = async ({
-  formType,
+  formType = 'Work Request',
   referenceId,
-  senderName,
+  senderName = 'Requester',
   senderNumber,
-  receiverName,
+  receiverName = 'Recipient',
   receiverNumber,
   agreedToNotifications = true
 }) => {
@@ -284,7 +475,7 @@ const sendWorkRequestNotifications = async ({
     return { skipped: true, reason: 'Agreement not provided' };
   }
 
-  // Exact templates specified by user
+  // Exact templates formatted cleanly
   const senderMessageText = `Dear ${senderName},\nYour ${formType} request has been submitted successfully.\nThank you.`;
   const receiverMessageText = `Dear ${receiverName},\nYou have received a ${formType} request from ${senderName}.\nPlease sign in to your dashboard to review it.`;
 
@@ -294,34 +485,33 @@ const sendWorkRequestNotifications = async ({
   };
 
   try {
-    // 1. Sender WhatsApp Notification
-    if (senderNumber && senderNumber.trim()) {
+    // 1. Sender WhatsApp Notification (confirmation of scheduling/assignment)
+    if (senderNumber && String(senderNumber).trim()) {
       results.sender = await enqueueAndSend({
         id: `${referenceId}-sender`,
         referenceId,
         recipientType: 'sender',
         name: senderName,
-        to: senderNumber.trim(),
+        to: String(senderNumber).trim(),
         text: senderMessageText,
         formType
       });
     }
 
-    // 2. Receiver WhatsApp Notification
-    if (receiverNumber && receiverNumber.trim()) {
+    // 2. Receiver WhatsApp Notification (invitation/assignment notification)
+    if (receiverNumber && String(receiverNumber).trim()) {
       results.receiver = await enqueueAndSend({
         id: `${referenceId}-receiver`,
         referenceId,
         recipientType: 'receiver',
         name: receiverName,
-        to: receiverNumber.trim(),
+        to: String(receiverNumber).trim(),
         text: receiverMessageText,
         formType
       });
     }
   } catch (err) {
-    // Keep saved request successful even if WhatsApp delivery fails
-    console.warn('[WPPConnect] Delivery warning (request saved successfully):', err.message);
+    console.warn('[WPPConnect] Delivery notice (request saved successfully):', err.message);
   }
 
   return results;
@@ -329,15 +519,22 @@ const sendWorkRequestNotifications = async ({
 
 // Get current service status for diagnostics & dashboard
 const getServiceStatus = () => {
+  const pendingCount = messageStore.filter(m => m.status === 'pending').length;
+  const sentCount = messageStore.filter(m => m.status === 'sent').length;
+
   return {
     session: SESSION_NAME,
     status: sessionStatus,
     isReady: isClientReady(),
     hasQr: Boolean(latestQrCode),
     qrCode: latestQrCode,
+    isReconnecting: sessionStatus === 'RECONNECTING',
+    reconnectAttempts,
+    nextReconnectAt,
+    isManualStop,
     totalMessages: messageStore.length,
-    pendingMessages: messageStore.filter(m => m.status === 'pending').length,
-    sentMessages: messageStore.filter(m => m.status === 'sent').length,
+    pendingMessages: pendingCount,
+    sentMessages: sentCount,
     messages: messageStore.slice(-50).reverse()
   };
 };
@@ -346,9 +543,13 @@ const getMessages = () => {
   return messageStore.slice(-100).reverse();
 };
 
-// Restart WPPConnect Session on demand
+// Restart WPPConnect Session on demand (manual click handler)
 const restartWppSession = async () => {
-  console.log(`[WPPConnect] Restarting WPPConnect session: "${SESSION_NAME}"...`);
+  console.log(`[WPPConnect] Manual restart of WPPConnect session requested: "${SESSION_NAME}"...`);
+  isManualStop = false;
+  clearExistingReconnectTimer();
+  reconnectAttempts = 0;
+
   if (wppClient) {
     try {
       await wppClient.close();
@@ -357,23 +558,48 @@ const restartWppSession = async () => {
     }
     wppClient = null;
   }
+
   isInitializing = false;
   latestQrCode = null;
   sessionStatus = 'DISCONNECTED';
   emitStatus('wpp_status', { status: 'RESTARTING', session: SESSION_NAME });
+
   setTimeout(() => {
     initWppSession();
   }, 1000);
-  return { success: true, message: 'WPPConnect restart initiated' };
+
+  return { success: true, message: 'WPPConnect session restart initiated' };
+};
+
+// Deliberately stop session (prevents auto-reconnect loops)
+const stopWppSession = async () => {
+  console.log(`[WPPConnect] Stopping WPPConnect session: "${SESSION_NAME}"...`);
+  isManualStop = true;
+  clearExistingReconnectTimer();
+
+  if (wppClient) {
+    try {
+      await wppClient.close();
+    } catch (e) {
+      // ignore
+    }
+    wppClient = null;
+  }
+
+  sessionStatus = 'DISCONNECTED';
+  latestQrCode = null;
+  emitStatus('wpp_status', { status: 'DISCONNECTED', session: SESSION_NAME, isManualStop: true });
+  return { success: true, message: 'WPPConnect session stopped' };
 };
 
 module.exports = {
   initWppSession,
   restartWppSession,
+  stopWppSession,
   sendWorkRequestNotifications,
   getServiceStatus,
   getMessages,
   formatWhatsAppNumber,
-  processPendingQueue
+  processPendingQueue,
+  flushPendingQueue
 };
-
