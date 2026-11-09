@@ -33,7 +33,7 @@ const initialData = {
   users: [
     {
       id: 'usr-bgsmch-admin',
-      name: 'BGS MCH Admin',
+      name: 'BGS MCH',
       email: 'bgsmchhospitalnagarur@gmail.com',
       password: 'Apple2026?',
       hasPassword: true,

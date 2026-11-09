@@ -24,7 +24,10 @@ import {
   Clock,
   Video,
   Copy,
-  Sparkles
+  Sparkles,
+  ChevronRight,
+  Layers,
+  Check
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -36,7 +39,8 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const { currentUser } = useApp();
-  const [departmentDropdownOpen, setDepartmentDropdownOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<'overview' | 'departments' | 'requests' | 'appointments' | 'about'>('departments');
+  const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -597,7 +601,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
   const handleDeptClick = (dept: typeof departments[0]) => {
     setSelectedDeptInfo({ title: dept.title, desc: dept.desc, icon: dept.icon });
-    setDepartmentDropdownOpen(false);
+    setMegaMenuOpen(false);
   };
 
   return (
@@ -634,68 +638,84 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="hidden sm:block h-7 w-px bg-gray-300/80 ml-2" />
           </div>
 
-          {/* Center Navigation Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-gray-600">
+          {/* Center Category Navigation Links (Categories in Figma Diagram) */}
+          <nav className="hidden lg:flex items-center gap-1.5 text-xs font-semibold text-gray-700 bg-gray-100/80 p-1.5 rounded-full border border-gray-200/60 shadow-2xs">
             <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-gray-950 font-semibold relative py-1 cursor-pointer after:content-[''] after:absolute after:-bottom-1.5 after:left-0 after:right-0 after:h-0.5 after:bg-[#5a36e6] after:rounded-full"
+              onClick={() => {
+                setActiveCategory('overview');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
+                activeCategory === 'overview'
+                  ? 'bg-white text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:text-gray-950 hover:bg-white/50'
+              }`}
             >
-              Home
+              Overview
             </button>
 
-            {/* Department Dropdown (Screenshot 2) */}
-            <div className="relative">
-              <button
-                onClick={() => setDepartmentDropdownOpen(!departmentDropdownOpen)}
-                onMouseEnter={() => setDepartmentDropdownOpen(true)}
-                className="flex items-center gap-1.5 hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
-              >
-                <span>Department</span>
-                <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${departmentDropdownOpen ? 'rotate-180 text-[#5a36e6]' : ''}`} />
-              </button>
+            {/* Active Category [1] with direct tab connection to Mega-Menu */}
+            <button
+              onClick={() => {
+                setActiveCategory('departments');
+                setMegaMenuOpen(!megaMenuOpen);
+              }}
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
+                activeCategory === 'departments'
+                  ? 'bg-slate-900 text-white font-bold shadow-xs'
+                  : 'text-gray-600 hover:text-gray-950 hover:bg-white/50'
+              }`}
+              title="Click to toggle navigation menu"
+            >
+              <span>Departments</span>
+              <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
+                activeCategory === 'departments' ? 'bg-[#5a36e6] text-white' : 'bg-gray-200 text-gray-700'
+              }`}>
+                1
+              </span>
+              <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${megaMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
 
-              {/* Floating Dropdown Menu matching Screenshot 2 */}
-              {departmentDropdownOpen && (
-                <div
-                  onMouseLeave={() => setDepartmentDropdownOpen(false)}
-                  className="absolute left-0 mt-3 w-64 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-purple-100 p-2 z-50 animate-in fade-in zoom-in-95 duration-150"
-                >
-                  <div className="space-y-0.5">
-                    {departments.map((dept, index) => {
-                      const Icon = dept.icon;
-                      const isFirst = index === 0;
+            <button
+              onClick={() => {
+                setActiveCategory('requests');
+                const el = document.getElementById('content-pages-section');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
+                activeCategory === 'requests'
+                  ? 'bg-white text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:text-gray-950 hover:bg-white/50'
+              }`}
+            >
+              Work Requests
+            </button>
 
-                      return (
-                        <button
-                          key={dept.id}
-                          onClick={() => handleDeptClick(dept)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left text-xs transition-colors cursor-pointer ${isFirst
-                            ? 'bg-purple-50 text-[#5a36e6] font-semibold'
-                            : 'text-gray-700 hover:bg-purple-50/60 hover:text-[#5a36e6]'
-                            }`}
-                        >
-                          <div className={`p-1 rounded-lg ${isFirst ? 'text-[#5a36e6]' : 'text-gray-500 group-hover:text-[#5a36e6]'}`}>
-                            <Icon className="w-4 h-4" />
-                          </div>
-                          <span>{dept.title}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
+            <button
+              onClick={() => {
+                setActiveCategory('appointments');
+                setSelectedRequestType(requestTypes[0]);
+                setRequestFormSubmitted(false);
+              }}
+              className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
+                activeCategory === 'appointments'
+                  ? 'bg-white text-gray-950 font-bold shadow-xs'
+                  : 'text-gray-600 hover:text-gray-950 hover:bg-white/50'
+              }`}
+            >
+              Appointments
+            </button>
 
             <button
               onClick={() => setShowAboutModal(true)}
-              className="hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
+              className="px-4 py-1.5 rounded-full text-gray-600 hover:text-gray-950 hover:bg-white/50 transition-all cursor-pointer"
             >
               About
             </button>
 
             <button
               onClick={() => setShowContactModal(true)}
-              className="hover:text-[#5a36e6] transition-colors cursor-pointer py-1"
+              className="px-4 py-1.5 rounded-full text-gray-600 hover:text-gray-950 hover:bg-white/50 transition-all cursor-pointer"
             >
               Contact
             </button>
@@ -868,6 +888,263 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         )}
       </header>
 
+      {/* ---------------- MEGA-MENU SUB-NAVIGATION BAR (Menu navigation [1] in Figma Diagram) ---------------- */}
+      {megaMenuOpen && (
+        <section className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
+            <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800/80">
+              <div className="flex items-center gap-3">
+                <span className="w-6 h-6 rounded-full bg-[#5a36e6] text-white text-xs font-bold flex items-center justify-center">1</span>
+                <div>
+                  <h3 className="text-sm font-bold text-white tracking-wide uppercase">Department &amp; Service Directory</h3>
+                  <p className="text-xs text-slate-400">Institutional navigation across clinical care, diagnostic labs, requests, and governance</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMegaMenuOpen(false)}
+                className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-slate-800 transition cursor-pointer"
+                title="Close Menu"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 4 Multi-Column Menu Navigation Groups matching Figma wireframe */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
+              {/* Column 1: Clinical Departments */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-purple-400 font-bold text-xs uppercase tracking-wider">
+                  <Stethoscope className="w-3.5 h-3.5" />
+                  <span>Clinical Care</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[1])}
+                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Clinical Medicine &amp; Outpatient</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[1])}
+                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Emergency &amp; Trauma Services</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[1])}
+                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>General Surgery &amp; Critical Care</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[1])}
+                      className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Pediatrics &amp; Maternal Health</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Column 2: Diagnostic & Research */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                  <FlaskConical className="w-3.5 h-3.5" />
+                  <span>Diagnostics &amp; Research</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[2])}
+                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Pathology &amp; Microbiology Labs</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[2])}
+                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Radiology &amp; Advanced Imaging</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[3])}
+                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Clinical Biochemistry Diagnostics</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => handleDeptClick(departments[3])}
+                      className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Digital AI &amp; Health Informatics</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Column 3: Work Requests & Meet */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-sky-400 font-bold text-xs uppercase tracking-wider">
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span>Work Requests &amp; Meet</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRequestType(requestTypes[0]);
+                        setRequestFormSubmitted(false);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-sky-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Schedule Meeting (1:1 / Group)</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-sky-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRequestType(requestTypes[1]);
+                        setRequestFormSubmitted(false);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-sky-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Organize Institutional Event</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-sky-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRequestType(requestTypes[2]);
+                        setRequestFormSubmitted(false);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-sky-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Submit Assigned Work Request</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-sky-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedRequestType(requestTypes[3]);
+                        setRequestFormSubmitted(false);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-sky-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>General Information Inquiry</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-sky-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                </ul>
+              </div>
+
+              {/* Column 4: Operations & Governance */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-amber-400 font-bold text-xs uppercase tracking-wider">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Operations &amp; Portal</span>
+                </div>
+                <ul className="space-y-2 text-xs text-slate-300">
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onLogin();
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Sign In to Admin Portal</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMegaMenuOpen(false);
+                        const el = document.getElementById('content-pages-section');
+                        if (el) el.scrollIntoView({ behavior: 'smooth' });
+                      }}
+                      className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Department Directory Overview</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAboutModal(true);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Platform Security &amp; Encryption</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                  <li>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowContactModal(true);
+                        setMegaMenuOpen(false);
+                      }}
+                      className="hover:text-amber-300 text-left transition flex items-center justify-between w-full group cursor-pointer"
+                    >
+                      <span>Contact Hospital Support</span>
+                      <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-amber-400 group-hover:translate-x-0.5 transition" />
+                    </button>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
@@ -979,10 +1256,437 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
           </div>
 
-          {/* Right side is intentionally open space for the natural room background (lamp, table, sofa) */}
-          <div className="hidden lg:block lg:col-span-5 xl:col-span-4 min-h-[360px] pointer-events-none" aria-hidden="true" />
+          {/* Right Hero Visual Block (Matching the lime-green hero visual block in Figma wireframe) */}
+          <div className="lg:col-span-5 xl:col-span-4 flex flex-col justify-center">
+            <div className="rounded-3xl bg-gradient-to-br from-[#f2fcd0] via-[#e8f7bc] to-[#def0a5] border-2 border-[#b5db58]/70 shadow-[0_20px_50px_rgba(90,130,20,0.15)] p-6 sm:p-7 relative overflow-hidden backdrop-blur-xl">
+              {/* Subtle architectural grid pattern */}
+              <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#4d7c0f_1px,transparent_1px)] [background-size:16px_16px]" />
+
+              {/* Status Header Badge */}
+              <div className="flex items-center justify-between pb-4 border-b border-[#a3c94a]/40 relative z-10">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
+                  <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Live System Active</span>
+                </div>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#4d7c0f]/15 text-[#365314] border border-[#4d7c0f]/30">
+                  Real-Time Synced
+                </span>
+              </div>
+
+              {/* Live Metric Counters Grid */}
+              <div className="grid grid-cols-2 gap-3 my-4 relative z-10">
+                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Departments</span>
+                  <span className="text-2xl font-black text-gray-950">4+</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Clinical &amp; Labs</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Registered Team</span>
+                  <span className="text-2xl font-black text-gray-950">12+</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Active Staff</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Deliverables</span>
+                  <span className="text-2xl font-black text-gray-950">100%</span>
+                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Synced to DB</span>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
+                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">WhatsApp Service</span>
+                  <span className="text-sm font-black text-emerald-700 flex items-center gap-1 mt-1">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    <span>Dual Receipts</span>
+                  </span>
+                  <span className="text-[10px] text-gray-500 block mt-0.5">Sender + Receiver</span>
+                </div>
+              </div>
+
+              {/* Fast Action Card inside Hero Visual */}
+              <div className="p-4 rounded-2xl bg-white/80 border border-white shadow-sm space-y-3 relative z-10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Video className="w-4 h-4 text-[#5a36e6]" />
+                    <span className="text-xs font-bold text-gray-900">Direct Meeting Scheduling</span>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 text-[#5a36e6] font-bold">Instant</span>
+                </div>
+                <p className="text-[11px] text-gray-600 leading-relaxed">
+                  Request one-on-one appointments or group meetings with live WhatsApp alerts and secure video rooms.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRequestType(requestTypes[0]);
+                    setRequestFormSubmitted(false);
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
+                >
+                  <span>Book Appointment Now</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </main>
+
+      {/* ---------------- BREADCRUMB LINKS (Breadcrumb links in Figma Diagram) ---------------- */}
+      <section className="w-full bg-slate-100/80 border-t border-b border-slate-200/70 py-3 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="text-[#5a36e6] hover:underline flex items-center gap-1 cursor-pointer"
+            >
+              <span>Home</span>
+            </button>
+            <span className="text-slate-400">/</span>
+            <button
+              onClick={() => {
+                setActiveCategory('departments');
+                setMegaMenuOpen(true);
+              }}
+              className="text-slate-700 hover:text-slate-950 hover:underline cursor-pointer"
+            >
+              Departments
+            </button>
+            <span className="text-slate-400">/</span>
+            <span className="text-slate-900 font-bold bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+              Healthcare &amp; Administration Hub
+            </span>
+          </nav>
+        </div>
+      </section>
+
+      {/* ---------------- STRUCTURED CONTENT SHOWCASE SECTION ---------------- */}
+      <section className="w-full bg-white/70 backdrop-blur-md py-12 lg:py-16 border-b border-slate-200/60 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Content Media Card */}
+            <div className="lg:col-span-5">
+              <div className="rounded-3xl bg-slate-900 text-white p-7 shadow-2xl border border-slate-800 relative overflow-hidden">
+                <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
+                      <Layers className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white">Department Workflow Hub</h4>
+                      <p className="text-[10px] text-slate-400">Enterprise Operations</p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    Live Active
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 text-xs">
+                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+                    <span className="text-slate-300">Clinical &amp; Surgical Care</span>
+                    <span className="font-semibold text-purple-300">4 Sub-specialties</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+                    <span className="text-slate-300">Diagnostic Pathology &amp; AI</span>
+                    <span className="font-semibold text-emerald-300">Verified Results</span>
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
+                    <span className="text-slate-300">Dual-Recipient WhatsApp Delivery</span>
+                    <span className="font-semibold text-sky-300">Automated</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onLogin}
+                  className="mt-6 w-full py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4d2ec4] text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span>Access Dashboard Portal</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Right Content Description */}
+            <div className="lg:col-span-7 space-y-4">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5a36e6] bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
+                Institutional Architecture
+              </span>
+              <h3 className="font-['Playfair_Display',Georgia,serif] text-3xl sm:text-4xl font-bold text-slate-900 leading-tight">
+                Unified Governance &amp; Collaborative Workflows
+              </h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                WorkHub bridges administrative oversight, multi-departmental coordination, staff task tracking, and patient scheduling into a coherent, high-reliability workspace.
+              </p>
+
+              <div className="space-y-2.5 pt-2">
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <p className="text-xs text-slate-700">
+                    <strong>Dual WhatsApp Receipts:</strong> Instant confirmation sent to both requester and recipient upon meeting or event scheduling.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <p className="text-xs text-slate-700">
+                    <strong>Durable Task History:</strong> Every work submission, rework request, and administrator approval is logged with permanent audit timestamps.
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
+                  <p className="text-xs text-slate-700">
+                    <strong>Instant Video Meeting Rooms:</strong> Built-in WebRTC video rooms accessible directly from appointments with private meeting IDs.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- CONTENT PAGES GRID (Content pages [1] in Figma Diagram) ---------------- */}
+      <section id="content-pages-section" className="w-full bg-[#f8fafc]/90 py-12 lg:py-16 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between mb-8 pb-3 border-b border-slate-200">
+            <div className="flex items-center gap-3">
+              <span className="w-6 h-6 rounded-full bg-[#5a36e6] text-white text-xs font-bold flex items-center justify-center">1</span>
+              <div>
+                <h3 className="text-xl font-bold text-slate-900 tracking-tight">Content Pages &amp; Service Hubs</h3>
+                <p className="text-xs text-slate-500">Linked sub-pages under the active Category [1] structure</p>
+              </div>
+            </div>
+            <span className="text-xs text-slate-400 font-semibold hidden sm:inline">4 Primary Hubs</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Content Page Card 1 */}
+            <div
+              onClick={() => handleDeptClick(departments[1])}
+              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
+            >
+              <div className="space-y-2 flex-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-[#5a36e6] uppercase tracking-wider">
+                  Care Delivery
+                </span>
+                <h4 className="text-base font-bold text-slate-900 group-hover:text-[#5a36e6] transition-colors">
+                  Clinical &amp; Surgical Specialties
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Inpatient care, outpatient surgical management, emergency response units, and specialized consultations.
+                </p>
+                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-[#5a36e6]">
+                  <span>Explore Clinical Hub</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              <div className="w-20 h-20 rounded-2xl bg-purple-50 text-[#5a36e6] flex items-center justify-center shrink-0 border border-purple-100 shadow-2xs group-hover:scale-105 transition-transform">
+                <Stethoscope className="w-9 h-9" />
+              </div>
+            </div>
+
+            {/* Content Page Card 2 */}
+            <div
+              onClick={() => handleDeptClick(departments[2])}
+              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
+            >
+              <div className="space-y-2 flex-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 uppercase tracking-wider">
+                  Diagnostics
+                </span>
+                <h4 className="text-base font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                  Pathology &amp; Laboratory Systems
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Clinical biochemistry, microbiology specimen handling, radiology imaging reports, and automated informatics.
+                </p>
+                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-emerald-700">
+                  <span>View Diagnostic Labs</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              <div className="w-20 h-20 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 border border-emerald-100 shadow-2xs group-hover:scale-105 transition-transform">
+                <FlaskConical className="w-9 h-9" />
+              </div>
+            </div>
+
+            {/* Content Page Card 3 */}
+            <div
+              onClick={() => {
+                setSelectedRequestType(requestTypes[0]);
+                setRequestFormSubmitted(false);
+              }}
+              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
+            >
+              <div className="space-y-2 flex-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-sky-100 text-sky-800 uppercase tracking-wider">
+                  Coordination
+                </span>
+                <h4 className="text-base font-bold text-slate-900 group-hover:text-sky-700 transition-colors">
+                  Work Requests &amp; Meeting Coordination
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Direct appointment requests, institutional event approvals, task assignments, and dual WhatsApp notifications.
+                </p>
+                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-sky-700">
+                  <span>Open Request Center</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              <div className="w-20 h-20 rounded-2xl bg-sky-50 text-sky-600 flex items-center justify-center shrink-0 border border-sky-100 shadow-2xs group-hover:scale-105 transition-transform">
+                <Calendar className="w-9 h-9" />
+              </div>
+            </div>
+
+            {/* Content Page Card 4 */}
+            <div
+              onClick={onLogin}
+              className="p-6 rounded-3xl bg-white border border-slate-200/80 shadow-sm hover:shadow-xl transition-all duration-300 flex items-center justify-between gap-6 cursor-pointer group hover:-translate-y-1"
+            >
+              <div className="space-y-2 flex-1">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+                  Governance
+                </span>
+                <h4 className="text-base font-bold text-slate-900 group-hover:text-amber-700 transition-colors">
+                  Administration &amp; Team Roster
+                </h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Role-based access permissions, team assignments, deliverable verification, and system settings.
+                </p>
+                <div className="pt-2 flex items-center gap-1 text-xs font-bold text-amber-700">
+                  <span>Sign In to Dashboard</span>
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              <div className="w-20 h-20 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 border border-amber-100 shadow-2xs group-hover:scale-105 transition-transform">
+                <ShieldCheck className="w-9 h-9" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- MULTI-COLUMN FOOTER (Footer in Figma Diagram) ---------------- */}
+      <footer className="w-full bg-slate-950 text-white border-t border-slate-800 pt-12 pb-8 relative z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-slate-800">
+            {/* Brand Logo & Bio */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 flex items-center justify-center">
+                  <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
+                    <path d="M12 28C10 20 18 10 28 8C26 18 18 28 12 28Z" fill="#22c55e" />
+                    <path d="M12 28C16 28 22 22 28 8C18 10 10 20 12 28Z" fill="#15803d" />
+                    <path d="M14 26C18 20 22 14 28 8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-lg font-bold text-white tracking-tight">WorkHub</h4>
+                  <p className="text-[11px] text-slate-400">Team Workspace Platform</p>
+                </div>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+                Empowering hospital departments, clinical staff, and operations with synchronized assignments, real-time messaging, and automated WhatsApp delivery.
+              </p>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>256-Bit SSL Encrypted • BGS MCH Portal</span>
+              </div>
+            </div>
+
+            {/* Column 1: Platform */}
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300">Platform</h5>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li>
+                  <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="hover:text-white transition cursor-pointer">
+                    Overview
+                  </button>
+                </li>
+                <li>
+                  <button onClick={onLogin} className="hover:text-white transition cursor-pointer">
+                    Sign In to Workspace
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setSelectedRequestType(requestTypes[0]); setRequestFormSubmitted(false); }} className="hover:text-white transition cursor-pointer">
+                    Work Requests
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => { setSelectedRequestType(requestTypes[0]); setRequestFormSubmitted(false); }} className="hover:text-white transition cursor-pointer">
+                    Book Appointment
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 2: Departments */}
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300">Departments</h5>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li>
+                  <button onClick={() => handleDeptClick(departments[1])} className="hover:text-white transition cursor-pointer">
+                    Clinical Medicine
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleDeptClick(departments[2])} className="hover:text-white transition cursor-pointer">
+                    Diagnostic Pathology
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleDeptClick(departments[3])} className="hover:text-white transition cursor-pointer">
+                    Academic &amp; Research
+                  </button>
+                </li>
+                <li>
+                  <button onClick={() => handleDeptClick(departments[4])} className="hover:text-white transition cursor-pointer">
+                    Hospital Administration
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Contact & Info */}
+            <div className="space-y-3">
+              <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300">Support &amp; Contact</h5>
+              <ul className="space-y-2 text-xs text-slate-400">
+                <li className="flex items-center gap-2">
+                  <Mail className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span>support@bgsdigitalhealth.org</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <Phone className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span>+91 (080) 2674-8900</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <MapPin className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span>BGS MCH Hospital, Nagarur</span>
+                </li>
+                <li className="pt-1">
+                  <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>WhatsApp Service Monitored</span>
+                  </span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3">
+            <p>© 2026 WorkHub • BGS Digital Health. All rights reserved.</p>
+            <div className="flex items-center gap-4">
+              <button onClick={() => setShowAboutModal(true)} className="hover:text-slate-300 transition cursor-pointer">About Platform</button>
+              <span>•</span>
+              <button onClick={() => setShowContactModal(true)} className="hover:text-slate-300 transition cursor-pointer">Contact &amp; Emergency</button>
+            </div>
+          </div>
+        </div>
+      </footer>
 
 
       {/* ---------------- MODAL 1: Department Info Modal ---------------- */}
