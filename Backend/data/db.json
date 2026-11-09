@@ -378,6 +378,16 @@
   },
   "users": [
     {
+      "id": "usr-bgsmch-admin",
+      "name": "BGS MCH Admin",
+      "email": "bgsmchhospitalnagarur@gmail.com",
+      "password": "Apple9844?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "B",
+      "title": "Administrator"
+    },
+    {
       "id": "usr-admin",
       "name": "Admin",
       "email": "dynamicsajjan@gmail.com",
@@ -607,7 +617,6 @@
     }
   ],
   "deletedEmails": [
-    "bgsmchhospitalnagarur@gmail.com",
     "dynamicsajjan@gamil.com",
     "admin@company.com",
     "user@company.com"

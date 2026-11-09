@@ -32,6 +32,16 @@ const initialData = {
   // Authorized login accounts (2 Roles Only: admin and user)
   users: [
     {
+      id: 'usr-bgsmch-admin',
+      name: 'BGS MCH Admin',
+      email: 'bgsmchhospitalnagarur@gmail.com',
+      password: 'Apple2026?',
+      hasPassword: true,
+      role: 'admin',
+      avatar: 'B',
+      title: 'Administrator'
+    },
+    {
       id: 'usr-admin',
       name: 'Admin',
       email: 'dynamicsajjan@gmail.com',

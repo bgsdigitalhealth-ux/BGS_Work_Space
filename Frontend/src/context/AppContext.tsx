@@ -162,7 +162,6 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const BANNED_EMAILS = [
-  'bgsmchhospitalnagarur@gmail.com',
   'dynamicsajjan@gamil.com',
   'admin@company.com',
   'user@company.com'
