@@ -748,19 +748,23 @@ export const MessagesView: React.FC = () => {
 
           <div className="w-8 h-px bg-gray-300/80 my-1" />
 
-          {/* Chats Icon (Active) */}
+          {/* Chats Icon */}
           <button
             onClick={() => setActiveRailTab('chats')}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center relative transition-colors cursor-pointer ${activeRailTab === 'chats' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            aria-label="Chats"
+            className={`w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeRailTab === 'chats' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-slate-600 hover:bg-slate-200/60'
               }`}
             title="Chats"
           >
-            <MessageSquare className="w-5 h-5 stroke-[2.2]" />
-            {totalUnreadCount > 0 && (
-              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#25D366] text-white text-[10px] font-bold flex items-center justify-center shadow-xs">
-                {totalUnreadCount}
-              </span>
-            )}
+            <div className="relative">
+              <MessageSquare className="w-5 h-5 stroke-[2.2]" />
+              {totalUnreadCount > 0 && (
+                <span className="absolute -top-1 -right-2 min-w-[16px] h-[16px] px-1 rounded-full bg-emerald-500 text-white text-[9px] font-bold flex items-center justify-center shadow-xs">
+                  {totalUnreadCount}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] font-semibold tracking-tight">Chats</span>
           </button>
 
           {/* Calls */}
@@ -769,11 +773,13 @@ export const MessagesView: React.FC = () => {
               setActiveRailTab('calls');
               alert('Voice and Video calls history: All endpoints ready for WebRTC.');
             }}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'calls' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            aria-label="Calls"
+            className={`w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeRailTab === 'calls' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-slate-600 hover:bg-slate-200/60'
               }`}
             title="Calls"
           >
             <Phone className="w-5 h-5" />
+            <span className="text-[10px] font-semibold tracking-tight">Calls</span>
           </button>
 
           {/* Status */}
@@ -782,11 +788,13 @@ export const MessagesView: React.FC = () => {
               setActiveRailTab('status');
               alert('Work Status Updates: Share your active daily progress with connected teams.');
             }}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'status' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            aria-label="Status"
+            className={`w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeRailTab === 'status' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-slate-600 hover:bg-slate-200/60'
               }`}
             title="Status"
           >
             <CircleDashed className="w-5 h-5" />
+            <span className="text-[10px] font-semibold tracking-tight">Status</span>
           </button>
 
           {/* Teams / Communities */}
@@ -795,11 +803,13 @@ export const MessagesView: React.FC = () => {
               setActiveRailTab('groups');
               openNewChatModal();
             }}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-[#54656f] hover:bg-gray-200/60'
+            aria-label="Teams"
+            className={`w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-slate-600 hover:bg-slate-200/60'
               }`}
             title="Communities & Teams"
           >
             <Users className="w-5 h-5" />
+            <span className="text-[10px] font-semibold tracking-tight">Teams</span>
           </button>
 
           {/* AI / Meta AI Sparkles */}
@@ -807,25 +817,29 @@ export const MessagesView: React.FC = () => {
             onClick={() => {
               alert('WorkHub AI Copilot: Instant task summarization and assignment drafting.');
             }}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
-            title="WorkHub AI"
+            aria-label="AI Copilot"
+            className="w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 text-indigo-600 hover:bg-indigo-50/80 transition-colors cursor-pointer"
+            title="WorkHub AI Copilot"
           >
-            <Sparkles className="w-5 h-5 text-indigo-600" />
+            <Sparkles className="w-5 h-5" />
+            <span className="text-[10px] font-semibold tracking-tight text-indigo-700">AI Assist</span>
           </button>
         </div>
 
         {/* Bottom Icons: Settings & User Profile */}
-        <div className="flex flex-col items-center gap-3">
+        <div className="flex flex-col items-center gap-2.5">
           <button
             onClick={() => alert(`Logged in as: ${currentUser?.email} (${currentUser?.role})`)}
-            className="w-10 h-10 rounded-xl flex items-center justify-center text-[#54656f] hover:bg-gray-200/60 transition-colors cursor-pointer"
+            aria-label="Settings"
+            className="w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-600 hover:bg-slate-200/60 transition-colors cursor-pointer"
             title="Settings"
           >
             <Settings className="w-5 h-5" />
+            <span className="text-[10px] font-semibold tracking-tight">Settings</span>
           </button>
 
           {/* My Profile Avatar with Online Dot */}
-          <div className="relative cursor-pointer" title={`You (${currentUser?.email}) - Online`}>
+          <div className="relative cursor-pointer mt-1" title={`You (${currentUser?.email}) - Online`}>
             <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(currentUser?.email || 'user')}`}>
               {getInitials(currentUser?.name, currentUser?.email)}
             </div>
@@ -1015,10 +1029,10 @@ export const MessagesView: React.FC = () => {
                   {/* Middle Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <h4 className="font-medium text-sm text-[#111b21] truncate">
+                      <h3 className="font-medium text-sm text-slate-900 truncate">
                         {other?.name || other?.email || 'Registered User'}
-                      </h4>
-                      <span className={`text-[11px] shrink-0 ${unread > 0 ? 'text-[#25D366] font-semibold' : 'text-[#667781]'}`}>
+                      </h3>
+                      <span className={`text-[11px] shrink-0 ${unread > 0 ? 'text-[#25D366] font-semibold' : 'text-slate-500'}`}>
                         {formatTime(conv.lastMessage?.timestamp || conv.updatedAt)}
                       </span>
                     </div>
@@ -1034,7 +1048,7 @@ export const MessagesView: React.FC = () => {
                             )}
                           </span>
                         )}
-                        <p className="text-xs text-[#667781] truncate">
+                        <p className="text-xs text-slate-500 line-clamp-1 leading-snug" title={conv.lastMessage?.text || ''}>
                           {conv.lastMessage?.text || 'Draft a message...'}
                         </p>
                       </div>
@@ -1209,9 +1223,12 @@ export const MessagesView: React.FC = () => {
 
           {/* Messages Scroll Area */}
           <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 z-10">
-            {/* Centered Date Pill (WhatsApp style) */}
-            <div className="flex justify-center my-2">
-              <span className="px-3 py-1 rounded-md bg-white shadow-2xs text-[#54656f] text-[11px] font-medium border border-gray-100">
+            {/* Centered Date Separator with Horizontal Rule (Issue 8) */}
+            <div className="relative flex items-center justify-center my-3" role="separator" aria-label="Date: Today">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className="w-full border-t border-slate-200/80" />
+              </div>
+              <span className="relative z-10 px-3 py-1 rounded-full bg-white shadow-2xs text-slate-500 text-xs font-semibold border border-slate-200/80">
                 Today
               </span>
             </div>
@@ -1340,31 +1357,31 @@ export const MessagesView: React.FC = () => {
                           </div>
                         )}
 
-                        {/* Video Meeting Invite Card */}
+                        {/* Video Meeting Invite Card (Issues 6 & 9) */}
                         {msg.meeting && (
-                          <div className="mb-2 p-3.5 rounded-xl bg-gradient-to-br from-white to-emerald-50 border border-emerald-200/90 shadow-2xs max-w-sm text-left">
-                            <div className="flex items-start justify-between gap-3 mb-2.5">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-10 h-10 rounded-xl bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs">
-                                  <Video className="w-5 h-5" />
+                          <div className="mb-1.5 p-2.5 rounded-xl bg-white border border-emerald-200/90 shadow-2xs max-w-xs text-left">
+                            <div className="flex items-center justify-between gap-2.5 mb-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                  <Video className="w-4 h-4" />
                                 </div>
                                 <div className="min-w-0">
-                                  <h4 className="font-bold text-xs text-gray-900 leading-tight truncate">
+                                  <h4 className="font-bold text-xs text-slate-900 leading-tight truncate">
                                     {msg.meeting.title}
                                   </h4>
-                                  <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+                                  <p className="text-xs text-slate-600 mt-0.5 truncate">
                                     {msg.meeting.type === 'group' ? '👥 Group Meeting' : '👤 Direct Call'} • Host: {msg.meeting.hostName || msg.senderName}
                                   </p>
                                 </div>
                               </div>
-                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-[#008069] text-[10px] font-bold shrink-0 flex items-center gap-1">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#25D366] animate-pulse" />
+                              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold shrink-0 flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Live
                               </span>
                             </div>
 
-                            <div className="pt-2 border-t border-emerald-100/90 flex items-center justify-between text-xs">
-                              <span className="font-mono text-[10px] text-gray-600 bg-gray-100 px-2 py-1 rounded">
+                            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                              <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                                 {msg.meeting.id}
                               </span>
                               <div className="flex items-center gap-1.5">
@@ -1374,18 +1391,19 @@ export const MessagesView: React.FC = () => {
                                     navigator.clipboard.writeText(msg.meeting?.id || '');
                                     alert(`Copied Meeting ID ${msg.meeting?.id} to clipboard!`);
                                   }}
-                                  className="p-1.5 text-gray-500 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-colors cursor-pointer"
+                                  className="p-1.5 text-slate-500 hover:text-slate-800 rounded-md hover:bg-slate-100 transition-colors cursor-pointer"
                                   title="Copy Meeting ID"
+                                  aria-label="Copy Meeting ID"
                                 >
                                   <Copy className="w-3.5 h-3.5" />
                                 </button>
                                 <button
                                   type="button"
                                   onClick={() => handleJoinMeeting(msg.meeting!)}
-                                  className="px-3 py-1.5 rounded-lg bg-[#00a884] hover:bg-[#008f6f] text-white font-bold text-xs shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                                  className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
                                 >
                                   <Video className="w-3.5 h-3.5" />
-                                  <span>Join Meeting</span>
+                                  <span>Join</span>
                                 </button>
                               </div>
                             </div>

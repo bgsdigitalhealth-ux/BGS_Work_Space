@@ -123,7 +123,7 @@ export const App: React.FC = () => {
       <Sidebar />
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-y-auto w-full">
+      <main className="flex-1 flex flex-col min-w-0 pt-6 px-4 sm:pt-8 sm:px-6 lg:px-8 pb-8 overflow-y-auto w-full">
         <Header />
         
         {adminNav === 'appointments' ? (

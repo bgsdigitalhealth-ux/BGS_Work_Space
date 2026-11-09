@@ -153,24 +153,29 @@ export const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 relative flex-wrap sm:flex-nowrap">
-          {/* WhatsApp Connection Status Indicator */}
+          {/* WhatsApp Connection Status Trigger (Issue 10) */}
           <button
             type="button"
             onClick={handleOpenWppModal}
-            title="WhatsApp Integration Status (WPPConnect) - Click for details"
-            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors cursor-pointer"
+            aria-haspopup="dialog"
+            title="WhatsApp Integration Status (WPPConnect) - Click to view status & QR code"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-slate-200/80 bg-slate-50/70 hover:bg-slate-100/90 text-xs font-medium text-slate-700 transition-colors shadow-2xs cursor-pointer"
           >
             <span
               className={`w-2 h-2 rounded-full shrink-0 ${
-                isWppReady ? 'bg-emerald-500' : hasWppQr ? 'bg-amber-500' : 'bg-slate-400'
+                isWppReady ? 'bg-emerald-500' : hasWppQr ? 'bg-amber-500 animate-pulse' : 'bg-slate-400'
               }`}
               aria-hidden="true"
             />
-            <span className="hidden md:inline text-slate-500">WhatsApp</span>
-            <span className={isWppReady ? 'text-emerald-700 font-semibold' : hasWppQr ? 'text-amber-700 font-semibold' : 'text-slate-600'}>
+            <span className="hidden md:inline text-slate-500">WhatsApp:</span>
+            <span className={isWppReady ? 'text-emerald-700 font-semibold' : hasWppQr ? 'text-amber-700 font-semibold' : 'text-slate-600 font-medium'}>
               {isWppReady ? 'Connected' : hasWppQr ? 'Scan QR' : 'Offline'}
             </span>
-            {hasWppQr && <QrCode className="w-3.5 h-3.5 ml-0.5 text-amber-600" />}
+            {hasWppQr ? (
+              <QrCode className="w-3.5 h-3.5 ml-0.5 text-amber-600" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+            )}
           </button>
 
           {/* Refresh button */}
