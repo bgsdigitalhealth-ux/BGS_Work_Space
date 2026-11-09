@@ -1256,76 +1256,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
           </div>
 
-          {/* Right Hero Visual Block (Matching the lime-green hero visual block in Figma wireframe) */}
-          <div className="lg:col-span-5 xl:col-span-4 flex flex-col justify-center">
-            <div className="rounded-3xl bg-gradient-to-br from-[#f2fcd0] via-[#e8f7bc] to-[#def0a5] border-2 border-[#b5db58]/70 shadow-[0_20px_50px_rgba(90,130,20,0.15)] p-6 sm:p-7 relative overflow-hidden backdrop-blur-xl">
-              {/* Subtle architectural grid pattern */}
-              <div className="absolute inset-0 opacity-15 pointer-events-none bg-[radial-gradient(#4d7c0f_1px,transparent_1px)] [background-size:16px_16px]" />
-
-              {/* Status Header Badge */}
-              <div className="flex items-center justify-between pb-4 border-b border-[#a3c94a]/40 relative z-10">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse" />
-                  <span className="text-xs font-bold text-emerald-950 uppercase tracking-wider">Live System Active</span>
-                </div>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#4d7c0f]/15 text-[#365314] border border-[#4d7c0f]/30">
-                  Real-Time Synced
-                </span>
-              </div>
-
-              {/* Live Metric Counters Grid */}
-              <div className="grid grid-cols-2 gap-3 my-4 relative z-10">
-                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Departments</span>
-                  <span className="text-2xl font-black text-gray-950">4+</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Clinical &amp; Labs</span>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Registered Team</span>
-                  <span className="text-2xl font-black text-gray-950">12+</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Active Staff</span>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">Deliverables</span>
-                  <span className="text-2xl font-black text-gray-950">100%</span>
-                  <span className="text-[10px] text-emerald-700 font-semibold block mt-0.5">Synced to DB</span>
-                </div>
-                <div className="p-3.5 rounded-2xl bg-white/70 border border-white/90 shadow-xs">
-                  <span className="text-[10px] font-bold text-gray-500 uppercase block tracking-wider">WhatsApp Service</span>
-                  <span className="text-sm font-black text-emerald-700 flex items-center gap-1 mt-1">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    <span>Dual Receipts</span>
-                  </span>
-                  <span className="text-[10px] text-gray-500 block mt-0.5">Sender + Receiver</span>
-                </div>
-              </div>
-
-              {/* Fast Action Card inside Hero Visual */}
-              <div className="p-4 rounded-2xl bg-white/80 border border-white shadow-sm space-y-3 relative z-10">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-[#5a36e6]" />
-                    <span className="text-xs font-bold text-gray-900">Direct Meeting Scheduling</span>
-                  </div>
-                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-100 text-[#5a36e6] font-bold">Instant</span>
-                </div>
-                <p className="text-[11px] text-gray-600 leading-relaxed">
-                  Request one-on-one appointments or group meetings with live WhatsApp alerts and secure video rooms.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRequestType(requestTypes[0]);
-                    setRequestFormSubmitted(false);
-                  }}
-                  className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-xs cursor-pointer"
-                >
-                  <span>Book Appointment Now</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
+          {/* Right side is open space for the natural architectural background */}
+          <div className="hidden lg:block lg:col-span-5 xl:col-span-4 min-h-[360px] pointer-events-none" aria-hidden="true" />
         </div>
       </main>
 
