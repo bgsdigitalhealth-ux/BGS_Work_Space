@@ -12,18 +12,19 @@ export const TeamList: React.FC = () => {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-xs w-full lg:w-64 shrink-0">
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="font-bold text-slate-900 text-sm">
+      <div className="flex items-center justify-between mb-4 pb-1">
+        <h3 className="font-bold text-slate-900 text-sm leading-tight">
           Teams in {selectedDepartment?.name || 'Department'}
-        </h4>
+        </h3>
         <button
+          type="button"
           onClick={() => {
             setEditingTeam(null);
             setIsAddTeamOpen(true);
           }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
         >
-          <Plus className="w-3 h-3" />
+          <Plus className="w-3.5 h-3.5" />
           <span>Add Team</span>
         </button>
       </div>
@@ -39,18 +40,19 @@ export const TeamList: React.FC = () => {
             return (
               <button
                 key={team.id}
+                type="button"
                 onClick={() => setSelectedTeam(team)}
-                className={`w-full flex items-start gap-3 p-3 rounded-xl text-left text-sm transition-all cursor-pointer ${
+                className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left text-sm font-medium transition-all cursor-pointer relative ${
                   isSelected
-                    ? 'bg-indigo-50/90 text-indigo-950 border border-indigo-200/80 shadow-2xs'
-                    : 'text-slate-700 hover:bg-slate-50 border border-transparent'
+                    ? 'bg-indigo-50/70 text-indigo-950 font-bold border-l-4 border-indigo-600 pl-2.5'
+                    : 'text-slate-700 hover:bg-slate-50 border-l-4 border-transparent'
                 }`}
               >
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate">{team.name}</p>
+                  <p className="font-bold truncate text-slate-900">{team.name}</p>
                   <p className={`text-xs mt-0.5 ${isSelected ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
                     {getTeamMemberCount(team.id)}
                   </p>

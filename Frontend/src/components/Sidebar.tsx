@@ -275,7 +275,7 @@ export const Sidebar: React.FC = () => {
           <div className="bg-[#1f1b45] border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2.5">
             <div className="min-w-0 flex-1">
               <p className="text-xs text-white font-bold truncate">{currentUser?.name || 'Administrator'}</p>
-              <p className="text-[11px] text-[#a2a0c4] truncate">{currentUser?.email || 'admin'}</p>
+              <p className="text-xs text-indigo-200/90 truncate font-normal mt-0.5">{currentUser?.email || 'admin'}</p>
             </div>
             <button
               onClick={logout}
@@ -285,8 +285,8 @@ export const Sidebar: React.FC = () => {
               <LogOut className="w-4 h-4" />
             </button>
           </div>
-          <div className="flex items-center gap-2 text-indigo-300/80 text-[11px] mt-2.5 px-1">
-            <Database className="w-3 h-3 text-emerald-400" />
+          <div className="flex items-center gap-2 text-indigo-200 text-xs mt-2.5 px-1">
+            <Database className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span className="font-medium truncate">{stats?.databaseMode || 'MongoDB Ready'}</span>
           </div>
         </div>

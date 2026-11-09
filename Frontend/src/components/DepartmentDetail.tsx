@@ -12,7 +12,8 @@ import {
   ClipboardList,
   CheckCircle2,
   Search,
-  Plus
+  Plus,
+  ChevronRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { TeamList } from './TeamList';
@@ -22,6 +23,7 @@ import { Member } from '../types';
 export const DepartmentDetail: React.FC = () => {
   const {
     selectedDepartment,
+    selectedTeam,
     activeTab,
     setActiveTab,
     teamSubTab,
@@ -125,6 +127,19 @@ export const DepartmentDetail: React.FC = () => {
 
   return (
     <div id="department-detail" className="flex-1 flex flex-col space-y-4 min-w-0">
+      {/* Hierarchy Breadcrumb Navigation */}
+      <nav aria-label="Hierarchy Breadcrumb" className="flex items-center gap-1.5 text-xs text-slate-500 font-medium px-1">
+        <span className="text-slate-400">Departments</span>
+        <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+        <span className="text-slate-700 font-semibold">{selectedDepartment.name}</span>
+        {selectedTeam && activeTab === 'Teams' && (
+          <>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+            <span className="text-indigo-600 font-bold">{selectedTeam.name}</span>
+          </>
+        )}
+      </nav>
+
       {/* Top Department Header Card */}
       <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -142,10 +157,10 @@ export const DepartmentDetail: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => openEditDepartment(selectedDepartment)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
             >
               <Edit3 className="w-3.5 h-3.5 text-slate-500" />
               <span>Edit Department</span>
@@ -153,7 +168,7 @@ export const DepartmentDetail: React.FC = () => {
             <button
               onClick={() => handleDeleteDepartment(selectedDepartment.id)}
               title="Delete Department"
-              className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors shadow-2xs cursor-pointer"
+              className="inline-flex items-center justify-center p-1.5 rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50 transition-colors shadow-2xs cursor-pointer"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -215,7 +230,7 @@ export const DepartmentDetail: React.FC = () => {
               </div>
               <button
                 onClick={() => setIsAddMemberOpen(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm shrink-0 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs shrink-0 transition-colors cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Member</span>

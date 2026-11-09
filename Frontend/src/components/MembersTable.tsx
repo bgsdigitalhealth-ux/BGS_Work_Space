@@ -116,72 +116,84 @@ export const MembersTable: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 bg-slate-50/80 p-1 rounded-xl border border-slate-100">
           <button
             onClick={() => openEditTeam(selectedTeam)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-slate-700 hover:bg-white hover:shadow-2xs transition-all cursor-pointer"
+            aria-label={`Edit ${selectedTeam.name}`}
           >
             <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-            <span>Edit Team</span>
+            <span>Edit</span>
           </button>
+          <div className="w-px h-4 bg-slate-200" />
           <button
             onClick={() => handleDeleteTeam(selectedTeam.id)}
-            title="Delete Team"
-            className="p-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 transition-colors shadow-2xs cursor-pointer"
+            title={`Delete ${selectedTeam.name}`}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
+            aria-label={`Delete ${selectedTeam.name}`}
           >
             <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
           </button>
         </div>
       </div>
 
-      {/* Sub-tabs with active indicators */}
-      <div className="flex items-center gap-6 mt-4 border-b border-slate-100 text-xs font-bold text-slate-500 overflow-x-auto">
+      {/* Segmented Pill Tabs for Team Sub-Level */}
+      <div className="inline-flex p-1 bg-slate-100/90 rounded-xl mt-4 self-start max-w-full overflow-x-auto" role="tablist" aria-label="Team Views">
         <button
+          role="tab"
+          aria-selected={teamSubTab === 'Members'}
           onClick={() => setTeamSubTab('Members')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Members' ? 'text-indigo-600' : 'hover:text-slate-800'
-            }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            teamSubTab === 'Members'
+              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
           <Users className="w-3.5 h-3.5" />
           <span>Members ({members.length})</span>
-          {teamSubTab === 'Members' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-          )}
         </button>
 
         <button
+          role="tab"
+          aria-selected={teamSubTab === 'Roles'}
           onClick={() => setTeamSubTab('Roles')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Roles' ? 'text-indigo-600' : 'hover:text-slate-800'
-            }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            teamSubTab === 'Roles'
+              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
           <Send className="w-3.5 h-3.5" />
           <span>+ Roles & Work</span>
-          {teamSubTab === 'Roles' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-          )}
         </button>
 
         <button
+          role="tab"
+          aria-selected={teamSubTab === 'Tasks'}
           onClick={() => setTeamSubTab('Tasks')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'Tasks' ? 'text-indigo-600' : 'hover:text-slate-800'
-            }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            teamSubTab === 'Tasks'
+              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
           <CheckSquare className="w-3.5 h-3.5" />
           <span>Today's Tasks ({tasks.length})</span>
-          {teamSubTab === 'Tasks' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-          )}
         </button>
 
         <button
+          role="tab"
+          aria-selected={teamSubTab === 'WorkDone'}
           onClick={() => setTeamSubTab('WorkDone')}
-          className={`pb-2.5 flex items-center gap-1.5 transition-colors relative cursor-pointer whitespace-nowrap ${teamSubTab === 'WorkDone' ? 'text-indigo-600' : 'hover:text-slate-800'
-            }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+            teamSubTab === 'WorkDone'
+              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Today's Work Done ({workDone.length})</span>
-          {teamSubTab === 'WorkDone' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-          )}
         </button>
       </div>
 
@@ -191,16 +203,18 @@ export const MembersTable: React.FC = () => {
       {teamSubTab === 'Members' && (
         <div className="flex-1 flex flex-col mt-4">
           <div className="flex items-center justify-between mb-3">
-            <h4 className="font-bold text-slate-800 text-sm">
-              Team Members ({members.length})
-            </h4>
-            <button
-              onClick={() => setIsAddMemberOpen(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Add Member</span>
-            </button>
+            <div className="flex items-center gap-2.5">
+              <h4 className="font-bold text-slate-800 text-sm">
+                Team Members ({members.length})
+              </h4>
+              <button
+                onClick={() => setIsAddMemberOpen(true)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Member</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-x-auto flex-1">

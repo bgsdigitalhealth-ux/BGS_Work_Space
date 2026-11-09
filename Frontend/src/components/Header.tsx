@@ -153,29 +153,24 @@ export const Header: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2.5 relative flex-wrap sm:flex-nowrap">
-          {/* WhatsApp Connection Status Pill & QR Modal Opener */}
+          {/* WhatsApp Connection Status Indicator */}
           <button
             type="button"
             onClick={handleOpenWppModal}
-            title="WhatsApp Integration Status (WPPConnect)"
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-semibold shadow-xs transition-all cursor-pointer ${
-              isWppReady
-                ? 'bg-emerald-50/80 border-emerald-200 text-emerald-700 hover:bg-emerald-100/80'
-                : hasWppQr
-                ? 'bg-amber-50/80 border-amber-200 text-amber-700 hover:bg-amber-100/80 animate-pulse'
-                : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-            }`}
+            title="WhatsApp Integration Status (WPPConnect) - Click for details"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100/80 transition-colors cursor-pointer"
           >
             <span
-              className={`w-2 h-2 rounded-full ${
-                isWppReady ? 'bg-emerald-500' : hasWppQr ? 'bg-amber-500 ring-2 ring-amber-300' : 'bg-slate-400'
+              className={`w-2 h-2 rounded-full shrink-0 ${
+                isWppReady ? 'bg-emerald-500' : hasWppQr ? 'bg-amber-500' : 'bg-slate-400'
               }`}
+              aria-hidden="true"
             />
-            <span className="hidden md:inline">WhatsApp</span>
-            <span className="font-bold">
+            <span className="hidden md:inline text-slate-500">WhatsApp</span>
+            <span className={isWppReady ? 'text-emerald-700 font-semibold' : hasWppQr ? 'text-amber-700 font-semibold' : 'text-slate-600'}>
               {isWppReady ? 'Connected' : hasWppQr ? 'Scan QR' : 'Offline'}
             </span>
-            {hasWppQr && <QrCode className="w-3.5 h-3.5 ml-0.5" />}
+            {hasWppQr && <QrCode className="w-3.5 h-3.5 ml-0.5 text-amber-600" />}
           </button>
 
           {/* Refresh button */}

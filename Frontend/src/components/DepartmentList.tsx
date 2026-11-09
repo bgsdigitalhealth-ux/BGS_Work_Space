@@ -34,7 +34,7 @@ export const DepartmentList: React.FC = () => {
             setEditingDept(null);
             setIsAddDeptOpen(true);
           }}
-          className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg flex items-center gap-1 transition-colors shadow-sm cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>Add Department</span>
@@ -53,9 +53,9 @@ export const DepartmentList: React.FC = () => {
               <button
                 key={dept.id}
                 onClick={() => setSelectedDepartment(dept)}
-                className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-left text-sm font-semibold transition-all cursor-pointer ${isSelected
-                  ? 'bg-indigo-50/90 text-indigo-900 border border-indigo-200/80 shadow-2xs'
-                  : 'text-slate-700 hover:bg-slate-50 border border-transparent'
+                className={`w-full flex items-center justify-between py-2.5 pr-3 text-left text-sm font-semibold transition-all cursor-pointer rounded-r-xl ${isSelected
+                  ? 'border-l-4 border-indigo-600 pl-3 bg-indigo-50/70 text-indigo-950 font-bold'
+                  : 'border-l-4 border-transparent pl-3 text-slate-700 hover:bg-slate-50/80'
                   }`}
               >
                 <div className="flex items-center gap-3 truncate">
