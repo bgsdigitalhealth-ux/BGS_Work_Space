@@ -1256,70 +1256,52 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </div>
             </div>
 
-            {/* 4 Feature Badges in matching Frosted Glass */}
+            {/* 4 Feature Badges in matching Frosted Glass (Display / Viewing Only) */}
             <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
-                onClick={() => setSelectedDeptInfo({
-                  title: 'Team Management',
-                  desc: 'Unified team directory, department hierarchies, member assignments, and collaborative project execution.',
-                  icon: Users
-                })}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
                   <Users className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Team Management
                 </h4>
               </div>
 
               {/* Feature 2: Work Request */}
               <div
-                onClick={() => {
-                  setSelectedRequestType(requestTypes[0]);
-                  setRequestFormSubmitted(false);
-                }}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
                   <ClipboardCheck className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Work Request
                 </h4>
               </div>
 
               {/* Feature 3: Appointment Scheduling */}
               <div
-                onClick={() => {
-                  setSelectedRequestType(requestTypes[0]);
-                  setRequestFormSubmitted(false);
-                }}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
                   <Calendar className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Appointment Scheduling
                 </h4>
               </div>
 
               {/* Feature 4: Real-time Messaging */}
               <div
-                onClick={() => setSelectedDeptInfo({
-                  title: 'Real-time Messaging',
-                  desc: 'Encrypted peer-to-peer and group messaging, direct notifications, and instant video meetings for seamless hospital communication.',
-                  icon: MessageSquare
-                })}
-                className="p-4 rounded-2xl bg-white/35 hover:bg-white/60 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:shadow-[0_12px_28px_rgba(0,0,0,0.12)] transition-all duration-300 group cursor-pointer transform hover:-translate-y-1"
+                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 group-hover:scale-110 shadow-xs transition-transform">
+                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
                   <MessageSquare className="w-5 h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Real-time Messaging
                 </h4>
               </div>
