@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ArrowRight,
   ChevronDown,
@@ -41,6 +41,41 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const { currentUser } = useApp();
   const [activeCategory, setActiveCategory] = useState<'overview' | 'departments' | 'requests' | 'appointments' | 'about'>('departments');
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
+  const megaMenuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleMenuMouseEnter = () => {
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+      megaMenuTimeoutRef.current = null;
+    }
+    setActiveCategory('departments');
+    setMegaMenuOpen(true);
+  };
+
+  const handleMenuMouseLeave = () => {
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+    }
+    megaMenuTimeoutRef.current = setTimeout(() => {
+      setMegaMenuOpen(false);
+    }, 220);
+  };
+
+  const handleOtherNavHover = () => {
+    if (megaMenuTimeoutRef.current) {
+      clearTimeout(megaMenuTimeoutRef.current);
+      megaMenuTimeoutRef.current = null;
+    }
+    setMegaMenuOpen(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (megaMenuTimeoutRef.current) {
+        clearTimeout(megaMenuTimeoutRef.current);
+      }
+    };
+  }, []);
   const [selectedDeptInfo, setSelectedDeptInfo] = useState<{ title: string; desc: string; icon: any } | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
@@ -645,6 +680,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 setActiveCategory('overview');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+              onMouseEnter={handleOtherNavHover}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
                 activeCategory === 'overview'
                   ? 'bg-white text-gray-950 font-bold shadow-xs'
@@ -660,12 +696,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 setActiveCategory('departments');
                 setMegaMenuOpen(!megaMenuOpen);
               }}
+              onMouseEnter={handleMenuMouseEnter}
+              onMouseLeave={handleMenuMouseLeave}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer flex items-center gap-2 ${
                 activeCategory === 'departments'
                   ? 'bg-slate-900 text-white font-bold shadow-xs'
                   : 'text-gray-600 hover:text-gray-950 hover:bg-white/50'
               }`}
-              title="Click to toggle navigation menu"
+              title="Hover or click to toggle navigation menu"
             >
               <span>Departments</span>
               <span className={`w-4 h-4 rounded-full text-[10px] flex items-center justify-center font-bold ${
@@ -682,6 +720,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 const el = document.getElementById('content-pages-section');
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }}
+              onMouseEnter={handleOtherNavHover}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
                 activeCategory === 'requests'
                   ? 'bg-white text-gray-950 font-bold shadow-xs'
@@ -697,6 +736,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 setSelectedRequestType(requestTypes[0]);
                 setRequestFormSubmitted(false);
               }}
+              onMouseEnter={handleOtherNavHover}
               className={`px-4 py-1.5 rounded-full transition-all cursor-pointer ${
                 activeCategory === 'appointments'
                   ? 'bg-white text-gray-950 font-bold shadow-xs'
@@ -708,6 +748,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
             <button
               onClick={() => setShowAboutModal(true)}
+              onMouseEnter={handleOtherNavHover}
               className="px-4 py-1.5 rounded-full text-gray-600 hover:text-gray-950 hover:bg-white/50 transition-all cursor-pointer"
             >
               About
@@ -715,6 +756,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
             <button
               onClick={() => setShowContactModal(true)}
+              onMouseEnter={handleOtherNavHover}
               className="px-4 py-1.5 rounded-full text-gray-600 hover:text-gray-950 hover:bg-white/50 transition-all cursor-pointer"
             >
               Contact
@@ -890,7 +932,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
       {/* ---------------- MEGA-MENU SUB-NAVIGATION BAR (Menu navigation [1] in Figma Diagram) ---------------- */}
       {megaMenuOpen && (
-        <section className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200">
+        <section
+          onMouseEnter={handleMenuMouseEnter}
+          onMouseLeave={handleMenuMouseLeave}
+          className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200"
+        >
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
