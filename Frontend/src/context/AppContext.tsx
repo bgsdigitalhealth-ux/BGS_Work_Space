@@ -611,8 +611,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       setAllUsers(sanitized);
       // If currently logged in user is deleted from the system, revoke access immediately
       if (currentUser && Array.isArray(sanitized) && sanitized.length > 0) {
-        const stillExists = sanitized.some(x => 
-          (currentUser.id && x.id === currentUser.id) || 
+        const stillExists = sanitized.some(x =>
+          (currentUser.id && x.id === currentUser.id) ||
           (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
         );
         if (!stillExists) {

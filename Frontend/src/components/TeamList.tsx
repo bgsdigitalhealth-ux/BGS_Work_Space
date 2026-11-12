@@ -42,11 +42,10 @@ export const TeamList: React.FC = () => {
                 key={team.id}
                 type="button"
                 onClick={() => setSelectedTeam(team)}
-                className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left text-sm font-medium transition-all cursor-pointer relative ${
-                  isSelected
-                    ? 'bg-indigo-50/70 text-indigo-950 font-bold border-l-4 border-indigo-600 pl-2.5'
-                    : 'text-slate-700 hover:bg-slate-50 border-l-4 border-transparent'
-                }`}
+                className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left text-sm font-medium transition-all cursor-pointer relative ${isSelected
+                  ? 'bg-indigo-50/70 text-indigo-950 font-bold border-l-4 border-indigo-600 pl-2.5'
+                  : 'text-slate-700 hover:bg-slate-50 border-l-4 border-transparent'
+                  }`}
               >
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isSelected ? 'bg-indigo-100 text-indigo-700' : 'bg-slate-100 text-slate-500'}`}>
                   <Users className="w-4 h-4" />

@@ -60,6 +60,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       setLiveDepartments(contextDepartments);
     }
   }, [contextDepartments]);
+
+  useEffect(() => {
+    if (liveDepartments.length > 0 && !reqDepartment) {
+      setReqDepartment(liveDepartments[0].name);
+    }
+  }, [liveDepartments]);
   const [activeCategory, setActiveCategory] = useState<'overview' | 'departments' | 'requests' | 'appointments' | 'about'>('departments');
   const [megaMenuOpen, setMegaMenuOpen] = useState(false);
   const isOverTriggerRef = useRef(false);
@@ -141,7 +147,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [reqName, setReqName] = useState('');
   const [reqEmail, setReqEmail] = useState('');
   const [reqPhone, setReqPhone] = useState('');
-  const [reqDepartment, setReqDepartment] = useState('Clinical Departments');
+  const [reqDepartment, setReqDepartment] = useState('');
   const [reqSubject, setReqSubject] = useState('');
   const [reqDate, setReqDate] = useState(() => {
     const tomorrow = new Date();
@@ -695,30 +701,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
-  const fallbackCol1 = [
-    { id: 'clinical', name: 'Clinical Medicine & Outpatient', icon: 'stethoscope', description: 'Inpatient & outpatient clinical care, surgical specialties & emergency medicine.' },
-    { id: 'emergency', name: 'Emergency & Trauma Services', icon: 'stethoscope', description: '24/7 acute trauma stabilization, emergency triage and critical ambulance response.' },
-    { id: 'surgery', name: 'General Surgery & Critical Care', icon: 'stethoscope', description: 'Advanced surgical suites, intensive care coordination and post-op care.' },
-    { id: 'pediatrics', name: 'Pediatrics & Maternal Health', icon: 'stethoscope', description: 'Specialized neonatal care, pediatric medicine and maternal wellness.' },
-  ];
-
-  const fallbackCol2 = [
-    { id: 'pathology', name: 'Pathology & Microbiology Labs', icon: 'flask', description: 'Comprehensive diagnostic pathology, histology, microbiology cultures and automated analysis.' },
-    { id: 'radiology', name: 'Radiology & Advanced Imaging', icon: 'flask', description: 'Digital X-ray, multi-slice CT, 3T MRI, ultrasound and interventional radiology services.' },
-    { id: 'biochem', name: 'Clinical Biochemistry Diagnostics', icon: 'flask', description: 'High-throughput automated clinical biochemistry, hormone assays and toxicology screening.' },
-    { id: 'digital-ai', name: 'Digital AI & Health Informatics', icon: 'code', description: 'Institutional artificial intelligence, health informatics and electronic health record integration.' },
-  ];
-
   const hasLiveDepts = liveDepartments.length > 0;
-  const col1Depts = hasLiveDepts
-    ? (liveDepartments.length > 4 ? liveDepartments.slice(0, Math.ceil(liveDepartments.length / 2)) : liveDepartments)
-    : fallbackCol1;
+  const col1Depts = liveDepartments.length > 4
+    ? liveDepartments.slice(0, Math.ceil(liveDepartments.length / 2))
+    : liveDepartments;
 
-  const col2Depts = hasLiveDepts && liveDepartments.length > 4
+  const col2Depts = liveDepartments.length > 4
     ? liveDepartments.slice(Math.ceil(liveDepartments.length / 2))
-    : fallbackCol2;
+    : [];
 
-  const allAvailableDepts = hasLiveDepts ? liveDepartments : [...fallbackCol1, ...fallbackCol2];
+  const allAvailableDepts = liveDepartments;
 
   const handleDeptClick = (dept: { id?: string; name?: string; title?: string; description?: string; desc?: string; icon?: any }) => {
     const title = dept.name || dept.title || 'Department';
@@ -1017,23 +1009,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
                 {mobileDeptAccordion && (
                   <div className="mt-1.5 ml-2 pl-3 border-l-2 border-purple-100 space-y-1 py-1 animate-in fade-in duration-150">
-                    {allAvailableDepts.map(dept => {
-                      const Icon = getDeptIcon(dept.icon);
-                      return (
-                        <button
-                          key={dept.id}
-                          type="button"
-                          onClick={() => {
-                            handleDeptClick(dept);
-                            setMobileMenuOpen(false);
-                          }}
-                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:text-[#5a36e6] hover:bg-purple-50/70 text-left transition-colors cursor-pointer"
-                        >
-                          <Icon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                          <span className="truncate">{dept.name}</span>
-                        </button>
-                      );
-                    })}
+                    {allAvailableDepts.length > 0 ? (
+                      allAvailableDepts.map(dept => {
+                        const Icon = getDeptIcon(dept.icon);
+                        return (
+                          <button
+                            key={dept.id}
+                            type="button"
+                            onClick={() => {
+                              handleDeptClick(dept);
+                              setMobileMenuOpen(false);
+                            }}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:text-[#5a36e6] hover:bg-purple-50/70 text-left transition-colors cursor-pointer"
+                          >
+                            <Icon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                            <span className="truncate">{dept.name}</span>
+                          </button>
+                        );
+                      })
+                    ) : (
+                      <p className="text-xs text-gray-400 italic px-3 py-1">No departments created yet</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1156,63 +1152,69 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               </button>
             </div>
 
-            {/* 4 Multi-Column Menu Navigation Groups matching Figma wireframe */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8">
-              {/* Column 1: Hospital Departments (Live Sync from Database) */}
+            {/* Multi-Column Menu Navigation Groups */}
+            <div className={`grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8 ${col2Depts.length > 0 ? 'lg:grid-cols-4' : 'lg:grid-cols-3'}`}>
+              {/* Column 1: Hospital Departments (Live Sync from Database - Real Only) */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-purple-400 font-bold text-xs uppercase tracking-wider">
                   <Building2 className="w-3.5 h-3.5" />
                   <span>Hospital Departments</span>
                 </div>
-                <ul className="space-y-2 text-xs text-slate-300">
-                  {col1Depts.map((dept) => {
-                    const Icon = getDeptIcon(dept.icon);
-                    return (
-                      <li key={dept.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeptClick(dept)}
-                          className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Icon className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                            <span className="truncate">{dept.name}</span>
-                          </div>
-                          <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                {col1Depts.length > 0 ? (
+                  <ul className="space-y-2 text-xs text-slate-300">
+                    {col1Depts.map((dept) => {
+                      const Icon = getDeptIcon(dept.icon);
+                      return (
+                        <li key={dept.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeptClick(dept)}
+                            className="hover:text-purple-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Icon className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                              <span className="truncate">{dept.name}</span>
+                            </div>
+                            <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-purple-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : (
+                  <p className="text-xs text-slate-500 italic py-1">No departments created yet</p>
+                )}
               </div>
 
-              {/* Column 2: Specialized & Diagnostic Services (Or 2nd Half of Live Departments) */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-emerald-400 font-bold text-xs uppercase tracking-wider">
-                  <FlaskConical className="w-3.5 h-3.5" />
-                  <span>{hasLiveDepts && liveDepartments.length > 4 ? 'Allied Departments' : 'Diagnostics & Research'}</span>
+              {/* Column 2: Allied Departments (Rendered dynamically ONLY when admin creates > 4 departments) */}
+              {col2Depts.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-slate-800 text-emerald-400 font-bold text-xs uppercase tracking-wider">
+                    <FlaskConical className="w-3.5 h-3.5" />
+                    <span>Allied Departments</span>
+                  </div>
+                  <ul className="space-y-2 text-xs text-slate-300">
+                    {col2Depts.map((dept) => {
+                      const Icon = getDeptIcon(dept.icon);
+                      return (
+                        <li key={dept.id}>
+                          <button
+                            type="button"
+                            onClick={() => handleDeptClick(dept)}
+                            className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Icon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="truncate">{dept.name}</span>
+                            </div>
+                            <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 </div>
-                <ul className="space-y-2 text-xs text-slate-300">
-                  {col2Depts.map((dept) => {
-                    const Icon = getDeptIcon(dept.icon);
-                    return (
-                      <li key={dept.id}>
-                        <button
-                          type="button"
-                          onClick={() => handleDeptClick(dept)}
-                          className="hover:text-emerald-300 text-left transition flex items-center justify-between w-full group cursor-pointer py-0.5"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <Icon className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="truncate">{dept.name}</span>
-                          </div>
-                          <ChevronRight className="w-3 h-3 text-slate-600 group-hover:text-emerald-400 group-hover:translate-x-0.5 transition shrink-0 ml-2" />
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
+              )}
 
               {/* Column 3: Work Requests & Meet */}
               <div className="space-y-3">
@@ -1506,13 +1508,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             <div className="space-y-3">
               <h5 className="text-xs font-bold uppercase tracking-wider text-slate-300">Departments</h5>
               <ul className="space-y-2 text-xs text-slate-400">
-                {allAvailableDepts.slice(0, 5).map((d) => (
-                  <li key={d.id}>
-                    <button onClick={() => handleDeptClick(d)} className="hover:text-white transition cursor-pointer text-left truncate max-w-full">
-                      {d.name}
-                    </button>
-                  </li>
-                ))}
+                {allAvailableDepts.length > 0 ? (
+                  allAvailableDepts.slice(0, 5).map((d) => (
+                    <li key={d.id}>
+                      <button onClick={() => handleDeptClick(d)} className="hover:text-white transition cursor-pointer text-left truncate max-w-full">
+                        {d.name}
+                      </button>
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-xs text-slate-500 italic">No departments registered</li>
+                )}
               </ul>
             </div>
 

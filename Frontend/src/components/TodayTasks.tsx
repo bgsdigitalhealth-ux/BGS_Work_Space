@@ -76,15 +76,14 @@ export const TodayTasks: React.FC = () => {
                       {task.title}
                     </span>
                     {task.assignmentType && (
-                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${
-                        task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                      <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold shrink-0 ${task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
                         task.assignmentType === 'admin_to_admin' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                        task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                        'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}>
+                          task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        }`}>
                         {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
-                         task.assignmentType === 'admin_to_admin' ? 'Admin → Admin' :
-                         task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'User → User'}
+                          task.assignmentType === 'admin_to_admin' ? 'Admin → Admin' :
+                            task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'User → User'}
                       </span>
                     )}
                   </div>

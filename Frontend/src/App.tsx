@@ -36,12 +36,12 @@ export const App: React.FC = () => {
 
   if (isMeetingRoute && meetingId) {
     return (
-      <MeetingRoom 
-        meetingId={meetingId} 
+      <MeetingRoom
+        meetingId={meetingId}
         onLeave={() => {
           window.history.pushState({}, '', '/');
           window.location.href = '/';
-        }} 
+        }}
       />
     );
   }
@@ -59,9 +59,9 @@ export const App: React.FC = () => {
       return <LoginPage onBack={() => setAuthView('landing')} />;
     }
     return (
-      <LandingPage 
-        onLogin={() => setAuthView('login')} 
-        onAssignWork={() => {}} 
+      <LandingPage
+        onLogin={() => setAuthView('login')}
+        onAssignWork={() => { }}
       />
     );
   }
@@ -125,7 +125,7 @@ export const App: React.FC = () => {
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col min-w-0 pt-6 px-4 sm:pt-8 sm:px-6 lg:px-8 pb-8 overflow-y-auto w-full">
         <Header />
-        
+
         {adminNav === 'appointments' ? (
           /* Admin Side - Appointment Management */
           <AdminAppointments />

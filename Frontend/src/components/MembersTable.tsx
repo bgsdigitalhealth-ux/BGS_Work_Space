@@ -144,11 +144,10 @@ export const MembersTable: React.FC = () => {
           role="tab"
           aria-selected={teamSubTab === 'Members'}
           onClick={() => setTeamSubTab('Members')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Members'
-              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${teamSubTab === 'Members'
+            ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Users className="w-3.5 h-3.5" />
           <span>Members ({members.length})</span>
@@ -158,11 +157,10 @@ export const MembersTable: React.FC = () => {
           role="tab"
           aria-selected={teamSubTab === 'Roles'}
           onClick={() => setTeamSubTab('Roles')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Roles'
-              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${teamSubTab === 'Roles'
+            ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <Send className="w-3.5 h-3.5" />
           <span>+ Roles & Work</span>
@@ -172,11 +170,10 @@ export const MembersTable: React.FC = () => {
           role="tab"
           aria-selected={teamSubTab === 'Tasks'}
           onClick={() => setTeamSubTab('Tasks')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'Tasks'
-              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${teamSubTab === 'Tasks'
+            ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <CheckSquare className="w-3.5 h-3.5" />
           <span>Today's Tasks ({tasks.length})</span>
@@ -186,11 +183,10 @@ export const MembersTable: React.FC = () => {
           role="tab"
           aria-selected={teamSubTab === 'WorkDone'}
           onClick={() => setTeamSubTab('WorkDone')}
-          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-            teamSubTab === 'WorkDone'
-              ? 'bg-white text-indigo-700 shadow-2xs font-bold'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
+          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${teamSubTab === 'WorkDone'
+            ? 'bg-white text-indigo-700 shadow-2xs font-bold'
+            : 'text-slate-600 hover:text-slate-900'
+            }`}
         >
           <CheckCircle2 className="w-3.5 h-3.5" />
           <span>Today's Work Done ({workDone.length})</span>

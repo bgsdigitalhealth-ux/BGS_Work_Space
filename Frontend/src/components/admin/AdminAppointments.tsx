@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  XCircle, 
-  Search, 
-  Filter, 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
-  Eye, 
-  Edit2, 
-  Trash2, 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Search,
+  Filter,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Eye,
+  Edit2,
+  Trash2,
   X,
   Video
 } from 'lucide-react';
@@ -20,10 +20,10 @@ import { useApp } from '../../context/AppContext';
 import { Appointment } from '../../types';
 
 export const AdminAppointments: React.FC = () => {
-  const { 
-    appointments, 
-    appointmentStats, 
-    selectedAppointmentDate, 
+  const {
+    appointments,
+    appointmentStats,
+    selectedAppointmentDate,
     setSelectedAppointmentDate,
     handleCreateAppointment,
     handleUpdateAppointment,
@@ -169,7 +169,7 @@ export const AdminAppointments: React.FC = () => {
         </div>
 
         {/* Today's Appointments */}
-        <div 
+        <div
           onClick={() => setActiveTab('Today')}
           className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -183,7 +183,7 @@ export const AdminAppointments: React.FC = () => {
         </div>
 
         {/* Completed */}
-        <div 
+        <div
           onClick={() => setActiveTab('Completed')}
           className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -197,7 +197,7 @@ export const AdminAppointments: React.FC = () => {
         </div>
 
         {/* Upcoming */}
-        <div 
+        <div
           onClick={() => setActiveTab('Upcoming')}
           className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -211,7 +211,7 @@ export const AdminAppointments: React.FC = () => {
         </div>
 
         {/* Cancelled */}
-        <div 
+        <div
           onClick={() => setActiveTab('Cancelled')}
           className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-xs flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -266,11 +266,10 @@ export const AdminAppointments: React.FC = () => {
                 <button
                   key={day}
                   onClick={() => setSelectedAppointmentDate(dateStr)}
-                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative ${
-                    isSelected
-                      ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative ${isSelected
+                    ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <span>{day}</span>
                   {hasEvents && !isSelected && (
@@ -301,11 +300,10 @@ export const AdminAppointments: React.FC = () => {
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
-                  className={`px-3 py-1.5 rounded-xl transition ${
-                    activeTab === tab
-                      ? 'bg-purple-50 text-[#5a36e6] font-bold'
-                      : 'hover:text-gray-800'
-                  }`}
+                  className={`px-3 py-1.5 rounded-xl transition ${activeTab === tab
+                    ? 'bg-purple-50 text-[#5a36e6] font-bold'
+                    : 'hover:text-gray-800'
+                    }`}
                 >
                   {tab === 'All' ? 'All Appointments' : tab}
                 </button>
@@ -470,7 +468,7 @@ export const AdminAppointments: React.FC = () => {
               <h3 className="font-bold text-gray-900 text-base">
                 {editingItem ? 'Edit Appointment' : 'New Appointment'}
               </h3>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100"
               >
@@ -627,7 +625,7 @@ export const AdminAppointments: React.FC = () => {
               <span className="text-xs font-bold text-[#5a36e6] bg-indigo-50 px-2 py-0.5 rounded-md">
                 Appointment Details
               </span>
-              <button 
+              <button
                 onClick={() => setViewingItem(null)}
                 className="p-1 rounded-lg text-gray-400 hover:text-gray-700"
               >
