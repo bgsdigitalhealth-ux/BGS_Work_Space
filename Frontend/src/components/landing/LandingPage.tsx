@@ -123,6 +123,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileDeptAccordion, setMobileDeptAccordion] = useState(false);
 
   // Work Request State (Chip style popup & direct submission without login)
   const [workRequestDropdownOpen, setWorkRequestDropdownOpen] = useState(false);
@@ -745,13 +746,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         onMouseLeave={handleMenuLeave}
       >
         <header className="w-full bg-white/80 backdrop-blur-md border-b border-gray-200/50 transition-all">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 sm:h-20 flex items-center justify-between">
 
           {/* Left Brand Logo & Title */}
-          <div className="flex items-center gap-4 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <div className="flex items-center gap-3 sm:gap-4 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
             {/* Custom Green Leaf Brand Icon from screenshot */}
-            <div className="w-10 h-10 flex items-center justify-center">
-              <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-9 h-9">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center">
+              <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8 sm:w-9 sm:h-9">
                 <path d="M12 28C10 20 18 10 28 8C26 18 18 28 12 28Z" fill="#22c55e" />
                 <path d="M12 28C16 28 22 22 28 8C18 10 10 20 12 28Z" fill="#15803d" />
                 <path d="M14 26C18 20 22 14 28 8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
@@ -759,8 +760,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
 
             <div>
-              <h1 className="text-xl font-extrabold text-gray-950 tracking-tight leading-none">WorkHub</h1>
-              <p className="text-[11px] font-medium text-gray-500 tracking-wide mt-0.5">Team Workspace</p>
+              <h1 className="text-lg sm:text-xl font-extrabold text-gray-950 tracking-tight leading-none">WorkHub</h1>
+              <p className="text-[10px] sm:text-[11px] font-medium text-gray-500 tracking-wide mt-0.5">Team Workspace</p>
             </div>
 
             {/* Vertical separator | */}
@@ -866,17 +867,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <button
                 type="button"
                 onClick={() => setWorkRequestDropdownOpen(!workRequestDropdownOpen)}
-                className="px-4 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
+                className="px-3.5 sm:px-5 py-2 rounded-full bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs sm:text-sm shadow-md shadow-purple-600/25 flex items-center gap-1.5 transition-all cursor-pointer"
                 title="Work Request Options"
               >
                 <span>Work Request</span>
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${workRequestDropdownOpen ? 'rotate-180' : ''}`} />
               </button>
 
-              {/* Chip-Style Dropdown Menu (Matching User Screenshot) */}
+              {/* Chip-Style Dropdown Menu (Responsive Width) */}
               {workRequestDropdownOpen && (
                 <div
-                  className="absolute right-0 mt-3 w-80 sm:w-96 bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
+                  className="absolute right-0 mt-3 w-[calc(100vw-2rem)] max-w-sm sm:w-96 bg-white/98 backdrop-blur-xl rounded-3xl shadow-2xl border border-gray-100 p-3 z-50 animate-in fade-in zoom-in-95 duration-150"
                   onMouseLeave={() => setWorkRequestDropdownOpen(false)}
                 >
                   <div className="flex items-center justify-between px-2 pt-1 pb-2.5 mb-1.5 border-b border-gray-100">
@@ -923,11 +924,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               )}
             </div>
 
-            {/* Mobile Hamburger Menu Button */}
+            {/* Mobile Hamburger Menu Button (Visible below 1024px lg breakpoint) */}
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-xl text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-gray-700 hover:bg-purple-50 transition-colors cursor-pointer"
               title="Toggle Menu"
             >
               {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -935,88 +936,198 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
           </div>
         </div>
 
-        {/* Mobile Navigation Dropdown */}
+        {/* Mobile Navigation Drawer Backdrop */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-white/95 backdrop-blur-xl border-b border-purple-100 px-4 py-4 space-y-3 animate-in slide-in-from-top-2 duration-200">
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-              }}
-              className="w-full text-left px-3 py-2 rounded-xl text-sm font-semibold text-[#5a36e6] bg-purple-50"
-            >
-              Home
-            </button>
+          <div
+            className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs lg:hidden animate-in fade-in duration-200"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+        )}
 
-            {/* Department Options for mobile */}
-            <div className="space-y-1">
-              <div className="px-3 py-1 text-xs font-bold uppercase tracking-wider text-gray-400">
-                Departments
+        {/* Mobile Navigation Off-Canvas Drawer */}
+        <div
+          className={`fixed inset-y-0 right-0 z-50 w-full max-w-xs sm:max-w-sm bg-white/95 backdrop-blur-2xl shadow-2xl border-l border-purple-100 flex flex-col transform transition-transform duration-300 ease-in-out lg:hidden ${
+            mobileMenuOpen ? 'translate-x-0' : 'translate-x-full pointer-events-none'
+          }`}
+        >
+          {/* Drawer Header */}
+          <div className="p-4 sm:p-5 border-b border-gray-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 flex items-center justify-center">
+                <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
+                  <path d="M12 28C10 20 18 10 28 8C26 18 18 28 12 28Z" fill="#22c55e" />
+                  <path d="M12 28C16 28 22 22 28 8C18 10 10 20 12 28Z" fill="#15803d" />
+                  <path d="M14 26C18 20 22 14 28 8" stroke="#ffffff" strokeWidth="1.5" strokeLinecap="round" />
+                </svg>
               </div>
-              <div className="grid grid-cols-1 gap-1 pl-1">
-                {allAvailableDepts.slice(0, 6).map(dept => {
-                  const Icon = getDeptIcon(dept.icon);
-                  return (
-                    <button
-                      key={dept.id}
-                      onClick={() => {
-                        handleDeptClick(dept);
-                        setMobileMenuOpen(false);
-                      }}
-                      className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-gray-700 hover:bg-purple-50 hover:text-[#5a36e6] text-left transition-colors cursor-pointer"
-                    >
-                      <Icon className="w-4 h-4 text-purple-600 shrink-0" />
-                      <span>{dept.name}</span>
-                    </button>
-                  );
-                })}
+              <div>
+                <h3 className="font-bold text-gray-900 text-sm">WorkHub</h3>
+                <p className="text-[10px] text-gray-500">Navigation Menu</p>
               </div>
             </div>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(false)}
+              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 cursor-pointer transition-colors"
+              title="Close Menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-            <div className="pt-2 border-t border-gray-100 flex flex-col gap-1.5">
+          {/* Drawer Body - Scrollable */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4">
+            {/* Nav Links */}
+            <div className="space-y-1">
               <button
+                type="button"
+                onClick={() => {
+                  setActiveCategory('overview');
+                  setMobileMenuOpen(false);
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                  activeCategory === 'overview'
+                    ? 'bg-purple-50 text-[#5a36e6]'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <span>Overview</span>
+                <ChevronRight className="w-4 h-4 opacity-50" />
+              </button>
+
+              {/* Departments Accordion */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setMobileDeptAccordion(!mobileDeptAccordion)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all cursor-pointer ${
+                    mobileDeptAccordion || activeCategory === 'departments'
+                      ? 'bg-purple-50 text-[#5a36e6]'
+                      : 'text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-600" />
+                    <span>Departments</span>
+                    {hasLiveDepts && (
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    )}
+                  </div>
+                  <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${mobileDeptAccordion ? 'rotate-180' : ''}`} />
+                </button>
+
+                {mobileDeptAccordion && (
+                  <div className="mt-1.5 ml-2 pl-3 border-l-2 border-purple-100 space-y-1 py-1 animate-in fade-in duration-150">
+                    {allAvailableDepts.map(dept => {
+                      const Icon = getDeptIcon(dept.icon);
+                      return (
+                        <button
+                          key={dept.id}
+                          type="button"
+                          onClick={() => {
+                            handleDeptClick(dept);
+                            setMobileMenuOpen(false);
+                          }}
+                          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-medium text-gray-700 hover:text-[#5a36e6] hover:bg-purple-50/70 text-left transition-colors cursor-pointer"
+                        >
+                          <Icon className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                          <span className="truncate">{dept.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setSelectedRequestType(requestTypes[2]);
+                  setRequestFormSubmitted(false);
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
+              >
+                <span>Work Requests</span>
+                <ChevronRight className="w-4 h-4 opacity-50" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setSelectedRequestType(requestTypes[0]);
+                  setRequestFormSubmitted(false);
+                }}
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
+              >
+                <span>Appointments</span>
+                <ChevronRight className="w-4 h-4 opacity-50" />
+              </button>
+
+              <button
+                type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setShowAboutModal(true);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
               >
-                About Platform
+                <span>About Platform</span>
+                <ChevronRight className="w-4 h-4 opacity-50" />
               </button>
+
               <button
+                type="button"
                 onClick={() => {
                   setMobileMenuOpen(false);
                   setShowContactModal(true);
                 }}
-                className="w-full text-left px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 cursor-pointer"
+                className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
               >
-                Contact & Support
+                <span>Contact &amp; Support</span>
+                <ChevronRight className="w-4 h-4 opacity-50" />
               </button>
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    onLogin();
-                  }}
-                  className="flex-1 py-2.5 rounded-full border border-gray-300 text-gray-800 font-semibold text-xs text-center cursor-pointer hover:border-[#5a36e6] hover:text-[#5a36e6]"
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setSelectedRequestType(requestTypes[0]);
-                    setRequestFormSubmitted(false);
-                  }}
-                  className="flex-1 py-2.5 rounded-full bg-[#5a36e6] text-white font-semibold text-xs text-center flex items-center justify-center gap-1.5 cursor-pointer hover:bg-[#4b28c7]"
-                >
-                  <span>Work Request</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
+            </div>
+
+            {/* Quick Contact & WhatsApp Pill in Mobile Drawer */}
+            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-100 space-y-2 text-xs">
+              <div className="flex items-center gap-1.5 text-emerald-700 font-semibold text-[11px]">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span>WhatsApp Dual-Receipts Monitored</span>
               </div>
+              <p className="text-[11px] text-gray-600">
+                Support: 789974697
+              </p>
             </div>
           </div>
-        )}
+
+          {/* Drawer Footer Actions */}
+          <div className="p-4 sm:p-5 border-t border-gray-100 flex flex-col gap-2.5 bg-gray-50/60">
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                onLogin();
+              }}
+              className="w-full py-2.5 rounded-xl border border-gray-300 hover:border-[#5a36e6] hover:text-[#5a36e6] bg-white text-gray-900 font-semibold text-xs text-center transition-all cursor-pointer shadow-2xs"
+            >
+              Sign In to Workspace
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setWorkRequestDropdownOpen(true);
+              }}
+              className="w-full py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4b28c7] text-white font-semibold text-xs text-center flex items-center justify-center gap-2 shadow-md shadow-purple-600/25 transition-all cursor-pointer"
+            >
+              <span>Work Request</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* ---------------- MEGA-MENU SUB-NAVIGATION BAR (Menu navigation in Figma Diagram) ---------------- */}
@@ -1024,9 +1135,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         <section
           onMouseEnter={handleMenuEnter}
           onMouseLeave={handleMenuLeave}
-          className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200"
+          className="w-full bg-slate-950 text-white border-b border-slate-800 shadow-2xl relative z-40 animate-in slide-in-from-top-3 duration-200 max-h-[85vh] overflow-y-auto"
         >
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-7">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-7">
             <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-800/80">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-[#a78bfa] flex items-center justify-center border border-purple-500/30 shrink-0">
@@ -1241,39 +1352,39 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </div>
 
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
           {/* Left Hero Details */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
             {/* Liquid Frosted Glass Hero Container */}
-            <div className="p-8 sm:p-11 rounded-3xl bg-white/30 hover:bg-white/35 backdrop-blur-2xl backdrop-saturate-150 border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)] max-w-2xl transition-all duration-300">
+            <div className="p-5 sm:p-8 lg:p-11 rounded-3xl bg-white/30 hover:bg-white/35 backdrop-blur-2xl backdrop-saturate-150 border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)] max-w-2xl transition-all duration-300">
               {/* Pill Tag */}
-              <span className="font-['Plus_Jakarta_Sans',sans-serif] text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-[#5a36e6] bg-purple-500/10 px-3.5 py-1.5 rounded-full border border-purple-400/30 backdrop-blur-md inline-flex items-center gap-2 mb-4 shadow-2xs">
+              <span className="font-['Plus_Jakarta_Sans',sans-serif] text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-[#5a36e6] bg-purple-500/10 px-3 sm:px-3.5 py-1.5 rounded-full border border-purple-400/30 backdrop-blur-md inline-flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 shadow-2xs">
                 <Sparkles className="w-3.5 h-3.5 text-[#5a36e6]" />
                 <span>TEAM COLLABORATION PLATFORM</span>
               </span>
 
               {/* Fancy Editorial Serif Headline */}
               <div className="space-y-1">
-                <h2 className="font-['Playfair_Display',Georgia,serif] text-5xl sm:text-6xl lg:text-7xl font-bold text-gray-950 tracking-tight leading-[1.05] drop-shadow-xs">
+                <h2 className="font-['Playfair_Display',Georgia,serif] text-4xl sm:text-6xl lg:text-7xl font-bold text-gray-950 tracking-tight leading-[1.08] sm:leading-[1.05] drop-shadow-xs break-words">
                   WorkHub
                 </h2>
-                <h2 className="font-['Playfair_Display',Georgia,serif] italic text-5xl sm:text-6xl lg:text-7xl font-semibold text-[#5a36e6] tracking-tight leading-[1.05] drop-shadow-xs">
+                <h2 className="font-['Playfair_Display',Georgia,serif] italic text-4xl sm:text-6xl lg:text-7xl font-semibold text-[#5a36e6] tracking-tight leading-[1.08] sm:leading-[1.05] drop-shadow-xs break-words">
                   Team Workspace
                 </h2>
               </div>
 
               {/* Paragraph Subtitle */}
-              <p className="mt-5 text-gray-800 text-base sm:text-lg max-w-xl leading-relaxed font-normal font-['Plus_Jakarta_Sans',sans-serif]">
+              <p className="mt-4 sm:mt-5 text-gray-800 text-sm sm:text-base lg:text-lg max-w-xl leading-relaxed font-normal font-['Plus_Jakarta_Sans',sans-serif]">
                 A unified platform to manage teams, assignments, appointments and communication — all in one workspace.
               </p>
 
               {/* Action Buttons Row */}
-              <div className="mt-8 flex items-center gap-4">
+              <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <button
                   onClick={onLogin}
-                  className="px-8 py-4 rounded-full bg-gradient-to-r from-[#5a36e6] via-[#6942ed] to-[#7952f5] hover:from-[#4b2ac9] hover:to-[#633ad8] text-white font-semibold text-sm shadow-[0_10px_25px_-5px_rgba(90,54,230,0.5)] flex items-center gap-2.5 transition-all transform hover:-translate-y-0.5 hover:shadow-[0_15px_30px_-5px_rgba(90,54,230,0.6)] cursor-pointer"
+                  className="px-8 py-3.5 sm:py-4 rounded-full bg-gradient-to-r from-[#5a36e6] via-[#6942ed] to-[#7952f5] hover:from-[#4b2ac9] hover:to-[#633ad8] text-white font-semibold text-xs sm:text-sm shadow-[0_10px_25px_-5px_rgba(90,54,230,0.5)] flex items-center justify-center gap-2.5 transition-all transform hover:-translate-y-0.5 hover:shadow-[0_15px_30px_-5px_rgba(90,54,230,0.6)] cursor-pointer"
                 >
                   <span>Login to Workspace</span>
                   <ArrowRight className="w-4 h-4" />
@@ -1282,51 +1393,51 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
 
             {/* 4 Feature Badges in matching Frosted Glass (Display / Viewing Only) */}
-            <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-4 max-w-2xl">
+            <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
-                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
+                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
-                  <Users className="w-5 h-5" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                  <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Team Management
                 </h4>
               </div>
 
               {/* Feature 2: Work Request */}
               <div
-                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
+                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
-                  <ClipboardCheck className="w-5 h-5" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                  <ClipboardCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Work Request
                 </h4>
               </div>
 
               {/* Feature 3: Appointment Scheduling */}
               <div
-                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
+                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
-                  <Calendar className="w-5 h-5" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                  <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Appointment Scheduling
                 </h4>
               </div>
 
               {/* Feature 4: Real-time Messaging */}
               <div
-                className="p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none"
+                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
               >
-                <div className="w-10 h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2.5 shadow-xs">
-                  <MessageSquare className="w-5 h-5" />
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <h4 className="text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
+                <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
                   Real-time Messaging
                 </h4>
               </div>
@@ -1339,27 +1450,27 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </main>
 
       {/* ---------------- BREADCRUMB LINKS (Breadcrumb links in Figma Diagram) ---------------- */}
-      <section className="w-full bg-slate-100/80 border-t border-b border-slate-200/70 py-3 relative z-20">
+      <section className="w-full bg-slate-100/80 border-t border-b border-slate-200/70 py-2.5 sm:py-3 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-[#5a36e6] hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-[#5a36e6] hover:underline flex items-center gap-1 cursor-pointer shrink-0"
             >
               <span>Home</span>
             </button>
-            <span className="text-slate-400">/</span>
+            <span className="text-slate-400 shrink-0">/</span>
             <button
               onClick={() => {
                 setActiveCategory('departments');
                 setMegaMenuOpen(true);
               }}
-              className="text-slate-700 hover:text-slate-950 hover:underline cursor-pointer"
+              className="text-slate-700 hover:text-slate-950 hover:underline cursor-pointer shrink-0"
             >
               Departments
             </button>
-            <span className="text-slate-400">/</span>
-            <span className="text-slate-900 font-bold bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+            <span className="text-slate-400 shrink-0">/</span>
+            <span className="text-slate-900 font-bold bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs shrink-0">
               Healthcare &amp; Administration Hub
             </span>
           </nav>
@@ -1367,12 +1478,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </section>
 
       {/* ---------------- STRUCTURED CONTENT SHOWCASE SECTION ---------------- */}
-      <section className="w-full bg-white/70 backdrop-blur-md py-12 lg:py-16 border-b border-slate-200/60 relative z-20">
+      <section className="w-full bg-white/70 backdrop-blur-md py-10 sm:py-12 lg:py-16 border-b border-slate-200/60 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Content Media Card */}
             <div className="lg:col-span-5">
-              <div className="rounded-3xl bg-slate-900 text-white p-7 shadow-2xl border border-slate-800 relative overflow-hidden">
+              <div className="rounded-3xl bg-slate-900 text-white p-5 sm:p-7 shadow-2xl border border-slate-800 relative overflow-hidden">
                 <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
                   <div className="flex items-center gap-2.5">
                     <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
@@ -1419,10 +1530,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <span className="text-xs font-bold uppercase tracking-wider text-[#5a36e6] bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
                 Institutional Architecture
               </span>
-              <h3 className="font-['Playfair_Display',Georgia,serif] text-3xl sm:text-4xl font-bold text-slate-900 leading-tight">
+              <h3 className="font-['Playfair_Display',Georgia,serif] text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
                 Unified Collaborative &amp; Workflows
               </h3>
-              <p className="text-sm text-slate-600 leading-relaxed">
+              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
                 WorkHub bridges administrative oversight, multi-departmental coordination, staff task tracking, and patient scheduling into a coherent, high-reliability workspace.
               </p>
 
@@ -1460,11 +1571,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
 
       {/* ---------------- MULTI-COLUMN FOOTER (Footer in Figma Diagram) ---------------- */}
-      <footer className="w-full bg-slate-950 text-white border-t border-slate-800 pt-12 pb-8 relative z-20">
+      <footer className="w-full bg-slate-950 text-white border-t border-slate-800 pt-10 sm:pt-12 pb-8 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-slate-800">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-slate-800">
             {/* Brand Logo & Bio */}
-            <div className="lg:col-span-2 space-y-4">
+            <div className="sm:col-span-2 lg:col-span-2 space-y-4">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 flex items-center justify-center">
                   <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-8 h-8">
@@ -1482,7 +1593,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                 Empowering hospital departments, clinical staff, and operations with synchronized assignments, real-time messaging, and automated WhatsApp delivery.
               </p>
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-slate-400">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span>256-Bit SSL Encrypted • BGS MCH Portal</span>
               </div>
             </div>
@@ -1502,7 +1613,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                   </button>
                 </li>
                 <li>
-                  <button onClick={() => { setSelectedRequestType(requestTypes[0]); setRequestFormSubmitted(false); }} className="hover:text-white transition cursor-pointer">
+                  <button onClick={() => { setSelectedRequestType(requestTypes[2]); setRequestFormSubmitted(false); }} className="hover:text-white transition cursor-pointer">
                     Work Requests
                   </button>
                 </li>
@@ -1520,7 +1631,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <ul className="space-y-2 text-xs text-slate-400">
                 {allAvailableDepts.slice(0, 5).map((d) => (
                   <li key={d.id}>
-                    <button onClick={() => handleDeptClick(d)} className="hover:text-white transition cursor-pointer">
+                    <button onClick={() => handleDeptClick(d)} className="hover:text-white transition cursor-pointer text-left truncate max-w-full">
                       {d.name}
                     </button>
                   </li>
@@ -1534,7 +1645,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
               <ul className="space-y-2 text-xs text-slate-400">
                 <li className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                  <a href="mailto:bgsmchhospitalnagarur@gmail.com" className="hover:text-white transition-colors">
+                  <a href="mailto:bgsmchhospitalnagarur@gmail.com" className="hover:text-white transition-colors truncate">
                     bgsmchhospitalnagarur@gmail.com
                   </a>
                 </li>
@@ -1558,7 +1669,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
           </div>
 
-          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3">
+          <div className="pt-6 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-500 gap-3 text-center sm:text-left">
             <p>© 2026 WorkHub • BGS Digital Health. All rights reserved.</p>
             <div className="flex items-center gap-4">
               <button onClick={() => setShowAboutModal(true)} className="hover:text-slate-300 transition cursor-pointer">About Platform</button>
@@ -1573,7 +1684,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* ---------------- MODAL 1: Department Info Modal ---------------- */}
       {selectedDeptInfo && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md border border-gray-100 shadow-2xl p-6 relative">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-100 shadow-2xl p-5 sm:p-6 relative">
             <button
               onClick={() => setSelectedDeptInfo(null)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1 rounded-lg hover:bg-gray-100 cursor-pointer"
@@ -1607,7 +1718,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* ---------------- MODAL 3: About Modal ---------------- */}
       {showAboutModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-lg border border-gray-100 shadow-2xl p-6 sm:p-8 relative">
+          <div className="bg-white rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto border border-gray-100 shadow-2xl p-5 sm:p-8 relative">
             <button
               onClick={() => setShowAboutModal(false)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
@@ -1640,7 +1751,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       {/* ---------------- MODAL 4: Contact Modal ---------------- */}
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-md border border-gray-100 shadow-2xl p-6 sm:p-8 relative">
+          <div className="bg-white rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto border border-gray-100 shadow-2xl p-5 sm:p-8 relative">
             <button
               onClick={() => setShowContactModal(false)}
               className="absolute right-4 top-4 text-gray-400 hover:text-gray-700 p-1.5 rounded-lg hover:bg-gray-100 cursor-pointer"
@@ -1682,7 +1793,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             /* DEDICATED PROFESSIONAL "MEETING" FORM (Playfair / Inter)       */
             /* Soft Ivory-to-Sage Background with Architectural Linework       */
             /* ============================================================== */
-            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all max-h-[90vh] overflow-y-auto">
 
               {/* Classical Architectural Neoclassical Column Linework (Left & Right) */}
               <svg className="hidden md:block absolute left-2 top-3 bottom-3 w-8 text-[#98af93]/40 pointer-events-none select-none h-[calc(100%-24px)]" viewBox="0 0 32 600" fill="none" preserveAspectRatio="none">
@@ -2146,7 +2257,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             /* DEDICATED PROFESSIONAL "EVENT ORGANIZE" FORM (Playfair / Inter) */
             /* Soft Ivory-to-Sage Background with Architectural Linework       */
             /* ============================================================== */
-            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-gradient-to-b from-[#f4f7f1] via-[#edf3ea] to-[#e4ede0] p-4 sm:p-8 animate-in zoom-in-95 duration-200 transition-all max-h-[90vh] overflow-y-auto">
               
               {/* Classical Architectural Neoclassical Colonnade & Archway SVGs (Left & Right) */}
               {/* Left Architectural Background Illustration (Arches & Campus Tower) */}
@@ -2480,7 +2591,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             /* DEDICATED "SUBMIT GENERAL INFORMATION" FORM                     */
             /* Matching Specification                                         */
             /* ============================================================== */
-            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-white p-6 sm:p-8 animate-in zoom-in-95 duration-200 transition-all">
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-[#c4d4c0] bg-white p-5 sm:p-8 animate-in zoom-in-95 duration-200 transition-all max-h-[90vh] overflow-y-auto">
               
               {/* Header with Title and Close Icon */}
               <div className="flex items-center justify-between mb-5">
