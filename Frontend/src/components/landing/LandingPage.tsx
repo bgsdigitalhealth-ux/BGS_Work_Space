@@ -23,9 +23,7 @@ import {
   Video,
   Copy,
   Sparkles,
-  ChevronRight,
-  Layers,
-  Check
+  ChevronRight
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -1352,15 +1350,15 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       </div>
 
       {/* ---------------- HERO SECTION (Matching Screenshot 1) ---------------- */}
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-16 flex flex-col justify-center w-full relative z-10">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-14 lg:py-20 flex flex-col justify-center w-full relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
           {/* Left Hero Details */}
           <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-center">
             {/* Liquid Frosted Glass Hero Container */}
-            <div className="p-5 sm:p-8 lg:p-11 rounded-3xl bg-white/30 hover:bg-white/35 backdrop-blur-2xl backdrop-saturate-150 border border-white/60 shadow-[0_16px_40px_rgba(0,0,0,0.12),inset_0_1px_1px_rgba(255,255,255,0.9)] max-w-2xl transition-all duration-300">
+            <div className="p-6 sm:p-9 lg:p-12 rounded-3xl bg-white/35 hover:bg-white/40 backdrop-blur-2xl backdrop-saturate-150 border border-white/70 shadow-[0_20px_50px_rgba(0,0,0,0.1),inset_0_1px_2px_rgba(255,255,255,0.95)] max-w-2xl transition-all duration-300">
               {/* Pill Tag */}
-              <span className="font-['Plus_Jakarta_Sans',sans-serif] text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-[#5a36e6] bg-purple-500/10 px-3 sm:px-3.5 py-1.5 rounded-full border border-purple-400/30 backdrop-blur-md inline-flex items-center gap-1.5 sm:gap-2 mb-3 sm:mb-4 shadow-2xs">
+              <span className="font-['Plus_Jakarta_Sans',sans-serif] text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] sm:tracking-[0.25em] text-[#5a36e6] bg-purple-500/10 px-3 sm:px-3.5 py-1.5 rounded-full border border-purple-400/30 backdrop-blur-md inline-flex items-center gap-1.5 sm:gap-2 mb-3.5 sm:mb-4 shadow-2xs">
                 <Sparkles className="w-3.5 h-3.5 text-[#5a36e6]" />
                 <span>TEAM COLLABORATION PLATFORM</span>
               </span>
@@ -1393,12 +1391,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
 
             {/* 4 Feature Badges in matching Frosted Glass (Display / Viewing Only) */}
-            <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 max-w-2xl">
+            <div className="mt-6 sm:mt-8 grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl">
               {/* Feature 1: Team Management */}
               <div
-                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
+                className="p-3.5 sm:p-4 rounded-2xl bg-white/45 backdrop-blur-2xl border border-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-all select-none min-h-[100px] sm:min-h-[110px] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/80 border border-white/90 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
                   <Users className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
@@ -1408,9 +1406,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Feature 2: Work Request */}
               <div
-                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
+                className="p-3.5 sm:p-4 rounded-2xl bg-white/45 backdrop-blur-2xl border border-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-all select-none min-h-[100px] sm:min-h-[110px] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/80 border border-white/90 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
                   <ClipboardCheck className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
@@ -1420,9 +1418,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Feature 3: Appointment Scheduling */}
               <div
-                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
+                className="p-3.5 sm:p-4 rounded-2xl bg-white/45 backdrop-blur-2xl border border-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-all select-none min-h-[100px] sm:min-h-[110px] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/80 border border-white/90 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
                   <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
@@ -1432,9 +1430,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
 
               {/* Feature 4: Real-time Messaging */}
               <div
-                className="p-3 sm:p-4 rounded-2xl bg-white/40 backdrop-blur-2xl border border-white/60 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all select-none min-h-[96px] sm:min-h-[108px] flex flex-col justify-between"
+                className="p-3.5 sm:p-4 rounded-2xl bg-white/45 backdrop-blur-2xl border border-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] transition-all select-none min-h-[100px] sm:min-h-[110px] flex flex-col justify-between"
               >
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/70 border border-white/80 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/80 border border-white/90 text-[#5a36e6] flex items-center justify-center mb-2 shadow-xs shrink-0">
                   <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <h4 className="text-[11px] sm:text-xs font-bold text-gray-900 leading-snug font-['Plus_Jakarta_Sans',sans-serif]">
@@ -1449,129 +1447,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
         </div>
       </main>
 
-      {/* ---------------- BREADCRUMB LINKS (Breadcrumb links in Figma Diagram) ---------------- */}
-      <section className="w-full bg-slate-100/80 border-t border-b border-slate-200/70 py-2.5 sm:py-3 relative z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav aria-label="Breadcrumb" className="flex items-center gap-2 text-xs font-semibold text-slate-500 overflow-x-auto whitespace-nowrap scrollbar-none py-0.5">
-            <button
-              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-[#5a36e6] hover:underline flex items-center gap-1 cursor-pointer shrink-0"
-            >
-              <span>Home</span>
-            </button>
-            <span className="text-slate-400 shrink-0">/</span>
-            <button
-              onClick={() => {
-                setActiveCategory('departments');
-                setMegaMenuOpen(true);
-              }}
-              className="text-slate-700 hover:text-slate-950 hover:underline cursor-pointer shrink-0"
-            >
-              Departments
-            </button>
-            <span className="text-slate-400 shrink-0">/</span>
-            <span className="text-slate-900 font-bold bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs shrink-0">
-              Healthcare &amp; Administration Hub
-            </span>
-          </nav>
-        </div>
-      </section>
-
-      {/* ---------------- STRUCTURED CONTENT SHOWCASE SECTION ---------------- */}
-      <section className="w-full bg-white/70 backdrop-blur-md py-10 sm:py-12 lg:py-16 border-b border-slate-200/60 relative z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-            {/* Left Content Media Card */}
-            <div className="lg:col-span-5">
-              <div className="rounded-3xl bg-slate-900 text-white p-5 sm:p-7 shadow-2xl border border-slate-800 relative overflow-hidden">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-800 mb-5">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold">
-                      <Layers className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-white">Department Workflow Hub</h4>
-                      <p className="text-[10px] text-slate-400">Enterprise Operations</p>
-                    </div>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                    Live Active
-                  </span>
-                </div>
-
-                <div className="space-y-2.5 text-xs">
-                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
-                    <span className="text-slate-300">Clinical &amp; Surgical Care</span>
-                    <span className="font-semibold text-purple-300">4 Sub-specialties</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
-                    <span className="text-slate-300">Diagnostic Pathology &amp; AI</span>
-                    <span className="font-semibold text-emerald-300">Verified Results</span>
-                  </div>
-                  <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/60 flex items-center justify-between">
-                    <span className="text-slate-300">Dual-Recipient WhatsApp Delivery</span>
-                    <span className="font-semibold text-sky-300">Automated</span>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={onLogin}
-                  className="mt-6 w-full py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4d2ec4] text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span>Access Dashboard Portal</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-            {/* Right Content Description */}
-            <div className="lg:col-span-7 space-y-4">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#5a36e6] bg-purple-50 px-3 py-1 rounded-full border border-purple-200">
-                Institutional Architecture
-              </span>
-              <h3 className="font-['Playfair_Display',Georgia,serif] text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 leading-tight">
-                Unified Collaborative &amp; Workflows
-              </h3>
-              <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
-                WorkHub bridges administrative oversight, multi-departmental coordination, staff task tracking, and patient scheduling into a coherent, high-reliability workspace.
-              </p>
-
-              <div className="space-y-2.5 pt-2">
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <p className="text-xs text-slate-700">
-                    <strong>Dual WhatsApp Receipts:</strong> Instant confirmation sent to both requester and recipient upon meeting or event scheduling.
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <p className="text-xs text-slate-700">
-                    <strong>Durable Task History:</strong> Every work submission, rework request, and administrator approval is logged with permanent audit timestamps.
-                  </p>
-                </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0 mt-0.5">
-                    <Check className="w-3 h-3 stroke-[3]" />
-                  </div>
-                  <p className="text-xs text-slate-700">
-                    <strong>Instant Video Meeting Rooms:</strong> Built-in WebRTC video rooms accessible directly from appointments with private meeting IDs.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-
-
       {/* ---------------- MULTI-COLUMN FOOTER (Footer in Figma Diagram) ---------------- */}
-      <footer className="w-full bg-slate-950 text-white border-t border-slate-800 pt-10 sm:pt-12 pb-8 relative z-20">
+      <footer className="w-full bg-slate-950/95 backdrop-blur-xl text-white border-t border-slate-800/80 pt-10 sm:pt-14 pb-8 relative z-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8 pb-10 border-b border-slate-800">
             {/* Brand Logo & Bio */}
