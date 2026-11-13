@@ -627,14 +627,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u = await api.getUsers();
       const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
       setAllUsers(sanitized);
-      // If currently logged in user is deleted from the system, revoke access immediately
-      if (currentUser && Array.isArray(sanitized) && sanitized.length > 0) {
+      // Strictly protect active administrators from unwarranted session termination.
+      // If a regular user account was genuinely deleted from the system, revoke access.
+      if (currentUser && currentUser.role !== 'admin' && Array.isArray(sanitized) && sanitized.length > 0) {
         const stillExists = sanitized.some(x =>
           (currentUser.id && x.id === currentUser.id) ||
           (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
         );
         if (!stillExists) {
-          console.warn('[Session] Current user not found in user database. Terminating session.');
+          console.warn('[Session] Current user account no longer active. Terminating session.');
           logout();
           alert('Your account has been deleted by an administrator. Access to the dashboard has been revoked.');
           window.location.href = '/';

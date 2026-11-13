@@ -86,7 +86,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Failed to create member');
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || err?.message || 'Failed to create member');
+    }
     return res.json();
   },
   updateMember: async (id: string, data: Partial<Member>): Promise<Member> => {
@@ -95,7 +98,10 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!res.ok) throw new Error('Failed to update member');
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || err?.message || 'Failed to update member');
+    }
     return res.json();
   },
   deleteMember: async (id: string): Promise<void> => {

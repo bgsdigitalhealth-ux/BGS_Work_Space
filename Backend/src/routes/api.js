@@ -411,7 +411,12 @@ router.post('/members', async (req, res) => {
     broadcast('ORG_CHANGED', { entity: 'member', action: 'create', data: created });
     res.status(201).json(created);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const isClientError = err.message && (
+      err.message.includes('already exists') ||
+      err.message.includes('required') ||
+      err.message.includes('cannot be used')
+    );
+    res.status(isClientError ? 400 : 500).json({ error: err.message });
   }
 });
 
@@ -422,7 +427,12 @@ router.put('/members/:id', async (req, res) => {
     broadcast('ORG_CHANGED', { entity: 'member', action: 'update', data: updated });
     res.json(updated);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    const isClientError = err.message && (
+      err.message.includes('already exists') ||
+      err.message.includes('required') ||
+      err.message.includes('cannot be used')
+    );
+    res.status(isClientError ? 400 : 500).json({ error: err.message });
   }
 });
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 
@@ -67,8 +67,12 @@ export const Modals: React.FC = () => {
   const [memPhone, setMemPhone] = useState('');
   const [memRole, setMemRole] = useState('Developer');
   const [memWork, setMemWork] = useState('');
+  const [memError, setMemError] = useState('');
+  const [memSubmitting, setMemSubmitting] = useState(false);
 
   useEffect(() => {
+    setMemError('');
+    setMemSubmitting(false);
     if (editingMember) {
       setMemName(editingMember.name);
       setMemEmail(editingMember.email);
@@ -144,32 +148,57 @@ export const Modals: React.FC = () => {
 
   const handleSaveMember = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memName || !memEmail || !selectedTeam || !selectedDepartment) return;
+    setMemError('');
+    if (!memName.trim() || !memEmail.trim()) {
+      setMemError('Please enter both Member Name and Email ID.');
+      return;
+    }
+    if (!selectedTeam || !selectedDepartment) {
+      setMemError('Please select an active Department and Team before adding a member.');
+      return;
+    }
+
+    setMemSubmitting(true);
+    let memberSaved = false;
+
     try {
       if (editingMember) {
         await api.updateMember(editingMember.id, {
-          name: memName,
-          email: memEmail,
-          phone: memPhone,
-          role: memRole,
-          assignedWork: memWork
+          name: memName.trim(),
+          email: memEmail.trim(),
+          phone: memPhone.trim(),
+          role: memRole.trim() || 'Developer',
+          assignedWork: memWork.trim()
         });
       } else {
         await api.createMember({
-          name: memName,
-          email: memEmail,
-          phone: memPhone,
-          role: memRole,
-          assignedWork: memWork,
+          name: memName.trim(),
+          email: memEmail.trim(),
+          phone: memPhone.trim(),
+          role: memRole.trim() || 'Developer',
+          assignedWork: memWork.trim(),
           teamId: selectedTeam.id,
           departmentId: selectedDepartment.id
         });
       }
+      memberSaved = true;
       setIsAddMemberOpen(false);
       setEditingMember(null);
-      await refreshAll();
-    } catch (err) {
-      console.error(err);
+      setMemSubmitting(false);
+
+      // Follow-up background refresh separated from save state
+      try {
+        await refreshAll();
+      } catch (refreshErr) {
+        console.warn('[Sync] Member created successfully, but background refresh encountered an error:', refreshErr);
+      }
+    } catch (err: any) {
+      setMemSubmitting(false);
+      if (!memberSaved) {
+        setMemError(err.message || 'Failed to save member. Please check details and try again.');
+      } else {
+        console.warn('[Sync] Follow-up refresh error after member was already saved:', err);
+      }
     }
   };
 
@@ -361,12 +390,19 @@ export const Modals: React.FC = () => {
                 onClick={() => {
                   setIsAddMemberOpen(false);
                   setEditingMember(null);
+                  setMemError('');
                 }}
                 className="text-slate-400 hover:text-slate-600 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
+            {memError && (
+              <div className="mt-3 p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium flex items-start gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                <span>{memError}</span>
+              </div>
+            )}
             <form onSubmit={handleSaveMember} className="mt-4 space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Member Name *</label>
@@ -426,6 +462,7 @@ export const Modals: React.FC = () => {
                   onClick={() => {
                     setIsAddMemberOpen(false);
                     setEditingMember(null);
+                    setMemError('');
                   }}
                   className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 font-bold hover:bg-slate-50 cursor-pointer"
                 >
@@ -433,9 +470,10 @@ export const Modals: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 cursor-pointer"
+                  disabled={memSubmitting}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-700 cursor-pointer disabled:opacity-50"
                 >
-                  {editingMember ? 'Save Changes' : 'Add Member'}
+                  {memSubmitting ? 'Saving...' : (editingMember ? 'Save Changes' : 'Add Member')}
                 </button>
               </div>
             </form>
