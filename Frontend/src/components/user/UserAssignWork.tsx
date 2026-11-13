@@ -8,14 +8,17 @@ import {
   Calendar, 
   Clock, 
   ArrowRight,
-  ClipboardList
+  ClipboardList,
+  CheckCircle2,
+  Building2,
+  Users
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Assignment } from '../../types';
 
 export const UserAssignWork: React.FC = () => {
-  const { allUsers, currentUser, refreshAll } = useApp();
+  const { allUsers, currentUser, members, refreshAll, setUserToast } = useApp();
 
   const [assignMode, setAssignMode] = useState<'user_to_user' | 'user_to_admin'>('user_to_user');
   const [targetId, setTargetId] = useState('');
@@ -25,13 +28,55 @@ export const UserAssignWork: React.FC = () => {
   const [workTitle, setWorkTitle] = useState('');
   const [workDescription, setWorkDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('High');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState('Today');
   const [status, setStatus] = useState<'In Progress' | 'To Do' | 'In Review' | 'Completed'>('In Progress');
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [submitSuccess, setSubmitSuccess] = useState('');
   const [delegatedWork, setDelegatedWork] = useState<Assignment[]>([]);
   const [loadingDelegated, setLoadingDelegated] = useState(false);
 
-  const teamMembers = allUsers.filter(u => u.role === 'user');
+  // Current user's team and department context
+  const myTeam = (currentUser?.team || '').trim().toLowerCase();
+  const myDept = (currentUser?.department || '').trim().toLowerCase();
+  const myEmail = (currentUser?.email || '').trim().toLowerCase();
+
+  // Find member record for currentUser if exists
+  const myMember = members.find(m => 
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (myEmail && m.email && m.email.toLowerCase() === myEmail)
+  );
+  const myTeamId = myMember ? myMember.teamId : (currentUser as any)?.teamId;
+  const myDeptId = myMember ? myMember.departmentId : (currentUser as any)?.departmentId;
+
+  // Filter candidates who are regular users in the SAME team
+  const teamMembers = allUsers.filter(u => {
+    if (u.role !== 'user') return false;
+    // Exclude myself
+    if (u.id === currentUser?.id || (u.email && u.email.toLowerCase() === myEmail)) return false;
+
+    // 1. Direct team name match (e.g. "Digital team")
+    if (myTeam && u.team && u.team.toLowerCase() === myTeam) return true;
+
+    // 2. Direct teamId match via members
+    const uMember = members.find(m => 
+      m.id === u.id || (m as any).userId === u.id || (u.email && m.email && m.email.toLowerCase() === u.email.toLowerCase())
+    );
+    if (myTeamId && uMember && uMember.teamId && uMember.teamId === myTeamId) return true;
+
+    // 3. Fallback: If current user has department specified and teammate has department specified
+    if (myDept && u.department && u.department.toLowerCase() === myDept) {
+      if (!myTeam || !u.team || u.team.toLowerCase() === myTeam) return true;
+    }
+
+    // If currentUser has no team assigned yet, allow department teammates
+    if (!myTeam && !myTeamId) {
+      return true;
+    }
+
+    return false;
+  });
+
   const adminUsers = allUsers.filter(u => u.role === 'admin');
 
   // Load delegated work
@@ -52,31 +97,33 @@ export const UserAssignWork: React.FC = () => {
     loadDelegatedWork();
   }, [currentUser]);
 
-  // Set default selection when mode changes
+  // Set default selection when mode changes or teamMembers update
   useEffect(() => {
+    setSubmitError('');
+    setSubmitSuccess('');
+
     if (assignMode === 'user_to_user') {
-      const candidates = teamMembers.filter(u => u.id !== currentUser?.id);
-      const defaultUser = candidates.length > 0 ? candidates[0] : teamMembers[0];
-      if (defaultUser) {
+      if (teamMembers.length > 0) {
+        const defaultUser = teamMembers[0];
         setTargetId(defaultUser.id);
         setTargetName(defaultUser.name);
         setEmail(defaultUser.email);
-        setRole(defaultUser.teamRole || 'Developer');
+        setRole(defaultUser.teamRole || 'Team Member');
       } else {
         setTargetId('');
         setTargetName('');
         setEmail('');
-        setRole('Developer');
+        setRole('Team Member');
       }
     } else {
       // user_to_admin
-      const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Admin', email: 'dynamicsajjan@gmail.com' };
+      const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Administrator', email: 'bgsmchhospitalnagarur@gmail.com' };
       setTargetId(defaultAdmin.id);
       setTargetName(defaultAdmin.name);
       setEmail(defaultAdmin.email);
       setRole('Administrator');
     }
-  }, [assignMode, allUsers]);
+  }, [assignMode, allUsers, members, currentUser]);
 
   const handleUserSelect = (userId: string) => {
     setTargetId(userId);
@@ -84,7 +131,7 @@ export const UserAssignWork: React.FC = () => {
     if (u) {
       setTargetName(u.name);
       setEmail(u.email);
-      setRole(u.teamRole || 'Developer');
+      setRole(u.teamRole || 'Team Member');
     }
   };
 
@@ -100,19 +147,33 @@ export const UserAssignWork: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!workTitle.trim() || !targetId) {
-      alert('Please select a recipient and enter a work title.');
+    setSubmitError('');
+    setSubmitSuccess('');
+
+    if (!workTitle.trim()) {
+      setSubmitError('Please enter a work title for this assignment.');
+      return;
+    }
+
+    if (!targetId) {
+      setSubmitError(
+        assignMode === 'user_to_user' 
+          ? 'Please select a teammate in your team to assign work to.' 
+          : 'Please select an administrator.'
+      );
       return;
     }
 
     try {
       setSubmitting(true);
+      const chosenDue = dueDate.trim() || 'Today';
+
       await api.createAssignment({
         workTitle: workTitle.trim(),
         workDescription: workDescription.trim(),
         role,
         priority,
-        dueDate: dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        dueDate: chosenDue,
         status,
         // Any-to-Any metadata:
         assignerId: currentUser?.id || 'usr-user',
@@ -123,17 +184,30 @@ export const UserAssignWork: React.FC = () => {
         assigneeName: targetName,
         assigneeRole: assignMode === 'user_to_admin' ? 'admin' : 'user',
         assigneeEmail: email,
-        assignmentType: assignMode
+        assignmentType: assignMode,
+        teamId: (currentUser as any)?.teamId || myTeamId || '',
+        departmentId: (currentUser as any)?.departmentId || myDeptId || '',
+        teamName: currentUser?.team || myMember?.role || '',
+        departmentName: currentUser?.department || ''
       });
 
       await refreshAll();
       await loadDelegatedWork();
       setWorkTitle('');
       setWorkDescription('');
-      alert(`Work successfully assigned (${assignMode === 'user_to_user' ? 'User → User' : 'User → Admin'})!`);
-    } catch (err) {
+      setSubmitSuccess(`Work "${workTitle.trim()}" successfully assigned to ${targetName}!`);
+
+      if (setUserToast) {
+        setUserToast({
+          id: Date.now().toString(),
+          title: 'Work Assigned',
+          message: `Work assignment sent to ${targetName} successfully.`,
+          timestamp: new Date()
+        });
+      }
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to assign work');
+      setSubmitError(err.message || 'Failed to assign work. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -154,6 +228,18 @@ export const UserAssignWork: React.FC = () => {
             <p className="text-xs text-[#a2a0c4] mt-1 max-w-xl">
               Collaborate smoothly across roles: Assign work to your fellow team members (User &rarr; User) or submit work requests to Administrators (User &rarr; Admin).
             </p>
+            {currentUser?.team && (
+              <div className="mt-3 flex items-center gap-2 text-xs text-indigo-200">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15">
+                  <Building2 className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Dept: <strong className="text-white">{currentUser.department || 'Digital Health'}</strong></span>
+                </span>
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 border border-white/15">
+                  <Users className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Team: <strong className="text-white">{currentUser.team}</strong></span>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Mode Switcher Tabs */}
@@ -208,7 +294,7 @@ export const UserAssignWork: React.FC = () => {
                 </h3>
                 <p className="text-[11px] text-gray-500">
                   {assignMode === 'user_to_user'
-                    ? 'Work will appear in their workspace and team tasks.'
+                    ? `Only showing teammates in your team (${currentUser?.team || 'Same Team'}).`
                     : 'Work will be assigned to Administrator for action/review.'}
                 </p>
               </div>
@@ -222,6 +308,21 @@ export const UserAssignWork: React.FC = () => {
               {assignMode === 'user_to_user' ? 'User → User' : 'User → Admin'}
             </span>
           </div>
+
+          {/* Validation & Feedback Banners */}
+          {submitError && (
+            <div className="mb-4 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-semibold flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+              <span>{submitError}</span>
+            </div>
+          )}
+
+          {submitSuccess && (
+            <div className="mb-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-semibold flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{submitSuccess}</span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium text-gray-700">
             {/* Recipient Selector */}
@@ -241,23 +342,23 @@ export const UserAssignWork: React.FC = () => {
                     <select
                       value={targetId}
                       onChange={(e) => handleUserSelect(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
                       required
                     >
                       {teamMembers.map((m) => (
                         <option key={m.id} value={m.id}>
-                          {m.name} {m.id === currentUser?.id ? '(You)' : ''} ({m.teamRole || 'Member'})
+                          {m.name} ({m.teamRole || m.team || 'Teammate'})
                         </option>
                       ))}
                       {teamMembers.length === 0 && (
-                        <option value="">No other members available</option>
+                        <option value="">No other teammates in your team ({currentUser?.team || 'General'})</option>
                       )}
                     </select>
                   ) : (
                     <select
                       value={targetId}
                       onChange={(e) => handleAdminSelect(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                      className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
                       required
                     >
                       {adminUsers.map((a) => (
@@ -266,11 +367,16 @@ export const UserAssignWork: React.FC = () => {
                         </option>
                       ))}
                       {adminUsers.length === 0 && (
-                        <option value="usr-admin">Admin (dynamicsajjan@gmail.com)</option>
+                        <option value="usr-admin">Admin (bgsmchhospitalnagarur@gmail.com)</option>
                       )}
                     </select>
                   )}
                 </div>
+                {assignMode === 'user_to_user' && teamMembers.length === 0 && (
+                  <p className="text-[11px] text-amber-600 mt-1">
+                    No other users are in your team yet. You can switch to <strong>User → Admin</strong> above.
+                  </p>
+                )}
               </div>
 
               <div>
@@ -283,6 +389,7 @@ export const UserAssignWork: React.FC = () => {
                     type="email"
                     value={email}
                     readOnly
+                    placeholder="Recipient email will populate..."
                     className="w-full pl-8 pr-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 font-medium cursor-not-allowed"
                   />
                 </div>
@@ -310,15 +417,15 @@ export const UserAssignWork: React.FC = () => {
                   Priority <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <AlertCircle className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                  <AlertCircle className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5 pointer-events-none" />
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
                   >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
+                    <option value="High">High Priority</option>
+                    <option value="Medium">Medium Priority</option>
+                    <option value="Low">Low Priority</option>
                   </select>
                 </div>
               </div>
@@ -361,10 +468,9 @@ export const UserAssignWork: React.FC = () => {
                   Due Date <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                  <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5 pointer-events-none" />
                   <input
                     type="text"
-                    required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
                     placeholder="e.g. Today / 10 Nov 2026"
@@ -380,7 +486,7 @@ export const UserAssignWork: React.FC = () => {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
                 >
                   <option value="In Progress">In Progress</option>
                   <option value="To Do">To Do</option>
@@ -399,13 +505,15 @@ export const UserAssignWork: React.FC = () => {
                 type="submit"
                 disabled={submitting}
                 className={`px-6 py-2.5 rounded-xl text-white font-bold text-xs flex items-center gap-2 shadow-sm transition-all cursor-pointer ${
-                  assignMode === 'user_to_user'
+                  submitting
+                    ? 'opacity-60 cursor-not-allowed bg-indigo-400'
+                    : assignMode === 'user_to_user'
                     ? 'bg-emerald-600 hover:bg-emerald-700'
                     : 'bg-amber-600 hover:bg-amber-700'
                 }`}
               >
                 <Send className="w-3.5 h-3.5" />
-                <span>{submitting ? 'Assigning...' : 'Assign Work'}</span>
+                <span>{submitting ? 'Assigning Work...' : 'Assign Work'}</span>
               </button>
             </div>
           </form>
@@ -428,41 +536,26 @@ export const UserAssignWork: React.FC = () => {
               <div className="py-12 text-center text-xs text-gray-400">Loading your delegated tasks...</div>
             ) : delegatedWork.length === 0 ? (
               <div className="py-12 text-center text-xs text-gray-400">
-                You haven't assigned any work yet. Use the form on the left to assign tasks to teammates or request work from Admins.
+                No work delegated yet. Use the form on the left to assign tasks to teammates.
               </div>
             ) : (
-              delegatedWork.map((item) => {
-                const isToAdmin = item.assignmentType === 'user_to_admin';
-                return (
-                  <div
-                    key={item.id}
-                    className="p-3.5 rounded-xl border border-gray-100 hover:border-gray-200 hover:bg-gray-50/60 transition group"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                      <span className="font-bold text-gray-900 text-xs line-clamp-1">{item.workTitle}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                        isToAdmin
-                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
-                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                      }`}>
-                        {isToAdmin ? 'User → Admin' : 'User → User'}
-                      </span>
-                    </div>
-
-                    <p className="text-[11px] text-gray-500 line-clamp-2 mb-2">
-                      {item.workDescription || 'No description provided.'}
-                    </p>
-
-                    <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-50">
-                      <span>Assigned to: <strong className="text-gray-700">{item.assigneeName || 'Team Member'}</strong></span>
-                      <span className="flex items-center gap-1 font-semibold text-gray-600">
-                        <Clock className="w-3 h-3 text-gray-400" />
-                        {item.dueDate || 'Today'}
-                      </span>
-                    </div>
+              delegatedWork.map((item) => (
+                <div key={item.id} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-gray-900 line-clamp-1">{item.workTitle}</span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
+                      {item.status}
+                    </span>
                   </div>
-                );
-              })
+                  <div className="flex items-center justify-between text-[11px] text-gray-500">
+                    <span>To: <strong className="text-gray-700">{item.assigneeName || item.role}</strong></span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {item.dueDate}
+                    </span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
         </div>

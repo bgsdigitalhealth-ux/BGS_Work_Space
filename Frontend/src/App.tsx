@@ -16,6 +16,7 @@ import { UserSidebar } from './components/user/UserSidebar';
 import { UserHeader } from './components/user/UserHeader';
 import { UserDashboard } from './components/user/UserDashboard';
 import { UserAssignedWork } from './components/user/UserAssignedWork';
+import { UserTeamView } from './components/user/UserTeamView';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
@@ -26,7 +27,7 @@ import { MeetingRoom } from './components/meet/MeetingRoom';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { currentUser, userNav, adminNav, members, userWorkspace } = useApp();
+  const { currentUser, userNav, adminNav, userWorkspace } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
   // Check if current route is a private video meeting route: /meet/<meeting-id>
@@ -84,25 +85,7 @@ export const App: React.FC = () => {
           {userNav === 'assign-work' && <UserAssignWork />}
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'settings' && <UserSettings />}
-          {userNav === 'team' && (
-            <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">My Department & Team</h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                Connected team members in your department.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                {members.slice(0, 4).map((m) => (
-                  <div key={m.id} className="p-4 rounded-xl bg-purple-50/50 border border-purple-100 text-center">
-                    <div className="w-12 h-12 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-sm mx-auto mb-2">
-                      {m.avatar || m.name.charAt(0)}
-                    </div>
-                    <h4 className="font-bold text-sm text-gray-900">{m.name}</h4>
-                    <p className="text-xs text-gray-500">{m.role}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {userNav === 'team' && <UserTeamView />}
           {userNav === 'reports' && (
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
               <h3 className="text-xl font-bold text-gray-900 mb-2">Performance & Work Reports</h3>

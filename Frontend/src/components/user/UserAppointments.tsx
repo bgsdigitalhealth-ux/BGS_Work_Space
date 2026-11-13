@@ -99,8 +99,8 @@ export const UserAppointments: React.FC = () => {
             <CalendarIcon className="w-6 h-6" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-gray-900 tracking-tight">My Appointments</h2>
-            <p className="text-xs text-gray-500 font-medium">View, schedule and manage your appointments.</p>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight">My Appointments & Schedule</h2>
+            <p className="text-xs text-gray-500 font-medium">View appointments, inspect your calendar schedule, and organize meetings.</p>
           </div>
         </div>
 

@@ -3,7 +3,6 @@ import {
   Shield, 
   LayoutDashboard, 
   Briefcase, 
-  Calendar as CalendarIcon, 
   CalendarCheck,
   ClipboardList, 
   Send, 
@@ -36,8 +35,7 @@ export const UserSidebar: React.FC = () => {
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
-    { id: 'appointments', label: 'Appointments', icon: CalendarIcon },
-    { id: 'my-schedule', label: 'My Schedule', icon: CalendarCheck },
+    { id: 'appointments', label: 'Appointments & Schedule', icon: CalendarCheck },
     { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: assignedCount > 0 ? assignedCount : undefined },
     { id: 'assign-work', label: 'Assign Work', icon: Send },
     { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
@@ -105,7 +103,9 @@ export const UserSidebar: React.FC = () => {
         <nav className="space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = userNav === item.id || (item.id === 'assigned-work' && userNav === 'details');
+            const isActive = userNav === item.id || 
+              (item.id === 'assigned-work' && userNav === 'details') ||
+              (item.id === 'appointments' && userNav === 'my-schedule');
 
             return (
               <button

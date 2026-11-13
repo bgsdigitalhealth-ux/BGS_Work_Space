@@ -510,7 +510,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const refreshUserWorkspace = async () => {
     try {
-      const data = await api.getUserWorkspace();
+      const data = await api.getUserWorkspace(currentUser?.id, currentUser?.email);
+
+      // Strict User Isolation: Regular users can NEVER see other users' assigned work
+      if (currentUser && currentUser.role === 'user') {
+        const myTasks = (data.assignedWork || []).filter(t => {
+          const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
+          const matchEmail = currentUser.email && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === currentUser.email.toLowerCase();
+          const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
+          const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
+          return Boolean(matchId || matchEmail || matchMember || matchName);
+        });
+
+        data.assignedWork = myTasks;
+        data.stats.totalAssigned = myTasks.length;
+        data.stats.inProgress = myTasks.filter(t => t.status === 'In Progress').length;
+        data.stats.upcomingWork = myTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
+        data.stats.completedWork = myTasks.filter(t => t.status === 'Completed').length;
+      }
+
       setUserWorkspace(data);
       if (data.assignedWork && data.assignedWork.length > 0) {
         if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
@@ -655,6 +673,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Validate active session on mount and when currentUser changes
   useEffect(() => {
     if (!currentUser) return;
+    refreshUserWorkspace();
     let isMounted = true;
     api.validateSession(currentUser.id, currentUser.email).then((res) => {
       if (!isMounted) return;

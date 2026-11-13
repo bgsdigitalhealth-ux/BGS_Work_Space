@@ -36,6 +36,7 @@ interface UserAssignedWorkProps {
 
 export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView }) => {
   const {
+    currentUser,
     userWorkspace,
     selectedUserTask,
     setSelectedUserTask,
@@ -45,7 +46,19 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
     handleAddUserComment
   } = useApp();
 
-  const assignedList = userWorkspace?.assignedWork || [];
+  const rawAssignedList = userWorkspace?.assignedWork || [];
+  const myEmail = (currentUser?.email || '').trim().toLowerCase();
+
+  // Strict User Isolation: Filter out tasks that do not belong to current logged-in user
+  const assignedList = currentUser?.role === 'user'
+    ? rawAssignedList.filter(t => {
+        const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
+        const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
+        const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
+        const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
+        return Boolean(matchId || matchEmail || matchMember || matchName);
+      })
+    : rawAssignedList;
 
   // View mode: 'cards' or 'details'
   const [viewMode, setViewMode] = useState<'cards' | 'details'>(() => {

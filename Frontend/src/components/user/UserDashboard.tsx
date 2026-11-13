@@ -20,6 +20,7 @@ import { UserAssignedWork } from '../../types';
 
 export const UserDashboard: React.FC = () => {
   const { 
+    currentUser,
     userWorkspace, 
     setUserNav, 
     setSelectedUserTask,
@@ -41,17 +42,32 @@ export const UserDashboard: React.FC = () => {
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const stats = userWorkspace?.stats || {
-    totalAssigned: 0,
-    inProgress: 0,
-    upcomingWork: 0,
-    completedWork: 0,
-    completionPercentage: 0,
-    completedFractionText: '0 of 0 Tasks'
-  };
+  const rawAssigned = userWorkspace?.assignedWork || [];
+  const myEmail = (currentUser?.email || '').trim().toLowerCase();
 
-  const assignedList = userWorkspace?.assignedWork || [];
+  // Strict User Isolation: Filter out tasks that do not belong to current logged-in user
+  const assignedList = currentUser?.role === 'user'
+    ? rawAssigned.filter(t => {
+        const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
+        const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
+        const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
+        const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
+        return Boolean(matchId || matchEmail || matchMember || matchName);
+      })
+    : rawAssigned;
+
   const historyList = userWorkspace?.history || [];
+
+  const stats = {
+    totalAssigned: assignedList.length,
+    inProgress: assignedList.filter(t => t.status === 'In Progress').length,
+    upcomingWork: assignedList.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length,
+    completedWork: assignedList.filter(t => t.status === 'Completed').length,
+    completionPercentage: assignedList.length > 0 
+      ? Math.round((assignedList.filter(t => t.status === 'Completed').length / assignedList.length) * 100)
+      : 0,
+    completedFractionText: `${assignedList.filter(t => t.status === 'Completed').length} of ${assignedList.length} Tasks`
+  };
   const totalTasks = stats.totalAssigned + historyList.length;
   const inProgressPct = totalTasks > 0 ? Math.round((stats.inProgress / totalTasks) * 100) : 0;
   const upcomingPct = totalTasks > 0 ? Math.round((stats.upcomingWork / totalTasks) * 100) : 0;

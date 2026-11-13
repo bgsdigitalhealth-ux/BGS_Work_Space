@@ -604,10 +604,12 @@ router.delete('/work-done/:id', async (req, res) => {
   }
 });
 
-// --- User Workspace Routes ---
+// --- User Workspace Routes (Strict User Isolation) ---
 router.get('/user/workspace', async (req, res) => {
   try {
-    const workspace = await dataService.getUserWorkspace();
+    const userId = req.query.userId || req.headers['x-user-id'] || null;
+    const email = req.query.email || req.headers['x-user-email'] || null;
+    const workspace = await dataService.getUserWorkspace(userId, email);
     res.json(workspace);
   } catch (err) {
     res.status(500).json({ error: err.message });

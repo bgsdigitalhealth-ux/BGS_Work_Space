@@ -101,10 +101,10 @@ export const UserHeader: React.FC = () => {
         {(userNav === 'appointments' || userNav === 'my-schedule') && (
           <div>
             <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight">
-              My Appointments
+              My Appointments & Schedule
             </h1>
             <p className="text-sm text-[#6b7280] font-medium mt-1">
-              View, schedule and manage your appointments.
+              View appointments, schedule meetings, and inspect your calendar timeline.
             </p>
           </div>
         )}

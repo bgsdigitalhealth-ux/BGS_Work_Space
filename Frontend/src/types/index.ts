@@ -48,6 +48,8 @@ export interface Assignment {
   assigneeEmail?: string;
   assignmentType?: AssignmentType;
   createdAt?: string;
+  teamName?: string;
+  departmentName?: string;
 }
 
 export interface Task {
@@ -115,6 +117,14 @@ export interface UserAssignedWork {
   progress?: number;
   comments?: UserTaskComment[];
   attachments?: UserTaskAttachment[];
+  userId?: string;
+  assigneeId?: string;
+  assigneeEmail?: string;
+  assigneeName?: string;
+  assignedTo?: string;
+  memberId?: string;
+  teamId?: string;
+  departmentId?: string;
 }
 
 export interface UserWorkHistory {

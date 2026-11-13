@@ -962,7 +962,11 @@ const createAssignment = async (data) => {
     description: data.workDescription || '',
     progress: 0,
     comments: [],
-    userId: targetUserId || (dbMember ? dbMember._id.toString() : 'usr-user')
+    userId: targetUserId || (dbMember ? dbMember._id.toString() : 'usr-user'),
+    assigneeId: targetUserId || '',
+    assigneeEmail: assigneeEmail || '',
+    teamId: data.teamId || '',
+    departmentId: data.departmentId || ''
   };
   memoryStore.userWorkspace.assignedWork.unshift(userTask);
   saveStore();
@@ -1045,7 +1049,11 @@ const createAssignment = async (data) => {
         description: userTask.description,
         progress: 0,
         comments: [],
-        userId: userTask.userId
+        userId: userTask.userId,
+        assigneeId: userTask.assigneeId,
+        assigneeEmail: userTask.assigneeEmail,
+        teamId: userTask.teamId,
+        departmentId: userTask.departmentId
       });
 
       return { ...createdAssign.toObject(), id: createdAssign._id.toString() };
@@ -1238,18 +1246,39 @@ const deleteWorkDone = async (id) => {
   return true;
 };
 
-// --- User Portal Workspace ---
-const getUserWorkspace = async (userId = null) => {
+// --- User Portal Workspace (Strict User Isolation) ---
+const getUserWorkspace = async (userId = null, userEmail = null) => {
   let assigned = [];
   let history = [];
   let recentActivities = [];
 
-  const targetUser = userId || 'usr-user';
+  const cleanEmail = (userEmail || '').trim().toLowerCase();
 
   if (getStatus()) {
     try {
-      const dbTasks = await UserTask.find(userId ? { userId: targetUser } : {}).lean();
-      const dbHistory = await WorkHistory.find(userId ? { userId: targetUser } : {}).sort({ createdAt: -1 }).lean();
+      let taskQuery = {};
+      let historyQuery = {};
+      if (userId || cleanEmail) {
+        const orConditions = [];
+        if (userId) {
+          orConditions.push({ userId: userId });
+          orConditions.push({ assigneeId: userId });
+          orConditions.push({ memberId: userId });
+        }
+        if (cleanEmail) {
+          orConditions.push({ assigneeEmail: cleanEmail });
+        }
+        taskQuery = { $or: orConditions };
+        historyQuery = {
+          $or: [
+            ...(userId ? [{ userId: userId }, { memberId: userId }] : []),
+            ...(cleanEmail ? [{ userEmail: cleanEmail }] : [])
+          ]
+        };
+      }
+
+      const dbTasks = await UserTask.find(taskQuery).lean();
+      const dbHistory = await WorkHistory.find(historyQuery).sort({ createdAt: -1 }).lean();
       assigned = dbTasks.map(t => ({ ...t, id: t.customId || t._id.toString() }));
       history = dbHistory.map(h => ({ ...h, id: h.customId || h._id.toString() }));
     } catch (e) {
@@ -1267,9 +1296,27 @@ const getUserWorkspace = async (userId = null) => {
         recentActivities: []
       };
     }
-    assigned = memoryStore.userWorkspace.assignedWork || [];
-    history = memoryStore.userWorkspace.history || [];
-    recentActivities = memoryStore.userWorkspace.recentActivities || [];
+    const rawAssigned = memoryStore.userWorkspace.assignedWork || [];
+    const rawHistory = memoryStore.userWorkspace.history || [];
+    const rawActivities = memoryStore.userWorkspace.recentActivities || [];
+
+    if (userId || cleanEmail) {
+      assigned = rawAssigned.filter(a => {
+        if (userId && (a.userId === userId || a.assigneeId === userId || a.memberId === userId)) return true;
+        if (cleanEmail && a.assigneeEmail && a.assigneeEmail.toLowerCase() === cleanEmail) return true;
+        return false;
+      });
+      history = rawHistory.filter(h => {
+        if (userId && (h.userId === userId || h.memberId === userId)) return true;
+        if (cleanEmail && h.userEmail && h.userEmail.toLowerCase() === cleanEmail) return true;
+        return false;
+      });
+      recentActivities = rawActivities.filter(r => !userId || r.userId === userId);
+    } else {
+      assigned = rawAssigned;
+      history = rawHistory;
+      recentActivities = rawActivities;
+    }
   }
 
   const inProgressCount = assigned.filter(a => a.status === 'In Progress').length;
@@ -1873,6 +1920,16 @@ const createPassword = async (email, password) => {
   }
 
   const { password: _, ...safeUser } = user;
+  const m = (memoryStore.members || []).find(mem => mem.email && mem.email.toLowerCase() === cleanEmail);
+  if (m) {
+    const t = (memoryStore.teams || []).find(team => team.id === m.teamId);
+    const d = (memoryStore.departments || []).find(dept => dept.id === m.departmentId);
+    safeUser.team = t ? t.name : (safeUser.team || 'Team');
+    safeUser.department = d ? d.name : (safeUser.department || 'General');
+    safeUser.teamId = m.teamId;
+    safeUser.departmentId = m.departmentId;
+  }
+
   return {
     success: true,
     user: safeUser,
@@ -1920,9 +1977,35 @@ const loginUser = async (email, password) => {
           }
         }
         const { password: _, ...safeUser } = dbUser;
+        // Enrich user with resolved team and department names
+        let enrichedTeam = safeUser.team || '';
+        let enrichedDept = safeUser.department || '';
+        let enrichedTeamId = safeUser.team || '';
+        let enrichedDeptId = safeUser.department || '';
+        try {
+          const dbMemberInfo = await Member.findOne({ email: cleanEmail }).populate('teamId').populate('departmentId').lean();
+          if (dbMemberInfo) {
+            if (dbMemberInfo.teamId) {
+              enrichedTeam = dbMemberInfo.teamId.name || dbMemberInfo.teamId;
+              enrichedTeamId = dbMemberInfo.teamId._id?.toString() || dbMemberInfo.teamId;
+            }
+            if (dbMemberInfo.departmentId) {
+              enrichedDept = dbMemberInfo.departmentId.name || dbMemberInfo.departmentId;
+              enrichedDeptId = dbMemberInfo.departmentId._id?.toString() || dbMemberInfo.departmentId;
+            }
+          }
+        } catch (_) {}
+
         return {
           success: true,
-          user: { ...safeUser, id: dbUser.customId || dbUser._id.toString() },
+          user: {
+            ...safeUser,
+            id: dbUser.customId || dbUser._id.toString(),
+            team: enrichedTeam,
+            department: enrichedDept,
+            teamId: enrichedTeamId,
+            departmentId: enrichedDeptId
+          },
           token: `token-${dbUser.role}-${Date.now()}`
         };
       }
@@ -1980,6 +2063,16 @@ const loginUser = async (email, password) => {
   }
 
   const { password: _, ...safeUser } = user;
+  const m = (memoryStore.members || []).find(mem => mem.email && mem.email.toLowerCase() === cleanEmail);
+  if (m) {
+    const t = (memoryStore.teams || []).find(team => team.id === m.teamId);
+    const d = (memoryStore.departments || []).find(dept => dept.id === m.departmentId);
+    safeUser.team = t ? t.name : (safeUser.team || 'Team');
+    safeUser.department = d ? d.name : (safeUser.department || 'General');
+    safeUser.teamId = m.teamId;
+    safeUser.departmentId = m.departmentId;
+  }
+
   return {
     success: true,
     user: safeUser,

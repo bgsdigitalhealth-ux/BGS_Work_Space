@@ -190,9 +190,18 @@ export const api = {
     if (!res.ok) throw new Error('Failed to delete work done');
   },
 
-  // User Workspace (WorkHub)
-  getUserWorkspace: async (): Promise<import('../types').UserWorkspaceData> => {
-    const res = await fetch(`${API_BASE}/user/workspace`);
+  // User Workspace (WorkHub) - Strict User Isolation
+  getUserWorkspace: async (userId?: string, email?: string): Promise<import('../types').UserWorkspaceData> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (email) params.append('email', email);
+    const qs = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`${API_BASE}/user/workspace${qs}`, {
+      headers: {
+        ...(userId ? { 'x-user-id': userId } : {}),
+        ...(email ? { 'x-user-email': email } : {})
+      }
+    });
     if (!res.ok) throw new Error('Failed to fetch user workspace');
     return res.json();
   },
