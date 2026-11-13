@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { StatsOverview } from './components/StatsOverview';
 import { DepartmentList } from './components/DepartmentList';
+import { TeamList } from './components/TeamList';
 import { DepartmentDetail } from './components/DepartmentDetail';
 import { Modals } from './components/Modals';
 
@@ -140,9 +141,12 @@ export const App: React.FC = () => {
             {/* Top 5 KPI Stats Cards */}
             <StatsOverview />
 
-            {/* Central Departments + Unified Department Detail (Teams, Members, Roles, Tasks, Work Done) */}
+            {/* Central Departments & Teams (Left) + Unified Department Detail (Right) */}
             <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
-              <DepartmentList />
+              <div className="w-full lg:w-72 shrink-0 space-y-5">
+                <DepartmentList />
+                <TeamList />
+              </div>
               <DepartmentDetail />
             </div>
           </>

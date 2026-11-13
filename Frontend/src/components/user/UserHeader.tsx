@@ -13,8 +13,7 @@ export const UserHeader: React.FC = () => {
     setMobileSidebarOpen,
     userToast,
     setUserToast,
-    userWorkspace,
-    selectedUserTask
+    userWorkspace
   } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -135,23 +134,14 @@ export const UserHeader: React.FC = () => {
         )}
 
         {userNav === 'details' && (
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setUserNav('assigned-work')}
-              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm cursor-pointer"
-              title="Back to Assigned Work Cards"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">
-                Work Details
-              </h1>
-              <p className="text-xs text-[#6b7280] font-medium mt-0.5">
-                {selectedUserTask?.title ? `${selectedUserTask.title} • Task ID: ${selectedUserTask.taskId || selectedUserTask.id}` : 'Manage task status, deliverables, and updates'}
-              </p>
-            </div>
-          </div>
+          <button
+            type="button"
+            onClick={() => setUserNav('assigned-work')}
+            className="flex items-center gap-2.5 text-xl lg:text-2xl font-extrabold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-700" />
+            <span>Assigned Work - Details</span>
+          </button>
         )}
 
         {userNav === 'work-history' && (

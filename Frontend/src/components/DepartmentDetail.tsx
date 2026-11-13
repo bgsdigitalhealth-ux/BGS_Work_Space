@@ -7,7 +7,6 @@ import {
   Edit3,
   Trash2,
   Users,
-  UserCheck,
   Send,
   ClipboardList,
   CheckCircle2,
@@ -16,15 +15,17 @@ import {
   ChevronRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { TeamList } from './TeamList';
 import { MembersTable } from './MembersTable';
+import { AssignWorkForm } from './AssignWorkForm';
+import { AssignedWorkSummary } from './AssignedWorkSummary';
+import { TodayTasks } from './TodayTasks';
+import { TodayWorkDone } from './TodayWorkDone';
 import { Member } from '../types';
 
 export const DepartmentDetail: React.FC = () => {
   const {
     selectedDepartment,
     selectedTeam,
-    setSelectedTeam,
     activeTab,
     setActiveTab,
     teamSubTab,
@@ -85,9 +86,9 @@ export const DepartmentDetail: React.FC = () => {
 
   const tabs = [
     { id: 'Teams', label: 'Teams', icon: Users },
-    { id: 'Members', label: 'Members', icon: UserCheck },
+    { id: 'Members', label: '+ Members', icon: Plus },
     { id: 'Assign Work', label: 'Assign Work', icon: Send },
-    { id: "Today's Work", label: "Today's Work", icon: ClipboardList },
+    { id: "Today's Tasks", label: "Today's Tasks", icon: ClipboardList },
     { id: "Today's Work Done", label: "Today's Work Done", icon: CheckCircle2 },
   ];
 
@@ -96,7 +97,7 @@ export const DepartmentDetail: React.FC = () => {
     if (activeTab === 'Teams') {
       if (tabId === 'Teams') return teamSubTab === 'Members';
       if (tabId === 'Assign Work') return teamSubTab === 'Roles';
-      if (tabId === "Today's Work") return teamSubTab === 'Tasks';
+      if (tabId === "Today's Tasks") return teamSubTab === 'Tasks';
       if (tabId === "Today's Work Done") return teamSubTab === 'WorkDone';
     }
     return false;
@@ -111,7 +112,7 @@ export const DepartmentDetail: React.FC = () => {
     } else if (tabId === 'Assign Work') {
       setActiveTab('Teams');
       setTeamSubTab('Roles');
-    } else if (tabId === "Today's Work") {
+    } else if (tabId === "Today's Tasks") {
       setActiveTab('Teams');
       setTeamSubTab('Tasks');
     } else if (tabId === "Today's Work Done") {
@@ -200,43 +201,45 @@ export const DepartmentDetail: React.FC = () => {
       </div>
 
       {/* Main Tab Content Display */}
-      {activeTab === 'Teams' && (
-        <div className={`flex flex-col ${teamSubTab === 'Roles' ? 'w-full' : 'lg:flex-row'} gap-4 items-stretch flex-1`}>
-          {teamSubTab !== 'Roles' && <TeamList />}
-          <div className="flex-1 min-w-0">
-            {teamSubTab === 'Roles' && (
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3 bg-white px-4 py-2.5 rounded-xl border border-slate-200/60 shadow-2xs">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-slate-500">Active Team:</span>
-                  <span className="text-xs font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100">
-                    {selectedTeam?.name || 'Select Team'}
-                  </span>
-                </div>
-                {teams.length > 1 && (
-                  <div className="flex items-center gap-2">
-                    <label htmlFor="team-switcher" className="text-xs text-slate-500 font-medium">Switch Team:</label>
-                    <select
-                      id="team-switcher"
-                      value={selectedTeam?.id || ''}
-                      onChange={(e) => {
-                        const found = teams.find(t => t.id === e.target.value);
-                        if (found) setSelectedTeam(found);
-                      }}
-                      className="text-xs font-medium text-slate-700 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1 focus:ring-1 focus:ring-indigo-500 cursor-pointer"
-                    >
-                      {teams.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            )}
-            <MembersTable />
+      {/* 1. Assign Work Tab: 2x2 Grid (Image 2) */}
+      {activeTab === 'Teams' && teamSubTab === 'Roles' && (
+        <div className="space-y-5">
+          {/* Top Row: Assign Work Form (Left) + Assigned Work Summary (Right) */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+            <AssignWorkForm />
+            <AssignedWorkSummary />
+          </div>
+
+          {/* Bottom Row: Today's Tasks (Left) + Today's Work Done (Right) */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+            <TodayTasks />
+            <TodayWorkDone />
           </div>
         </div>
       )}
 
+      {/* 2. Teams Tab: Selected Team Members Table */}
+      {activeTab === 'Teams' && teamSubTab === 'Members' && (
+        <div className="flex-1 min-w-0">
+          <MembersTable />
+        </div>
+      )}
+
+      {/* 3. Today's Tasks Dedicated Tab */}
+      {activeTab === 'Teams' && teamSubTab === 'Tasks' && (
+        <div className="flex-1 min-w-0">
+          <TodayTasks />
+        </div>
+      )}
+
+      {/* 4. Today's Work Done Dedicated Tab */}
+      {activeTab === 'Teams' && teamSubTab === 'WorkDone' && (
+        <div className="flex-1 min-w-0">
+          <TodayWorkDone />
+        </div>
+      )}
+
+      {/* 5. Members Tab: Full Department Directory */}
       {activeTab === 'Members' && (
         <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col min-w-0">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">

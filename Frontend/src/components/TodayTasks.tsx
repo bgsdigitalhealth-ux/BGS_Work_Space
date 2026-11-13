@@ -1,9 +1,9 @@
 import React from 'react';
-import { ClipboardList, Check, Trash2 } from 'lucide-react';
+import { ClipboardList, Check, Trash2, Plus } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export const TodayTasks: React.FC = () => {
-  const { selectedTeam, tasks, handleDeleteTask } = useApp();
+  const { selectedTeam, tasks, handleDeleteTask, handleToggleTask, setIsAddTaskOpen } = useApp();
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
@@ -38,15 +38,24 @@ export const TodayTasks: React.FC = () => {
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-sm">Today's Tasks</h3>
-            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Selected Team'} · Auto-assigned)</p>
+            <p className="text-[11px] text-slate-400">({selectedTeam?.name || 'Backend Team'})</p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={() => setIsAddTaskOpen(true)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Add Task</span>
+        </button>
       </div>
 
       <div className="space-y-2.5 flex-1 overflow-y-auto max-h-56">
         {tasks.length === 0 ? (
           <div className="py-6 text-center text-slate-400 text-xs">
-            No tasks assigned for today yet. Work assigned to members appears here automatically.
+            No tasks assigned for today yet. Use "+ Add Task" to create one.
           </div>
         ) : (
           tasks.map((task) => (
@@ -55,15 +64,15 @@ export const TodayTasks: React.FC = () => {
               className="flex items-center justify-between p-3 rounded-xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50/70 transition-all group"
             >
               <div
-                className="flex items-center gap-3 select-none flex-1 min-w-0 cursor-default"
-                title={task.completed ? "Status: Completed by Team Member" : "Status: In Progress (Awaiting user update/completion)"}
+                onClick={() => handleToggleTask(task.id)}
+                className="flex items-center gap-3 select-none flex-1 min-w-0 cursor-pointer"
+                title="Click to toggle status"
               >
                 <div
                   className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all shrink-0 ${task.completed
                     ? 'bg-emerald-600 border-emerald-600 text-white'
-                    : 'border-slate-300 bg-slate-50 text-slate-400'
+                    : 'border-slate-300 bg-white hover:border-indigo-500'
                     }`}
-                  title={task.completed ? "Completed by Team Member" : "Read-only: Auto-checks when member updates work"}
                 >
                   {task.completed && <Check className="w-3.5 h-3.5 stroke-[3]" />}
                 </div>
@@ -87,32 +96,22 @@ export const TodayTasks: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 text-[10px]">
-                    <span className="text-slate-500 font-medium">To: {task.memberName || 'Member'}</span>
-                    {task.assignedBy && (
-                      <span className="text-slate-400">· By: {task.assignedBy}</span>
-                    )}
-                  </div>
-                  {task.completed ? (
-                    <span className="text-[10px] text-emerald-600 font-bold">
-                      ✓ Done (Updated by Member)
-                    </span>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      In Progress · Auto-checks when member updates work
-                    </span>
+                  {task.memberName && (
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                      <span>To: {task.memberName}</span>
+                      {task.assignedBy && <span>· By: {task.assignedBy}</span>}
+                    </div>
                   )}
                 </div>
               </div>
+
               <div className="flex items-center gap-2 shrink-0 ml-2">
                 {getPriorityBadge(task.priority)}
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteTask(task.id);
-                  }}
+                  type="button"
+                  onClick={() => handleDeleteTask(task.id)}
                   title="Delete task"
-                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all cursor-pointer"
+                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition-all cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>

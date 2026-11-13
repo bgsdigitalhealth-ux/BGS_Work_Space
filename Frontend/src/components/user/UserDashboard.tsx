@@ -76,7 +76,7 @@ export const UserDashboard: React.FC = () => {
   // Filter tasks based on filter tab, search query, and dropdown
   const filteredTasks = assignedList.filter(task => {
     // Tab filter
-    if (userFilterTab === 'In Progress' && task.status !== 'In Progress') return false;
+    if ((userFilterTab === 'In Progress' || userFilterTab === 'Recent Work') && task.status !== 'In Progress') return false;
     if (userFilterTab === 'Upcoming Work' && task.status !== 'Not Started') return false;
     if (userFilterTab === 'Completed Work' && task.status !== 'Completed') return false;
 
@@ -149,7 +149,7 @@ export const UserDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* In Progress */}
+        {/* Recent Work */}
         <div 
           onClick={() => setUserFilterTab('In Progress')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
@@ -158,7 +158,7 @@ export const UserDashboard: React.FC = () => {
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">In Progress</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Work</p>
             <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.inProgress}</h3>
           </div>
         </div>
@@ -273,14 +273,14 @@ export const UserDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mb-5 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setUserFilterTab('In Progress')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${
-                userFilterTab === 'In Progress'
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer ${
+                userFilterTab === 'In Progress' || (userFilterTab as any) === 'Recent Work'
                   ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
                   : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
               <Clock className="w-3.5 h-3.5" />
-              In Progress ({stats.inProgress})
+              Recent Work ({stats.inProgress})
             </button>
 
             <button
@@ -595,7 +595,7 @@ export const UserDashboard: React.FC = () => {
             <div className="space-y-3 text-xs font-semibold text-gray-700">
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded-full bg-[#6366f1]" />
-                <span className="w-28 text-gray-600">In Progress</span>
+                <span className="w-28 text-gray-600">Recent Work</span>
                 <span className="font-bold text-gray-900">{stats.inProgress} ({inProgressPct}%)</span>
               </div>
               <div className="flex items-center gap-2.5">
@@ -650,7 +650,7 @@ export const UserDashboard: React.FC = () => {
 
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold text-gray-900 leading-snug line-clamp-1">{act.title}</p>
-                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">{act.date}</p>
+                    <p className="text-[11px] text-gray-400 font-medium mt-0.5">{(act as any).time || act.date}</p>
                   </div>
                 </div>
               ))

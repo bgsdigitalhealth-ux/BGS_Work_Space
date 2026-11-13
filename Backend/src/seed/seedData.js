@@ -1,56 +1,1231 @@
 const initialData = {
-  // Purely dynamic - starts 100% clean
-  departments: [],
-  teams: [],
-  members: [],
-  assignments: [],
-  tasks: [],
-  workDone: [],
-  appointments: [],
-  notifications: [],
-  conversations: [],
-  messages: [],
-
-  // Dynamic user workspace
-  userWorkspace: {
-    stats: {
-      totalAssigned: 0,
-      inProgress: 0,
-      upcomingWork: 0,
-      completedWork: 0,
-      completionRate: 0,
-      completionPercentage: 0,
-      completedCount: 0,
-      totalCount: 0,
-      completedFractionText: '0 of 0 Tasks'
+  "departments": [
+    {
+      "id": "dept-eng",
+      "name": "Engineering",
+      "icon": "code",
+      "description": "Manage teams, members, roles and work."
     },
-    assignedWork: [],
-    history: [],
-    recentActivities: []
+    {
+      "id": "dept-design",
+      "name": "Design",
+      "icon": "palette",
+      "description": "UI/UX and creative design division."
+    },
+    {
+      "id": "dept-mktg",
+      "name": "Marketing",
+      "icon": "megaphone",
+      "description": "Branding, campaigns and digital media outreach."
+    },
+    {
+      "id": "dept-ops",
+      "name": "Operations",
+      "icon": "layers",
+      "description": "Hospital IT, clinical informatics, and support logistics."
+    }
+  ],
+  "teams": [
+    {
+      "id": "team-backend",
+      "name": "Backend Team",
+      "departmentId": "dept-eng",
+      "description": "Core backend services, microservices, and database architecture."
+    },
+    {
+      "id": "team-frontend",
+      "name": "Frontend Team",
+      "departmentId": "dept-eng",
+      "description": "Web dashboards, responsive interfaces, and client components."
+    },
+    {
+      "id": "team-qa",
+      "name": "QA Team",
+      "departmentId": "dept-eng",
+      "description": "Quality assurance, automated regression, and security testing."
+    },
+    {
+      "id": "team-uiux",
+      "name": "UI/UX Team",
+      "departmentId": "dept-design",
+      "description": "User journeys, wireframes, and design system governance."
+    },
+    {
+      "id": "team-graphics",
+      "name": "Graphic Design Team",
+      "departmentId": "dept-design",
+      "description": "Digital assets, institutional media, posters, and illustrations."
+    },
+    {
+      "id": "team-digital",
+      "name": "Digital Media Team",
+      "departmentId": "dept-mktg",
+      "description": "Social campaigns, website publications, and public relations."
+    },
+    {
+      "id": "team-content",
+      "name": "Content Team",
+      "departmentId": "dept-mktg",
+      "description": "Medical copywriting, awareness articles, and press briefings."
+    },
+    {
+      "id": "team-branding",
+      "name": "Branding Team",
+      "departmentId": "dept-mktg",
+      "description": "Brand identity, hospital collateral, and event publicity."
+    },
+    {
+      "id": "team-support",
+      "name": "Support Team",
+      "departmentId": "dept-ops",
+      "description": "Technical assistance, helpdesk, and staff operational support."
+    },
+    {
+      "id": "team-infra",
+      "name": "Infrastructure Team",
+      "departmentId": "dept-ops",
+      "description": "Cloud servers, networks, hospital IoT, and data security."
+    },
+    {
+      "id": "team-logistics",
+      "name": "Logistics Team",
+      "departmentId": "dept-ops",
+      "description": "Resource procurement, equipment tracking, and vendor coordination."
+    },
+    {
+      "id": "team-facilities",
+      "name": "Facilities Team",
+      "departmentId": "dept-ops",
+      "description": "Center infrastructure, maintenance, and auditorium management."
+    }
+  ],
+  "members": [
+    {
+      "id": "mem-rahul",
+      "name": "Rahul Sharma",
+      "email": "rahul@company.com",
+      "phone": "+91 98765 43210",
+      "role": "Team Lead",
+      "departmentId": "dept-eng",
+      "teamId": "team-backend",
+      "assignedWork": "Oversee backend development",
+      "avatar": "R"
+    },
+    {
+      "id": "mem-priya",
+      "name": "Priya Verma",
+      "email": "priya@company.com",
+      "phone": "+91 98765 43211",
+      "role": "Developer",
+      "departmentId": "dept-eng",
+      "teamId": "team-backend",
+      "assignedWork": "Build APIs & new features",
+      "avatar": "P"
+    },
+    {
+      "id": "mem-amit",
+      "name": "Amit Singh",
+      "email": "amit@company.com",
+      "phone": "+91 98765 43212",
+      "role": "Tester",
+      "departmentId": "dept-eng",
+      "teamId": "team-backend",
+      "assignedWork": "Test APIs & report bugs",
+      "avatar": "A"
+    },
+    {
+      "id": "mem-sneha",
+      "name": "Sneha Mehta",
+      "email": "sneha@company.com",
+      "phone": "+91 98765 43213",
+      "role": "Designer",
+      "departmentId": "dept-eng",
+      "teamId": "team-backend",
+      "assignedWork": "Design API documentation UI",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-fe-1",
+      "name": "Rohan Gupta",
+      "email": "rohan.gupta@company.com",
+      "phone": "+91 98765 43214",
+      "role": "Team Lead",
+      "departmentId": "dept-eng",
+      "teamId": "team-frontend",
+      "assignedWork": "Dashboard component architecture",
+      "avatar": "R"
+    },
+    {
+      "id": "mem-fe-2",
+      "name": "Ananya Roy",
+      "email": "ananya.roy@company.com",
+      "phone": "+91 98765 43215",
+      "role": "Developer",
+      "departmentId": "dept-eng",
+      "teamId": "team-frontend",
+      "assignedWork": "Appointment scheduler UI module",
+      "avatar": "A"
+    },
+    {
+      "id": "mem-fe-3",
+      "name": "Karan Patel",
+      "email": "karan.patel@company.com",
+      "phone": "+91 98765 43216",
+      "role": "Developer",
+      "departmentId": "dept-eng",
+      "teamId": "team-frontend",
+      "assignedWork": "Mobile responsive navigation audit",
+      "avatar": "K"
+    },
+    {
+      "id": "mem-qa-1",
+      "name": "Vikram Nair",
+      "email": "vikram.nair@company.com",
+      "phone": "+91 98765 43218",
+      "role": "Team Lead",
+      "departmentId": "dept-eng",
+      "teamId": "team-qa",
+      "assignedWork": "End-to-end integration test suites",
+      "avatar": "V"
+    },
+    {
+      "id": "mem-qa-2",
+      "name": "Divya Nair",
+      "email": "divya.nair@company.com",
+      "phone": "+91 98765 43219",
+      "role": "Tester",
+      "departmentId": "dept-eng",
+      "teamId": "team-qa",
+      "assignedWork": "Automated load testing on API gateways",
+      "avatar": "D"
+    },
+    {
+      "id": "mem-qa-3",
+      "name": "Sameer Sen",
+      "email": "sameer.sen@company.com",
+      "phone": "+91 98765 43220",
+      "role": "Tester",
+      "departmentId": "dept-eng",
+      "teamId": "team-qa",
+      "assignedWork": "Session token validation verification",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-des-1",
+      "name": "Neha Kapoor",
+      "email": "neha.kapoor@company.com",
+      "phone": "+91 98765 43221",
+      "role": "Team Lead",
+      "departmentId": "dept-design",
+      "teamId": "team-uiux",
+      "assignedWork": "Hospital clinical dashboard redesign",
+      "avatar": "N"
+    },
+    {
+      "id": "mem-des-2",
+      "name": "Arjun Reddy",
+      "email": "arjun.reddy@company.com",
+      "phone": "+91 98765 43222",
+      "role": "Designer",
+      "departmentId": "dept-design",
+      "teamId": "team-uiux",
+      "assignedWork": "Patient portal mobile wireframes",
+      "avatar": "A"
+    },
+    {
+      "id": "mem-des-3",
+      "name": "Tara Ghosh",
+      "email": "tara.ghosh@company.com",
+      "phone": "+91 98765 43223",
+      "role": "Designer",
+      "departmentId": "dept-design",
+      "teamId": "team-uiux",
+      "assignedWork": "Design token library standardization",
+      "avatar": "T"
+    },
+    {
+      "id": "mem-des-4",
+      "name": "Varun Das",
+      "email": "varun.das@company.com",
+      "phone": "+91 98765 43224",
+      "role": "Team Lead",
+      "departmentId": "dept-design",
+      "teamId": "team-graphics",
+      "assignedWork": "Annual medical summit visual identity",
+      "avatar": "V"
+    },
+    {
+      "id": "mem-des-5",
+      "name": "Meera Pillai",
+      "email": "meera.pillai@company.com",
+      "phone": "+91 98765 43225",
+      "role": "Designer",
+      "departmentId": "dept-design",
+      "teamId": "team-graphics",
+      "assignedWork": "Healthcare infographics & posters",
+      "avatar": "M"
+    },
+    {
+      "id": "mem-mkt-1",
+      "name": "Siddharth Rao",
+      "email": "siddharth.rao@company.com",
+      "phone": "+91 98765 43226",
+      "role": "Team Lead",
+      "departmentId": "dept-mktg",
+      "teamId": "team-digital",
+      "assignedWork": "Multi-channel awareness campaign rollout",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-mkt-2",
+      "name": "Kavita Joshi",
+      "email": "kavita.joshi@company.com",
+      "phone": "+91 98765 43227",
+      "role": "Developer",
+      "departmentId": "dept-mktg",
+      "teamId": "team-digital",
+      "assignedWork": "SEO optimization for medical journals",
+      "avatar": "K"
+    },
+    {
+      "id": "mem-mkt-3",
+      "name": "Harish Babu",
+      "email": "harish.babu@company.com",
+      "phone": "+91 98765 43228",
+      "role": "Designer",
+      "departmentId": "dept-mktg",
+      "teamId": "team-digital",
+      "assignedWork": "Institutional video teaser cuts",
+      "avatar": "H"
+    },
+    {
+      "id": "mem-cnt-1",
+      "name": "Shalini Verma",
+      "email": "shalini.verma@company.com",
+      "phone": "+91 98765 43229",
+      "role": "Team Lead",
+      "departmentId": "dept-mktg",
+      "teamId": "team-content",
+      "assignedWork": "Clinical research bulletin editorial",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-cnt-2",
+      "name": "Nitin Pandey",
+      "email": "nitin.pandey@company.com",
+      "phone": "+91 98765 43230",
+      "role": "Developer",
+      "departmentId": "dept-mktg",
+      "teamId": "team-content",
+      "assignedWork": "Departmental blog publishing",
+      "avatar": "N"
+    },
+    {
+      "id": "mem-cnt-3",
+      "name": "Ritu Saxena",
+      "email": "ritu.saxena@company.com",
+      "phone": "+91 98765 43231",
+      "role": "Tester",
+      "departmentId": "dept-mktg",
+      "teamId": "team-content",
+      "assignedWork": "Proofreading medical protocols",
+      "avatar": "R"
+    },
+    {
+      "id": "mem-brd-1",
+      "name": "Gaurav Bhat",
+      "email": "gaurav.bhat@company.com",
+      "phone": "+91 98765 43232",
+      "role": "Team Lead",
+      "departmentId": "dept-mktg",
+      "teamId": "team-branding",
+      "assignedWork": "Institutional style guide enforcement",
+      "avatar": "G"
+    },
+    {
+      "id": "mem-brd-2",
+      "name": "Tanvi Shinde",
+      "email": "tanvi.shinde@company.com",
+      "phone": "+91 98765 43233",
+      "role": "Designer",
+      "departmentId": "dept-mktg",
+      "teamId": "team-branding",
+      "assignedWork": "Hospital stationery and signage",
+      "avatar": "T"
+    },
+    {
+      "id": "mem-brd-3",
+      "name": "Aditya Kulkarni",
+      "email": "aditya.kulkarni@company.com",
+      "phone": "+91 98765 43234",
+      "role": "Developer",
+      "departmentId": "dept-mktg",
+      "teamId": "team-branding",
+      "assignedWork": "Brand asset CDN management",
+      "avatar": "A"
+    },
+    {
+      "id": "mem-ops-1",
+      "name": "Manish Tiwari",
+      "email": "manish.tiwari@company.com",
+      "phone": "+91 98765 43235",
+      "role": "Team Lead",
+      "departmentId": "dept-ops",
+      "teamId": "team-support",
+      "assignedWork": "Tier-2 technical support escalations",
+      "avatar": "M"
+    },
+    {
+      "id": "mem-ops-2",
+      "name": "Pallavi Hegde",
+      "email": "pallavi.hegde@company.com",
+      "phone": "+91 98765 43236",
+      "role": "Developer",
+      "departmentId": "dept-ops",
+      "teamId": "team-support",
+      "assignedWork": "Hardware diagnosis and doctor workstations",
+      "avatar": "P"
+    },
+    {
+      "id": "mem-ops-3",
+      "name": "Deepak Choudhury",
+      "email": "deepak.c@company.com",
+      "phone": "+91 98765 43237",
+      "role": "Tester",
+      "departmentId": "dept-ops",
+      "teamId": "team-support",
+      "assignedWork": "Printer and barcode scanner testing",
+      "avatar": "D"
+    },
+    {
+      "id": "mem-inf-1",
+      "name": "Pradeep Shetty",
+      "email": "pradeep.shetty@company.com",
+      "phone": "+91 98765 43239",
+      "role": "Team Lead",
+      "departmentId": "dept-ops",
+      "teamId": "team-infra",
+      "assignedWork": "High-availability server failover",
+      "avatar": "P"
+    },
+    {
+      "id": "mem-inf-2",
+      "name": "Suresh Kumar",
+      "email": "suresh.kumar@company.com",
+      "phone": "+91 98765 43240",
+      "role": "Developer",
+      "departmentId": "dept-ops",
+      "teamId": "team-infra",
+      "assignedWork": "Network firewall rules update",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-inf-3",
+      "name": "Kiran Desai",
+      "email": "kiran.desai@company.com",
+      "phone": "+91 98765 43241",
+      "role": "Tester",
+      "departmentId": "dept-ops",
+      "teamId": "team-infra",
+      "assignedWork": "Backup integrity drills",
+      "avatar": "K"
+    },
+    {
+      "id": "mem-log-1",
+      "name": "Ramesh Gowda",
+      "email": "ramesh.gowda@company.com",
+      "phone": "+91 98765 43242",
+      "role": "Team Lead",
+      "departmentId": "dept-ops",
+      "teamId": "team-logistics",
+      "assignedWork": "Medical consumables inventory tracking",
+      "avatar": "R"
+    },
+    {
+      "id": "mem-log-2",
+      "name": "Geetha Menon",
+      "email": "geetha.menon@company.com",
+      "phone": "+91 98765 43243",
+      "role": "Developer",
+      "departmentId": "dept-ops",
+      "teamId": "team-logistics",
+      "assignedWork": "Vendor SLA compliance auditing",
+      "avatar": "G"
+    },
+    {
+      "id": "mem-log-3",
+      "name": "Sunil Acharya",
+      "email": "sunil.acharya@company.com",
+      "phone": "+91 98765 43244",
+      "role": "Tester",
+      "departmentId": "dept-ops",
+      "teamId": "team-logistics",
+      "assignedWork": "Dispatch scanner verification",
+      "avatar": "S"
+    },
+    {
+      "id": "mem-fac-1",
+      "name": "Venkatesh Murthy",
+      "email": "venkatesh.m@company.com",
+      "phone": "+91 98765 43245",
+      "role": "Team Lead",
+      "departmentId": "dept-ops",
+      "teamId": "team-facilities",
+      "assignedWork": "Auditorium AV scheduling for CME",
+      "avatar": "V"
+    },
+    {
+      "id": "mem-fac-2",
+      "name": "Asha Hegde",
+      "email": "asha.hegde@company.com",
+      "phone": "+91 98765 43246",
+      "role": "Developer",
+      "departmentId": "dept-ops",
+      "teamId": "team-facilities",
+      "assignedWork": "HVAC telemetry sensor integration",
+      "avatar": "A"
+    },
+    {
+      "id": "mem-fac-3",
+      "name": "Mohan Lal",
+      "email": "mohan.lal@company.com",
+      "phone": "+91 98765 43247",
+      "role": "Tester",
+      "departmentId": "dept-ops",
+      "teamId": "team-facilities",
+      "assignedWork": "UPS generator load testing",
+      "avatar": "M"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "asg-rahul-1",
+      "memberId": "mem-rahul",
+      "teamId": "team-backend",
+      "departmentId": "dept-eng",
+      "workTitle": "Oversee backend dev, code review",
+      "workDescription": "Review code, guide the team, and ensure timely delivery of backend features for the current sprint.",
+      "role": "Team Lead",
+      "priority": "High",
+      "dueDate": "Jan 31, 2026",
+      "status": "In Progress",
+      "assigneeName": "Rahul Sharma",
+      "assigneeEmail": "rahul@company.com",
+      "assigneeRole": "user",
+      "assignerId": "usr-admin",
+      "assignerName": "Admin",
+      "assignerRole": "admin",
+      "assignmentType": "admin_to_user",
+      "createdAt": "2026-01-15T09:00:00.000Z"
+    },
+    {
+      "id": "asg-priya-1",
+      "memberId": "mem-priya",
+      "teamId": "team-backend",
+      "departmentId": "dept-eng",
+      "workTitle": "Build APIs & new features",
+      "workDescription": "Develop REST endpoints and integrate database schemas for staff workload management.",
+      "role": "Developer",
+      "priority": "High",
+      "dueDate": "Feb 05, 2026",
+      "status": "In Progress",
+      "assigneeName": "Priya Verma",
+      "assigneeEmail": "priya@company.com",
+      "assigneeRole": "user",
+      "assignerId": "usr-admin",
+      "assignerName": "Admin",
+      "assignerRole": "admin",
+      "assignmentType": "admin_to_user",
+      "createdAt": "2026-01-16T10:00:00.000Z"
+    },
+    {
+      "id": "asg-amit-1",
+      "memberId": "mem-amit",
+      "teamId": "team-backend",
+      "departmentId": "dept-eng",
+      "workTitle": "Test APIs & report bugs",
+      "workDescription": "Perform integration testing on auth endpoints and report status updates to team lead.",
+      "role": "Tester",
+      "priority": "Medium",
+      "dueDate": "Jan 29, 2026",
+      "status": "To Do",
+      "assigneeName": "Amit Singh",
+      "assigneeEmail": "amit@company.com",
+      "assigneeRole": "user",
+      "assignerId": "usr-admin",
+      "assignerName": "Admin",
+      "assignerRole": "admin",
+      "assignmentType": "admin_to_user",
+      "createdAt": "2026-01-17T11:00:00.000Z"
+    },
+    {
+      "id": "asg-sneha-1",
+      "memberId": "mem-sneha",
+      "teamId": "team-backend",
+      "departmentId": "dept-eng",
+      "workTitle": "Design API documentation UI",
+      "workDescription": "Design API documentation UI and verify schema representations.",
+      "role": "Designer",
+      "priority": "Medium",
+      "dueDate": "Feb 03, 2026",
+      "status": "In Review",
+      "assigneeName": "Sneha Mehta",
+      "assigneeEmail": "sneha@company.com",
+      "assigneeRole": "user",
+      "assignerId": "usr-admin",
+      "assignerName": "Admin",
+      "assignerRole": "admin",
+      "assignmentType": "admin_to_user",
+      "createdAt": "2026-01-18T12:00:00.000Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "tsk-login-api",
+      "title": "Implement user login API",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-backend",
+      "memberId": "mem-rahul",
+      "memberName": "Rahul Sharma",
+      "assignedBy": "Admin",
+      "assignmentType": "admin_to_user"
+    },
+    {
+      "id": "tsk-fix-bugs",
+      "title": "Fix reported bugs",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-backend",
+      "memberId": "mem-priya",
+      "memberName": "Priya Verma",
+      "assignedBy": "Admin",
+      "assignmentType": "admin_to_user"
+    },
+    {
+      "id": "tsk-api-docs",
+      "title": "Update API documentation",
+      "priority": "Low",
+      "completed": false,
+      "teamId": "team-backend",
+      "memberId": "mem-sneha",
+      "memberName": "Sneha Mehta",
+      "assignedBy": "Admin",
+      "assignmentType": "admin_to_user"
+    },
+    {
+      "id": "tsk-fe-1",
+      "title": "Refactor navbar mobile drawer",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-frontend"
+    },
+    {
+      "id": "tsk-fe-2",
+      "title": "CSS media queries audit",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-frontend"
+    },
+    {
+      "id": "tsk-qa-1",
+      "title": "Run smoke test on staging",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-qa"
+    },
+    {
+      "id": "tsk-qa-2",
+      "title": "Verify session timeout edge cases",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-qa"
+    },
+    {
+      "id": "tsk-ui-1",
+      "title": "Update Figma design tokens",
+      "priority": "Low",
+      "completed": false,
+      "teamId": "team-uiux"
+    },
+    {
+      "id": "tsk-ui-2",
+      "title": "Review high-fidelity wireframes",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-uiux"
+    },
+    {
+      "id": "tsk-gd-1",
+      "title": "Export vector logos for summit",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-graphics"
+    },
+    {
+      "id": "tsk-dm-1",
+      "title": "Schedule Twitter awareness tweets",
+      "priority": "Low",
+      "completed": false,
+      "teamId": "team-digital"
+    },
+    {
+      "id": "tsk-dm-2",
+      "title": "Review analytics CTR report",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-digital"
+    },
+    {
+      "id": "tsk-ct-1",
+      "title": "Publish clinical research summary",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-content"
+    },
+    {
+      "id": "tsk-br-1",
+      "title": "Check brand banner specs",
+      "priority": "Low",
+      "completed": false,
+      "teamId": "team-branding"
+    },
+    {
+      "id": "tsk-sp-1",
+      "title": "Resolve doctor portal login tickets",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-support"
+    },
+    {
+      "id": "tsk-in-1",
+      "title": "Renew SSL certificates",
+      "priority": "High",
+      "completed": false,
+      "teamId": "team-infra"
+    },
+    {
+      "id": "tsk-lg-1",
+      "title": "Check medical supply intake",
+      "priority": "Medium",
+      "completed": false,
+      "teamId": "team-logistics"
+    },
+    {
+      "id": "tsk-fc-1",
+      "title": "Inspect conference hall microphones",
+      "priority": "Low",
+      "completed": false,
+      "teamId": "team-facilities"
+    }
+  ],
+  "workDone": [
+    {
+      "id": "wd-reg-api",
+      "title": "User registration API completed",
+      "details": "Finished JWT authentication and auth endpoints",
+      "teamId": "team-backend",
+      "memberId": "mem-rahul",
+      "memberName": "Rahul Sharma",
+      "completed": true
+    },
+    {
+      "id": "wd-bug-452",
+      "title": "Bug #452 fixed",
+      "details": "Resolved database query bottleneck in report aggregation",
+      "teamId": "team-backend",
+      "memberId": "mem-priya",
+      "memberName": "Priya Verma",
+      "completed": true
+    },
+    {
+      "id": "wd-pr-118",
+      "title": "Code-review for PR #118",
+      "details": "Reviewed security headers and input sanitization",
+      "teamId": "team-backend",
+      "memberId": "mem-amit",
+      "memberName": "Amit Singh",
+      "completed": true
+    },
+    {
+      "id": "wd-fe-1",
+      "title": "Vite bundle optimization landed",
+      "details": "Reduced main bundle chunk by 28%",
+      "teamId": "team-frontend",
+      "completed": true
+    },
+    {
+      "id": "wd-qa-1",
+      "title": "Auth regression suite passed (42 tests)",
+      "details": "Zero session leaks detected",
+      "teamId": "team-qa",
+      "completed": true
+    },
+    {
+      "id": "wd-ui-1",
+      "title": "Color contrast palette approved",
+      "details": "WCAG AAA verified",
+      "teamId": "team-uiux",
+      "completed": true
+    },
+    {
+      "id": "wd-gd-1",
+      "title": "CME banner assets exported",
+      "details": "Delivered in high-res vector formats",
+      "teamId": "team-graphics",
+      "completed": true
+    },
+    {
+      "id": "wd-dm-1",
+      "title": "Deepavali campaign post scheduled",
+      "details": "Prepared across social platforms",
+      "teamId": "team-digital",
+      "completed": true
+    },
+    {
+      "id": "wd-ct-1",
+      "title": "October newsletter sent to all staff",
+      "details": "Sent to 1,200 recipients",
+      "teamId": "team-content",
+      "completed": true
+    },
+    {
+      "id": "wd-br-1",
+      "title": "Hospital brand guide PDF generated",
+      "details": "Updated typography guidelines",
+      "teamId": "team-branding",
+      "completed": true
+    },
+    {
+      "id": "wd-sp-1",
+      "title": "Resolved 18 staff IT support tickets",
+      "details": "100% resolved within SLA",
+      "teamId": "team-support",
+      "completed": true
+    },
+    {
+      "id": "wd-in-1",
+      "title": "Database nightly backup verified",
+      "details": "Automated snapshot stored in GCS",
+      "teamId": "team-infra",
+      "completed": true
+    },
+    {
+      "id": "wd-lg-1",
+      "title": "Stock delivery received and cataloged",
+      "details": "Batch #892 verified with barcode",
+      "teamId": "team-logistics",
+      "completed": true
+    },
+    {
+      "id": "wd-fc-1",
+      "title": "Auditorium projector lamp replaced",
+      "details": "Ready for CME session",
+      "teamId": "team-facilities",
+      "completed": true
+    }
+  ],
+  "appointments": [],
+  "notifications": [],
+  "conversations": [],
+  "messages": [],
+  "userWorkspace": {
+    "stats": {
+      "totalAssigned": 12,
+      "inProgress": 5,
+      "upcomingWork": 4,
+      "completedWork": 18,
+      "completionRate": 82,
+      "completionPercentage": 82,
+      "completedCount": 18,
+      "totalCount": 22,
+      "completedFractionText": "18 of 22 Tasks"
+    },
+    "assignedWork": [
+      {
+        "id": "user-task-1",
+        "taskId": "TSK-2026-0481",
+        "title": "Update departmental website content",
+        "description": "Update the department homepage, added CME details and new banner images.",
+        "department": "Marketing",
+        "team": "Digital Media",
+        "priority": "High",
+        "dueDate": "Today, 05 Nov",
+        "status": "In Progress",
+        "progress": 50,
+        "assignedBy": "Admin (Admin)",
+        "userId": "mem-rahul",
+        "assigneeName": "Rahul Sharma",
+        "assigneeEmail": "rahul@company.com",
+        "assignedOn": "04 Nov 2026, 09:30 AM",
+        "assignmentType": "admin_to_user",
+        "comments": [],
+        "attachments": []
+      },
+      {
+        "id": "user-task-2",
+        "taskId": "TSK-2026-0487",
+        "title": "Prepare event poster for CME",
+        "description": "Design an event poster for the upcoming CME on \"Anaesthesia Awareness Programme\" with institutional branding, date, venue and resource faculty details.",
+        "department": "Events",
+        "team": "Design",
+        "priority": "Medium",
+        "dueDate": "06 Nov 2026",
+        "status": "In Progress",
+        "progress": 60,
+        "assignedBy": "Priya Verma",
+        "userId": "mem-rahul",
+        "assigneeName": "Rahul Sharma",
+        "assigneeEmail": "rahul@company.com",
+        "assignedOn": "03 Nov 2026, 10:30 AM",
+        "timeLeft": "2 Days",
+        "assignmentType": "user_to_user",
+        "comments": [
+          {
+            "id": "c-1",
+            "author": "Rahul Sharma",
+            "role": "Team Member",
+            "date": "04 Nov 2026, 11:10 AM",
+            "badge": "Work Started",
+            "text": "Started working on the poster. Concept and layout are under progress."
+          },
+          {
+            "id": "c-2",
+            "author": "Rahul Sharma",
+            "role": "Team Member",
+            "date": "05 Nov 2026, 04:20 PM",
+            "badge": "Update",
+            "text": "Draft version completed. Attached for review and feedback."
+          },
+          {
+            "id": "c-3",
+            "author": "Priya Verma (Team Lead)",
+            "role": "Team Lead",
+            "date": "05 Nov 2026, 05:00 PM",
+            "badge": "Feedback",
+            "text": "Looks good. Please add the venue and contact details, then submit the final version."
+          }
+        ],
+        "attachments": [
+          {
+            "name": "CME_Brief.pdf",
+            "size": "1.2 MB | 03 Nov 2026",
+            "type": "pdf"
+          },
+          {
+            "name": "Branding_Assets.zip",
+            "size": "4.8 MB | 03 Nov 2026",
+            "type": "zip"
+          }
+        ]
+      },
+      {
+        "id": "user-task-3",
+        "taskId": "TSK-2026-0492",
+        "title": "Upload photos for \"Anaesthesia Awareness\"",
+        "description": "Upload high-resolution event photographs from the recent awareness session to the institutional repository.",
+        "department": "Events",
+        "team": "Content",
+        "priority": "Medium",
+        "dueDate": "07 Nov 2026",
+        "status": "In Progress",
+        "progress": 40,
+        "assignedBy": "Admin",
+        "userId": "mem-rahul",
+        "assigneeName": "Rahul Sharma",
+        "assigneeEmail": "rahul@company.com",
+        "assignedOn": "04 Nov 2026, 02:00 PM",
+        "assignmentType": "admin_to_user",
+        "comments": [],
+        "attachments": []
+      },
+      {
+        "id": "user-task-4",
+        "taskId": "TSK-2026-0501",
+        "title": "Social media post – Deepavali Wishes",
+        "description": "Draft creative copy and arrange visual creative for Deepavali festive greetings across official channels.",
+        "department": "Branding",
+        "team": "Social Media",
+        "priority": "Low",
+        "dueDate": "08 Nov 2026",
+        "status": "Not Started",
+        "progress": 0,
+        "assignedBy": "Admin",
+        "userId": "mem-rahul",
+        "assigneeName": "Rahul Sharma",
+        "assigneeEmail": "rahul@company.com",
+        "assignedOn": "05 Nov 2026, 11:00 AM",
+        "assignmentType": "admin_to_user",
+        "comments": [],
+        "attachments": []
+      },
+      {
+        "id": "user-task-5",
+        "taskId": "TSK-2026-0512",
+        "title": "Update team progress report (October)",
+        "description": "Compile October performance metrics, milestone achievements, and pending deliverables for leadership review.",
+        "department": "Administration",
+        "team": "Reporting",
+        "priority": "High",
+        "dueDate": "08 Nov 2026",
+        "status": "Not Started",
+        "progress": 0,
+        "assignedBy": "Admin",
+        "userId": "mem-rahul",
+        "assigneeName": "Rahul Sharma",
+        "assigneeEmail": "rahul@company.com",
+        "assignedOn": "05 Nov 2026, 03:30 PM",
+        "assignmentType": "admin_to_user",
+        "comments": [],
+        "attachments": []
+      }
+    ],
+    "history": [
+      {
+        "id": "hist-1",
+        "title": "Social media post – World Suicide Prevention Day",
+        "submittedAt": "04 Nov, 05:20 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-2",
+        "title": "Update departmental brochure",
+        "submittedAt": "04 Nov, 11:10 AM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-3",
+        "title": "Audit emergency medical records interface",
+        "submittedAt": "02 Nov, 04:00 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-4",
+        "title": "Configure automated SMS reminder template",
+        "submittedAt": "01 Nov, 02:15 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-5",
+        "title": "Setup PACS imaging server health check",
+        "submittedAt": "31 Oct, 06:00 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-6",
+        "title": "Departmental staff training slide deck",
+        "submittedAt": "30 Oct, 03:45 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-7",
+        "title": "Deploy microservice patch for telemetry queue",
+        "submittedAt": "29 Oct, 05:30 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-8",
+        "title": "Prepare quarterly server utilization report",
+        "submittedAt": "28 Oct, 01:20 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-9",
+        "title": "Resolve Redis connection pool leak in worker",
+        "submittedAt": "27 Oct, 04:10 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-10",
+        "title": "Update TLS certificate on public portal",
+        "submittedAt": "26 Oct, 11:00 AM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-11",
+        "title": "Draft standard operating procedure for lab imports",
+        "submittedAt": "25 Oct, 04:45 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-12",
+        "title": "Migrate legacy pharmacy database schemas",
+        "submittedAt": "24 Oct, 02:30 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-13",
+        "title": "Refactor user authentication token verification",
+        "submittedAt": "23 Oct, 05:00 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-14",
+        "title": "Benchmark MongoDB Atlas indexing performance",
+        "submittedAt": "22 Oct, 12:00 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-15",
+        "title": "Conduct weekly data backup audit",
+        "submittedAt": "21 Oct, 03:15 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-16",
+        "title": "Implement hospital notification queue rate limiter",
+        "submittedAt": "20 Oct, 04:30 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-17",
+        "title": "Verify multi-recipient WhatsApp template compliance",
+        "submittedAt": "19 Oct, 01:45 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "hist-18",
+        "title": "Setup WebRTC meeting turn server credentials",
+        "submittedAt": "18 Oct, 06:10 PM",
+        "status": "Approved",
+        "userEmail": "rahul@company.com",
+        "userId": "mem-rahul"
+      }
+    ],
+    "recentActivities": [
+      {
+        "id": "act-1",
+        "type": "submitted",
+        "title": "Submitted: Social media post – World Suicide Prevention Day",
+        "time": "04 Nov, 05:20 PM",
+        "icon": "check",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "act-2",
+        "type": "started",
+        "title": "Work Started: Update departmental brochure",
+        "time": "04 Nov, 11:10 AM",
+        "icon": "edit",
+        "userId": "mem-rahul"
+      },
+      {
+        "id": "act-3",
+        "type": "assigned",
+        "title": "Assigned: Prepare event poster for CME",
+        "time": "03 Nov, 04:45 PM",
+        "icon": "image",
+        "userId": "mem-rahul"
+      }
+    ]
   },
-
-  // Authorized login accounts (2 Roles Only: admin and user)
-  users: [
+  "users": [
     {
-      id: 'usr-bgsmch-admin',
-      name: 'BGS MCH',
-      email: 'bgsmchhospitalnagarur@gmail.com',
-      password: 'Apple2026?',
-      hasPassword: true,
-      role: 'admin',
-      avatar: 'B',
-      title: 'Administrator'
+      "id": "usr-bgsmch-admin",
+      "name": "BGS MCH",
+      "email": "bgsmchhospitalnagarur@gmail.com",
+      "password": "Apple2026?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "B",
+      "title": "Administrator"
     },
     {
-      id: 'usr-admin',
-      name: 'Admin',
-      email: 'dynamicsajjan@gmail.com',
-      password: 'Apple9844?',
-      hasPassword: true,
-      role: 'admin',
-      avatar: 'A',
-      title: 'Administrator'
+      "id": "usr-admin",
+      "name": "Admin",
+      "email": "dynamicsajjan@gmail.com",
+      "password": "Apple9844?",
+      "hasPassword": true,
+      "role": "admin",
+      "avatar": "A",
+      "title": "Administrator"
     },
+    {
+      "id": "usr-rahul",
+      "memberId": "mem-rahul",
+      "name": "Rahul Sharma",
+      "email": "rahul@company.com",
+      "password": "Password123!",
+      "hasPassword": true,
+      "role": "user",
+      "avatar": "RS",
+      "department": "Engineering",
+      "team": "Backend Team",
+      "title": "Team Lead"
+    },
+    {
+      "id": "usr-priya",
+      "memberId": "mem-priya",
+      "name": "Priya Verma",
+      "email": "priya@company.com",
+      "password": "Password123!",
+      "hasPassword": true,
+      "role": "user",
+      "avatar": "PV",
+      "department": "Engineering",
+      "team": "Backend Team",
+      "title": "Developer"
+    },
+    {
+      "id": "usr-amit",
+      "memberId": "mem-amit",
+      "name": "Amit Singh",
+      "email": "amit@company.com",
+      "password": "Password123!",
+      "hasPassword": true,
+      "role": "user",
+      "avatar": "AS",
+      "department": "Engineering",
+      "team": "Backend Team",
+      "title": "Tester"
+    },
+    {
+      "id": "usr-sneha",
+      "memberId": "mem-sneha",
+      "name": "Sneha Mehta",
+      "email": "sneha@company.com",
+      "password": "Password123!",
+      "hasPassword": true,
+      "role": "user",
+      "avatar": "SM",
+      "department": "Engineering",
+      "team": "Backend Team",
+      "title": "Designer"
+    }
   ]
 };
 
