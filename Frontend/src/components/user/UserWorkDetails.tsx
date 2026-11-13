@@ -12,7 +12,8 @@ import {
   Info,
   HelpCircle,
   CalendarPlus,
-  MessageSquare
+  MessageSquare,
+  ArrowLeft
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
@@ -71,6 +72,24 @@ export const UserWorkDetails: React.FC = () => {
 
   return (
     <div className="space-y-6 pb-12">
+      {/* Top Back Navigation Bar */}
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setUserNav('assigned-work')}
+          className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 text-[#5a36e6] hover:bg-[#5a36e6] hover:text-white font-bold text-xs transition cursor-pointer shadow-2xs"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>← Back to Assigned Work (Cards)</span>
+        </button>
+
+        <div className="text-xs text-gray-500 font-medium truncate max-w-xs sm:max-w-md">
+          <span className="text-gray-400">Assigned Work</span>
+          <span className="mx-1.5 text-gray-300">/</span>
+          <span className="font-bold text-gray-900">{task.title}</span>
+        </div>
+      </div>
+
       {/* Hero Task Banner */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-gray-100">

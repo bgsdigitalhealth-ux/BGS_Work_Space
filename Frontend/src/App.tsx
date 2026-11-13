@@ -15,7 +15,7 @@ import { MessagesView } from './components/messages/MessagesView';
 import { UserSidebar } from './components/user/UserSidebar';
 import { UserHeader } from './components/user/UserHeader';
 import { UserDashboard } from './components/user/UserDashboard';
-import { UserWorkDetails } from './components/user/UserWorkDetails';
+import { UserAssignedWork } from './components/user/UserAssignedWork';
 import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
@@ -80,7 +80,7 @@ export const App: React.FC = () => {
           {userNav === 'dashboard' && <UserDashboard />}
           {userNav === 'messages' && <MessagesView />}
           {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
-          {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserWorkDetails />}
+          {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}
           {userNav === 'assign-work' && <UserAssignWork />}
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'settings' && <UserSettings />}

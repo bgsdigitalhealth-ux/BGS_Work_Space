@@ -12,7 +12,9 @@ export const UserHeader: React.FC = () => {
     unreadNotificationCount,
     setMobileSidebarOpen,
     userToast,
-    setUserToast
+    setUserToast,
+    userWorkspace,
+    selectedUserTask
   } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -107,21 +109,46 @@ export const UserHeader: React.FC = () => {
           </div>
         )}
 
-        {(userNav === 'my-work' || userNav === 'details') && (
+        {(userNav === 'assigned-work' || userNav === 'my-work') && (
           <div className="flex items-center gap-3">
             <button
               onClick={() => setUserNav('dashboard')}
-              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm"
+              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm cursor-pointer"
               title="Back to Dashboard"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">
-                Assigned Work - Details
+              <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
+                Assigned Work
+                {userWorkspace?.assignedWork?.length ? (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200">
+                    {userWorkspace.assignedWork.length} Tasks
+                  </span>
+                ) : null}
               </h1>
               <p className="text-xs text-[#6b7280] font-medium mt-0.5">
-                Manage task status, deliverables, and updates
+                Card view of all assigned tasks and work orders
+              </p>
+            </div>
+          </div>
+        )}
+
+        {userNav === 'details' && (
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setUserNav('assigned-work')}
+              className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm cursor-pointer"
+              title="Back to Assigned Work Cards"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight">
+                Work Details
+              </h1>
+              <p className="text-xs text-[#6b7280] font-medium mt-0.5">
+                {selectedUserTask?.title ? `${selectedUserTask.title} • Task ID: ${selectedUserTask.taskId || selectedUserTask.id}` : 'Manage task status, deliverables, and updates'}
               </p>
             </div>
           </div>

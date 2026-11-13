@@ -105,7 +105,7 @@ export const UserSidebar: React.FC = () => {
         <nav className="space-y-1.5">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = userNav === item.id;
+            const isActive = userNav === item.id || (item.id === 'assigned-work' && userNav === 'details');
 
             return (
               <button
