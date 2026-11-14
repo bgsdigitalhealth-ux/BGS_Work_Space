@@ -28,6 +28,7 @@ import {
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { Department } from '../../types';
+import { AssignedWorkGlassSlider } from '../common/AssignedWorkGlassSlider';
 
 interface LandingPageProps {
   onLogin: () => void;
@@ -1444,8 +1445,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
             </div>
           </div>
 
-          {/* Right side is open space for the natural architectural background */}
-          <div className="hidden lg:block lg:col-span-5 xl:col-span-4 min-h-[360px] pointer-events-none" aria-hidden="true" />
+          {/* Right side: Glass Structure Assigned Work Live Slider */}
+          <div className="col-span-1 lg:col-span-5 xl:col-span-4 w-full flex flex-col justify-center mt-6 lg:mt-0">
+            <AssignedWorkGlassSlider title="Live Assigned Work" />
+          </div>
         </div>
       </main>
 
