@@ -11,7 +11,8 @@ import {
   ClipboardList,
   CheckCircle2,
   Building2,
-  Users
+  Users,
+  UserCheck
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -20,7 +21,7 @@ import { Assignment } from '../../types';
 export const UserAssignWork: React.FC = () => {
   const { allUsers, currentUser, members, refreshAll, setUserToast } = useApp();
 
-  const [assignMode, setAssignMode] = useState<'user_to_user' | 'user_to_admin'>('user_to_user');
+  const [assignMode, setAssignMode] = useState<'user_to_user' | 'user_to_admin' | 'user_to_self'>('user_to_user');
   const [targetId, setTargetId] = useState('');
   const [targetName, setTargetName] = useState('');
   const [email, setEmail] = useState('');
@@ -115,13 +116,19 @@ export const UserAssignWork: React.FC = () => {
         setEmail('');
         setRole('Team Member');
       }
-    } else {
+    } else if (assignMode === 'user_to_admin') {
       // user_to_admin
       const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Administrator', email: 'bgsmchhospitalnagarur@gmail.com' };
       setTargetId(defaultAdmin.id);
       setTargetName(defaultAdmin.name);
       setEmail(defaultAdmin.email);
       setRole('Administrator');
+    } else {
+      // user_to_self
+      setTargetId(currentUser?.id || 'usr-user');
+      setTargetName(currentUser?.name || 'Self');
+      setEmail(currentUser?.email || '');
+      setRole(currentUser?.teamRole || (currentUser as any)?.roleTitle || 'Team Member');
     }
   }, [assignMode, allUsers, members, currentUser]);
 
@@ -155,7 +162,7 @@ export const UserAssignWork: React.FC = () => {
       return;
     }
 
-    if (!targetId) {
+    if (assignMode !== 'user_to_self' && !targetId) {
       setSubmitError(
         assignMode === 'user_to_user' 
           ? 'Please select a teammate in your team to assign work to.' 
@@ -167,11 +174,14 @@ export const UserAssignWork: React.FC = () => {
     try {
       setSubmitting(true);
       const chosenDue = dueDate.trim() || 'Today';
+      const finalTargetId = assignMode === 'user_to_self' ? (currentUser?.id || 'usr-user') : targetId;
+      const finalTargetName = assignMode === 'user_to_self' ? (currentUser?.name || 'Self') : targetName;
+      const finalEmail = assignMode === 'user_to_self' ? (currentUser?.email || '') : email;
 
       await api.createAssignment({
         workTitle: workTitle.trim(),
         workDescription: workDescription.trim(),
-        role,
+        role: assignMode === 'user_to_self' ? (role || currentUser?.teamRole || 'Team Member') : role,
         priority,
         dueDate: chosenDue,
         status,
@@ -180,10 +190,10 @@ export const UserAssignWork: React.FC = () => {
         assignerName: currentUser?.name || 'Team Member',
         assignerRole: 'user',
         assignerEmail: currentUser?.email || '',
-        assigneeId: targetId,
-        assigneeName: targetName,
+        assigneeId: finalTargetId,
+        assigneeName: finalTargetName,
         assigneeRole: assignMode === 'user_to_admin' ? 'admin' : 'user',
-        assigneeEmail: email,
+        assigneeEmail: finalEmail,
         assignmentType: assignMode,
         teamId: (currentUser as any)?.teamId || myTeamId || '',
         departmentId: (currentUser as any)?.departmentId || myDeptId || '',
@@ -195,13 +205,19 @@ export const UserAssignWork: React.FC = () => {
       await loadDelegatedWork();
       setWorkTitle('');
       setWorkDescription('');
-      setSubmitSuccess(`Work "${workTitle.trim()}" successfully assigned to ${targetName}!`);
+      setSubmitSuccess(
+        assignMode === 'user_to_self'
+          ? `Work "${workTitle.trim()}" successfully self-assigned to your workspace!`
+          : `Work "${workTitle.trim()}" successfully assigned to ${targetName}!`
+      );
 
       if (setUserToast) {
         setUserToast({
           id: Date.now().toString(),
-          title: 'Work Assigned',
-          message: `Work assignment sent to ${targetName} successfully.`,
+          title: assignMode === 'user_to_self' ? 'Self Assigned Work' : 'Work Assigned',
+          message: assignMode === 'user_to_self'
+            ? `Work assignment "${workTitle.trim()}" added to your workspace.`
+            : `Work assignment sent to ${targetName} successfully.`,
           timestamp: new Date()
         });
       }
@@ -226,7 +242,7 @@ export const UserAssignWork: React.FC = () => {
             </div>
             <h2 className="text-xl lg:text-2xl font-black tracking-tight">Assign & Delegate Work</h2>
             <p className="text-xs text-[#a2a0c4] mt-1 max-w-xl">
-              Collaborate smoothly across roles: Assign work to your fellow team members (User &rarr; User) or submit work requests to Administrators (User &rarr; Admin).
+              Collaborate smoothly across roles: Assign work to your fellow team members (User &rarr; User), submit work requests to Administrators (User &rarr; Admin), or assign tasks directly to your personal workspace (Self Assign Work).
             </p>
             {currentUser?.team && (
               <div className="mt-3 flex items-center gap-2 text-xs text-indigo-200">
@@ -243,11 +259,11 @@ export const UserAssignWork: React.FC = () => {
           </div>
 
           {/* Mode Switcher Tabs */}
-          <div className="flex items-center gap-2 p-1.5 bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 shrink-0">
+          <div className="flex items-center gap-1.5 p-1.5 bg-black/30 backdrop-blur-md rounded-2xl border border-white/10 shrink-0 flex-wrap">
             <button
               type="button"
               onClick={() => setAssignMode('user_to_user')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 assignMode === 'user_to_user'
                   ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/40'
                   : 'text-[#a2a0c4] hover:text-white hover:bg-white/5'
@@ -262,7 +278,7 @@ export const UserAssignWork: React.FC = () => {
             <button
               type="button"
               onClick={() => setAssignMode('user_to_admin')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 assignMode === 'user_to_admin'
                   ? 'bg-amber-600 text-white shadow-lg shadow-amber-900/40'
                   : 'text-[#a2a0c4] hover:text-white hover:bg-white/5'
@@ -272,6 +288,19 @@ export const UserAssignWork: React.FC = () => {
               <span>User</span>
               <ArrowRight className="w-3 h-3 opacity-60" />
               <span>Admin</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setAssignMode('user_to_self')}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                assignMode === 'user_to_self'
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-900/40'
+                  : 'text-[#a2a0c4] hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <UserCheck className="w-3.5 h-3.5" />
+              <span>Self Assign Work</span>
             </button>
           </div>
         </div>
@@ -284,18 +313,26 @@ export const UserAssignWork: React.FC = () => {
           <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2.5">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                assignMode === 'user_to_user' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                assignMode === 'user_to_user' ? 'bg-emerald-50 text-emerald-600' :
+                assignMode === 'user_to_admin' ? 'bg-amber-50 text-amber-600' :
+                'bg-purple-50 text-purple-600'
               }`}>
-                {assignMode === 'user_to_user' ? <UserIcon className="w-4 h-4" /> : <Shield className="w-4 h-4" />}
+                {assignMode === 'user_to_user' ? <UserIcon className="w-4 h-4" /> :
+                 assignMode === 'user_to_admin' ? <Shield className="w-4 h-4" /> :
+                 <UserCheck className="w-4 h-4" />}
               </div>
               <div>
                 <h3 className="font-bold text-gray-900 text-sm">
-                  {assignMode === 'user_to_user' ? 'Assign to Teammate (User → User)' : 'Request from Admin (User → Admin)'}
+                  {assignMode === 'user_to_user' ? 'Assign to Teammate (User → User)' :
+                   assignMode === 'user_to_admin' ? 'Request from Admin (User → Admin)' :
+                   'Self Assign Work (User → Self)'}
                 </h3>
                 <p className="text-[11px] text-gray-500">
                   {assignMode === 'user_to_user'
                     ? `Only showing teammates in your team (${currentUser?.team || 'Same Team'}).`
-                    : 'Work will be assigned to Administrator for action/review.'}
+                    : assignMode === 'user_to_admin'
+                    ? 'Work will be assigned to Administrator for action/review.'
+                    : 'Create and assign a task directly to your personal workspace & schedule.'}
                 </p>
               </div>
             </div>
@@ -303,9 +340,13 @@ export const UserAssignWork: React.FC = () => {
             <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold ${
               assignMode === 'user_to_user'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-amber-50 text-amber-700 border border-amber-200'
+                : assignMode === 'user_to_admin'
+                ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                : 'bg-purple-50 text-purple-700 border border-purple-200'
             }`}>
-              {assignMode === 'user_to_user' ? 'User → User' : 'User → Admin'}
+              {assignMode === 'user_to_user' ? 'User → User' :
+               assignMode === 'user_to_admin' ? 'User → Admin' :
+               'Self Assign'}
             </span>
           </div>
 
@@ -329,13 +370,19 @@ export const UserAssignWork: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                  {assignMode === 'user_to_user' ? 'Select Teammate' : 'Select Administrator'} <span className="text-red-500">*</span>
+                  {assignMode === 'user_to_user' 
+                    ? 'Select Teammate' 
+                    : assignMode === 'user_to_admin' 
+                    ? 'Select Administrator' 
+                    : 'Assignee (Self)'} <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
                   {assignMode === 'user_to_user' ? (
                     <UserIcon className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
-                  ) : (
+                  ) : assignMode === 'user_to_admin' ? (
                     <Shield className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
+                  ) : (
+                    <UserCheck className="w-3.5 h-3.5 text-purple-600 absolute left-3 top-2.5" />
                   )}
 
                   {assignMode === 'user_to_user' ? (
@@ -354,7 +401,7 @@ export const UserAssignWork: React.FC = () => {
                         <option value="">No other teammates in your team ({currentUser?.team || 'General'})</option>
                       )}
                     </select>
-                  ) : (
+                  ) : assignMode === 'user_to_admin' ? (
                     <select
                       value={targetId}
                       onChange={(e) => handleAdminSelect(e.target.value)}
@@ -370,24 +417,36 @@ export const UserAssignWork: React.FC = () => {
                         <option value="usr-admin">Admin (bgsmchhospitalnagarur@gmail.com)</option>
                       )}
                     </select>
+                  ) : (
+                    <input
+                      type="text"
+                      readOnly
+                      value={`${currentUser?.name || 'You'} (Your Workspace)`}
+                      className="w-full pl-8 pr-3 py-2 bg-purple-50/70 border border-purple-200 rounded-xl text-purple-900 font-semibold cursor-not-allowed"
+                    />
                   )}
                 </div>
                 {assignMode === 'user_to_user' && teamMembers.length === 0 && (
                   <p className="text-[11px] text-amber-600 mt-1">
-                    No other users are in your team yet. You can switch to <strong>User → Admin</strong> above.
+                    No other users are in your team yet. You can switch to <strong>User → Admin</strong> or <strong>Self Assign Work</strong> above.
+                  </p>
+                )}
+                {assignMode === 'user_to_self' && (
+                  <p className="text-[11px] text-purple-600 mt-1 font-medium">
+                    This task will be automatically assigned to you and appear in your personal dashboard.
                   </p>
                 )}
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                  Recipient Email
+                  {assignMode === 'user_to_self' ? 'Your Email' : 'Recipient Email'}
                 </label>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
                   <input
                     type="email"
-                    value={email}
+                    value={assignMode === 'user_to_self' ? (currentUser?.email || '') : email}
                     readOnly
                     placeholder="Recipient email will populate..."
                     className="w-full pl-8 pr-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 font-medium cursor-not-allowed"
@@ -508,12 +567,18 @@ export const UserAssignWork: React.FC = () => {
                   submitting
                     ? 'opacity-60 cursor-not-allowed bg-indigo-400'
                     : assignMode === 'user_to_user'
-                    ? 'bg-emerald-600 hover:bg-emerald-700'
-                    : 'bg-amber-600 hover:bg-amber-700'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-700/20 shadow-md'
+                    : assignMode === 'user_to_admin'
+                    ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-700/20 shadow-md'
+                    : 'bg-purple-600 hover:bg-purple-700 shadow-purple-700/20 shadow-md'
                 }`}
               >
-                <Send className="w-3.5 h-3.5" />
-                <span>{submitting ? 'Assigning Work...' : 'Assign Work'}</span>
+                {assignMode === 'user_to_self' ? <UserCheck className="w-3.5 h-3.5" /> : <Send className="w-3.5 h-3.5" />}
+                <span>
+                  {submitting 
+                    ? (assignMode === 'user_to_self' ? 'Self Assigning Work...' : 'Assigning Work...') 
+                    : (assignMode === 'user_to_self' ? 'Self Assign Work' : 'Assign Work')}
+                </span>
               </button>
             </div>
           </form>
@@ -543,12 +608,23 @@ export const UserAssignWork: React.FC = () => {
                 <div key={item.id} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="font-bold text-xs text-gray-900 line-clamp-1">{item.workTitle}</span>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700">
-                      {item.status}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {item.assignmentType === 'user_to_self' && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                          Self
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                        {item.status}
+                      </span>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>To: <strong className="text-gray-700">{item.assigneeName || item.role}</strong></span>
+                    <span>
+                      To: <strong className="text-gray-700">
+                        {item.assignmentType === 'user_to_self' ? `${item.assigneeName || 'You'} (Self)` : (item.assigneeName || item.role)}
+                      </strong>
+                    </span>
                     <span className="flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {item.dueDate}
@@ -563,3 +639,4 @@ export const UserAssignWork: React.FC = () => {
     </div>
   );
 };
+

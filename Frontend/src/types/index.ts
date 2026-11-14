@@ -24,7 +24,7 @@ export interface Member {
   avatar: string;
 }
 
-export type AssignmentType = 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user';
+export type AssignmentType = 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user' | 'user_to_self';
 
 export interface Assignment {
   id: string;

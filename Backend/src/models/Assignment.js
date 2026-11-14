@@ -79,7 +79,7 @@ const assignmentSchema = new mongoose.Schema({
   },
   assignmentType: {
     type: String,
-    enum: ['admin_to_user', 'admin_to_admin', 'user_to_admin', 'user_to_user'],
+    enum: ['admin_to_user', 'admin_to_admin', 'user_to_admin', 'user_to_user', 'user_to_self'],
     default: 'admin_to_user'
   }
 }, { timestamps: true });

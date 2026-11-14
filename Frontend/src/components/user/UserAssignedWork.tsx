@@ -411,14 +411,17 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
 
                         {/* Assignment Flow Badge */}
                         {task.assignmentType && (
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
                             task.assignmentType === 'user_to_user' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                              task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                                'bg-purple-50 text-purple-700 border border-purple-200'
-                            }`}>
+                            task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                            task.assignmentType === 'user_to_self' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                            'bg-gray-50 text-gray-700 border border-gray-200'
+                          }`}>
                             {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
                               task.assignmentType === 'user_to_user' ? 'User → User' :
-                                task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Admin → Admin'}
+                              task.assignmentType === 'user_to_admin' ? 'User → Admin' :
+                              task.assignmentType === 'user_to_self' ? 'Self Assign' : 'Admin → Admin'}
                           </span>
                         )}
                       </div>

@@ -966,6 +966,19 @@
   ],
   "notifications": [
     {
+      "id": "notif-1794629554788-7",
+      "recipientRole": "user",
+      "recipientUserId": "usr-self-test",
+      "recipientEmail": "",
+      "referenceId": "",
+      "title": "Self Assigned Task",
+      "message": "Task \"Self Test Work Item\" was self-assigned in your workspace.",
+      "timestamp": "14 Nov 2026, 09:42 AM",
+      "read": false,
+      "link": "assigned-work",
+      "actionUrl": ""
+    },
+    {
       "id": "notif-1794566080400-419",
       "recipientRole": "admin",
       "recipientUserId": null,

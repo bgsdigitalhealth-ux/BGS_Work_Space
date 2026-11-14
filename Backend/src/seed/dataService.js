@@ -875,13 +875,14 @@ const getAssignments = async (filter = null) => {
 
 const createAssignment = async (data) => {
   // 1. Determine Assigner & Assignee Roles
-  const assignerRole = data.assignerRole || (data.assignerId?.includes('admin') ? 'admin' : 'admin');
-  const assigneeRole = data.assigneeRole || (data.role?.toLowerCase()?.includes('admin') ? 'admin' : 'user');
+  const isSelf = data.assignmentType === 'user_to_self';
+  const assignerRole = data.assignerRole || (data.assignerId?.includes('admin') ? 'admin' : (isSelf ? 'user' : 'admin'));
+  const assigneeRole = data.assigneeRole || (isSelf ? 'user' : (data.role?.toLowerCase()?.includes('admin') ? 'admin' : 'user'));
 
-  // Format: 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user'
+  // Format: 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user' | 'user_to_self'
   let assignmentType = data.assignmentType;
   if (!assignmentType) {
-    assignmentType = `${assignerRole}_to_${assigneeRole}`;
+    assignmentType = isSelf ? 'user_to_self' : `${assignerRole}_to_${assigneeRole}`;
   }
 
   // 2. Resolve Assigner info
@@ -892,9 +893,9 @@ const createAssignment = async (data) => {
   }
 
   // 3. Resolve Assignee info
-  let assigneeName = data.assigneeName || '';
-  let assigneeEmail = data.assigneeEmail || '';
-  let targetUserId = data.assigneeId || data.memberId || '';
+  let assigneeName = data.assigneeName || (isSelf ? assignerName : '');
+  let assigneeEmail = data.assigneeEmail || (isSelf ? data.assignerEmail : '');
+  let targetUserId = data.assigneeId || (isSelf ? data.assignerId : (data.memberId || ''));
   let member = null;
   let dbMember = null;
   let dbTeam = null;
@@ -936,7 +937,9 @@ const createAssignment = async (data) => {
   const deptName = data.departmentName || (dept && dept.name) || 'General';
   const teamName = data.teamName || (dbTeam && dbTeam.name) || (team ? team.name : (assigneeRole === 'admin' ? 'Admin Team' : 'Team'));
 
-  const assignedByLabel = `${assignerRole === 'admin' ? 'Admin' : 'Team Member'} (${assignerName})`;
+  const assignedByLabel = isSelf
+    ? `Self (${assignerName})`
+    : `${assignerRole === 'admin' ? 'Admin' : 'Team Member'} (${assignerName})`;
 
   const newAssign = {
     id: generateId('assign'),
@@ -1019,15 +1022,19 @@ const createAssignment = async (data) => {
   saveStore();
 
   // 6. Send Notification to Recipient
-  const notifTitle = assignmentType === 'user_to_admin'
-    ? 'Work Request from Team Member'
-    : assignmentType === 'admin_to_admin'
-      ? 'Work Delegated by Admin'
-      : assignmentType === 'user_to_user'
-        ? 'Work Assigned by Teammate'
-        : 'New Work Assigned';
+  const notifTitle = assignmentType === 'user_to_self'
+    ? 'Self Assigned Task'
+    : assignmentType === 'user_to_admin'
+      ? 'Work Request from Team Member'
+      : assignmentType === 'admin_to_admin'
+        ? 'Work Delegated by Admin'
+        : assignmentType === 'user_to_user'
+          ? 'Work Assigned by Teammate'
+          : 'New Work Assigned';
 
-  const notifMsg = `${assignerName} (${assignerRole === 'admin' ? 'Admin' : 'Team Member'}) assigned: "${data.workTitle}" to you.`;
+  const notifMsg = assignmentType === 'user_to_self'
+    ? `Task "${data.workTitle}" was self-assigned in your workspace.`
+    : `${assignerName} (${assignerRole === 'admin' ? 'Admin' : 'Team Member'}) assigned: "${data.workTitle}" to you.`;
 
   createNotification({
     recipientRole: assigneeRole,
