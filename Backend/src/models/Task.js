@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const taskSchema = new mongoose.Schema({
+  customId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   teamId: {
     type: mongoose.Schema.Types.Mixed,
     default: 'general'

@@ -18,8 +18,18 @@ const crypto = require('crypto');
 
 const fs = require('fs');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const DATA_FILE = path.join(__dirname, '../../data/db.json');
+
+const buildIdQuery = (id) => {
+  if (!id) return { _id: null };
+  const strId = String(id).trim();
+  if (mongoose.Types.ObjectId.isValid(strId) && strId.length === 24) {
+    return { $or: [{ _id: strId }, { customId: strId }] };
+  }
+  return { customId: strId };
+};
 
 // Persistent Disk Store engine
 let memoryStore = JSON.parse(JSON.stringify(initialData));
@@ -242,16 +252,18 @@ const loadFromMongo = async () => {
     const depts = await Department.find().lean();
     if (depts && depts.length > 0) {
       for (const d of depts) {
-        if (!memoryStore.departments.some(x => x.name.toLowerCase() === d.name.toLowerCase())) {
-          memoryStore.departments.push({ ...d, id: d.customId || d._id.toString() });
+        const id = d.customId || d._id.toString();
+        if (!memoryStore.departments.some(x => x.name.toLowerCase() === d.name.toLowerCase() || x.id === id)) {
+          memoryStore.departments.push({ ...d, id });
         }
       }
     }
     const tms = await Team.find().lean();
     if (tms && tms.length > 0) {
       for (const t of tms) {
-        if (!memoryStore.teams.some(x => x.name.toLowerCase() === t.name.toLowerCase())) {
-          memoryStore.teams.push({ ...t, id: t.customId || t._id.toString() });
+        const id = t.customId || t._id.toString();
+        if (!memoryStore.teams.some(x => x.name.toLowerCase() === t.name.toLowerCase() || x.id === id)) {
+          memoryStore.teams.push({ ...t, id });
         }
       }
     }
@@ -264,8 +276,9 @@ const loadFromMongo = async () => {
           await Member.deleteOne({ _id: m._id }).catch(() => { });
           continue;
         }
-        if (!memoryStore.members.some(x => x.email.toLowerCase() === cleanEmail)) {
-          memoryStore.members.push({ ...m, id: m.customId || m._id.toString() });
+        const id = m.customId || m._id.toString();
+        if (!memoryStore.members.some(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id)) {
+          memoryStore.members.push({ ...m, id });
         }
       }
     }
@@ -278,9 +291,10 @@ const loadFromMongo = async () => {
           await User.deleteOne({ _id: u._id }).catch(() => { });
           continue;
         }
-        const idx = memoryStore.users.findIndex(x => x.email.toLowerCase() === cleanEmail);
+        const id = u.customId || u._id.toString();
+        const idx = memoryStore.users.findIndex(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id);
         if (idx === -1) {
-          memoryStore.users.push({ ...u, id: u.customId || u._id.toString() });
+          memoryStore.users.push({ ...u, id });
         } else if (u.hasPassword && !memoryStore.users[idx].hasPassword) {
           memoryStore.users[idx].password = u.password;
           memoryStore.users[idx].hasPassword = true;
@@ -290,16 +304,79 @@ const loadFromMongo = async () => {
     const asgs = await Assignment.find().lean();
     if (asgs && asgs.length > 0) {
       for (const a of asgs) {
-        if (!memoryStore.assignments.some(x => x.id === (a.customId || a._id.toString()))) {
-          memoryStore.assignments.push({ ...a, id: a.customId || a._id.toString() });
+        const id = a.customId || a._id.toString();
+        if (!memoryStore.assignments.some(x => x.id === id)) {
+          memoryStore.assignments.push({ ...a, id });
         }
       }
     }
     const tsks = await Task.find().lean();
     if (tsks && tsks.length > 0) {
       for (const tk of tsks) {
-        if (!memoryStore.tasks.some(x => x.title === tk.title && x.teamId === tk.teamId)) {
-          memoryStore.tasks.push({ ...tk, id: tk.customId || tk._id.toString() });
+        const id = tk.customId || tk._id.toString();
+        if (!memoryStore.tasks.some(x => x.id === id || (x.title === tk.title && x.teamId === tk.teamId))) {
+          memoryStore.tasks.push({ ...tk, id });
+        }
+      }
+    }
+    const wds = await WorkDone.find().lean();
+    if (wds && wds.length > 0) {
+      if (!memoryStore.workDone) memoryStore.workDone = [];
+      for (const wd of wds) {
+        const id = wd.customId || wd._id.toString();
+        if (!memoryStore.workDone.some(x => x.id === id || (x.title === wd.title && x.teamId === wd.teamId))) {
+          memoryStore.workDone.push({ ...wd, id });
+        }
+      }
+    }
+    const apts = await Appointment.find().lean();
+    if (apts && apts.length > 0) {
+      if (!memoryStore.appointments) memoryStore.appointments = [];
+      for (const apt of apts) {
+        const id = apt.customId || apt._id.toString();
+        if (!memoryStore.appointments.some(x => x.id === id || (x.title === apt.title && x.date === apt.date))) {
+          memoryStore.appointments.push({ ...apt, id });
+        }
+      }
+    }
+    if (!memoryStore.userWorkspace) {
+      memoryStore.userWorkspace = { stats: {}, assignedWork: [], history: [], recentActivities: [] };
+    }
+    const uTasks = await UserTask.find().lean();
+    if (uTasks && uTasks.length > 0) {
+      for (const ut of uTasks) {
+        const id = ut.customId || ut._id.toString();
+        if (!memoryStore.userWorkspace.assignedWork.some(x => x.id === id || x.taskId === ut.taskId)) {
+          memoryStore.userWorkspace.assignedWork.push({ ...ut, id });
+        }
+      }
+    }
+    const wHists = await WorkHistory.find().lean();
+    if (wHists && wHists.length > 0) {
+      for (const wh of wHists) {
+        const id = wh.customId || wh._id.toString();
+        if (!memoryStore.userWorkspace.history.some(x => x.id === id || x.taskId === wh.taskId)) {
+          memoryStore.userWorkspace.history.push({ ...wh, id });
+        }
+      }
+    }
+    const mts = await Meeting.find().lean();
+    if (mts && mts.length > 0) {
+      if (!memoryStore.meetings) memoryStore.meetings = [];
+      for (const mt of mts) {
+        const id = mt.customId || mt._id.toString();
+        if (!memoryStore.meetings.some(x => x.id === id || x.meetingId === mt.meetingId)) {
+          memoryStore.meetings.push({ ...mt, id });
+        }
+      }
+    }
+    const notifs = await Notification.find().lean();
+    if (notifs && notifs.length > 0) {
+      if (!memoryStore.notifications) memoryStore.notifications = [];
+      for (const n of notifs) {
+        const id = n.customId || n._id.toString();
+        if (!memoryStore.notifications.some(x => x.id === id)) {
+          memoryStore.notifications.push({ ...n, id });
         }
       }
     }
@@ -369,61 +446,64 @@ const syncToMongo = async () => {
   try {
     // 1. Departments
     for (const d of (memoryStore.departments || [])) {
-      const exists = await Department.findOne({ name: d.name });
+      const exists = await Department.findOne({ $or: [{ name: d.name }, { customId: d.id }] });
       if (!exists) {
         await Department.create({
           customId: d.id,
           name: d.name,
-          icon: d.icon,
-          description: d.description
+          icon: d.icon || 'layers',
+          description: d.description || 'Manage teams, members, roles and work.'
         });
       }
     }
     // 2. Teams
     for (const t of (memoryStore.teams || [])) {
-      const exists = await Team.findOne({ name: t.name });
+      const exists = await Team.findOne({ $or: [{ name: t.name }, { customId: t.id }] });
       if (!exists) {
         await Team.create({
           customId: t.id,
           name: t.name,
-          departmentId: t.departmentId
+          departmentId: t.departmentId,
+          description: t.description || 'Team responsible for department objectives.'
         });
       }
     }
     // 3. Members
     for (const m of (memoryStore.members || [])) {
-      const exists = await Member.findOne({ email: m.email.toLowerCase() });
+      const cleanEmail = (m.email || '').toLowerCase();
+      const exists = await Member.findOne({ $or: [{ email: cleanEmail }, { customId: m.id }] });
       if (!exists) {
         await Member.create({
           customId: m.id,
           name: m.name,
-          email: m.email,
-          phone: m.phone,
-          role: m.role,
-          assignedWork: m.assignedWork,
+          email: cleanEmail,
+          phone: m.phone || '',
+          role: m.role || 'Developer',
+          assignedWork: m.assignedWork || '',
           teamId: m.teamId,
           departmentId: m.departmentId,
-          avatar: m.avatar
+          avatar: m.avatar || ''
         });
       }
     }
     // 4. Users (Members and Admins)
     for (const u of (memoryStore.users || [])) {
-      const exists = await User.findOne({ email: u.email.toLowerCase() });
+      const cleanEmail = (u.email || '').toLowerCase();
+      const exists = await User.findOne({ email: cleanEmail });
       if (!exists) {
         await User.create({
           customId: u.id || u.customId,
           name: u.name,
-          email: u.email,
-          password: u.password,
+          email: cleanEmail,
+          password: u.password || '',
           hasPassword: Boolean(u.hasPassword),
-          role: u.role,
-          memberId: u.memberId,
-          department: u.department,
-          team: u.team,
-          teamRole: u.teamRole,
-          avatar: u.avatar,
-          title: u.title
+          role: u.role || 'user',
+          memberId: u.memberId || '',
+          department: u.department || '',
+          team: u.team || '',
+          teamRole: u.teamRole || 'Team Member',
+          avatar: u.avatar || '',
+          title: u.title || ''
         });
       } else {
         let changed = false;
@@ -441,23 +521,47 @@ const syncToMongo = async () => {
     }
     // 5. Assignments
     for (const a of (memoryStore.assignments || [])) {
-      const exists = await Assignment.findOne({ workTitle: a.workTitle, teamId: a.teamId });
-      if (!exists) await Assignment.create(a);
+      const exists = await Assignment.findOne({ $or: [{ customId: a.id }, { workTitle: a.workTitle, teamId: a.teamId }] });
+      if (!exists) await Assignment.create({ ...a, customId: a.id });
     }
     // 6. Tasks
     for (const tk of (memoryStore.tasks || [])) {
-      const exists = await Task.findOne({ title: tk.title, teamId: tk.teamId });
-      if (!exists) await Task.create(tk);
+      const exists = await Task.findOne({ $or: [{ customId: tk.id }, { title: tk.title, teamId: tk.teamId }] });
+      if (!exists) await Task.create({ ...tk, customId: tk.id });
     }
     // 7. Work Done
     for (const wd of (memoryStore.workDone || [])) {
-      const exists = await WorkDone.findOne({ title: wd.title, teamId: wd.teamId });
-      if (!exists) await WorkDone.create(wd);
+      const exists = await WorkDone.findOne({ $or: [{ customId: wd.id }, { title: wd.title, teamId: wd.teamId }] });
+      if (!exists) await WorkDone.create({ ...wd, customId: wd.id });
     }
     // 8. Appointments
     for (const apt of (memoryStore.appointments || [])) {
-      const exists = await Appointment.findOne({ title: apt.title, date: apt.date });
-      if (!exists) await Appointment.create(apt);
+      const exists = await Appointment.findOne({ $or: [{ customId: apt.id }, { title: apt.title, date: apt.date }] });
+      if (!exists) await Appointment.create({ ...apt, customId: apt.id });
+    }
+    // 9. User Tasks (User Workspace)
+    if (memoryStore.userWorkspace && Array.isArray(memoryStore.userWorkspace.assignedWork)) {
+      for (const ut of memoryStore.userWorkspace.assignedWork) {
+        const exists = await UserTask.findOne({ $or: [{ customId: ut.id }, { taskId: ut.taskId }] });
+        if (!exists) await UserTask.create({ ...ut, customId: ut.id });
+      }
+    }
+    // 10. Work History
+    if (memoryStore.userWorkspace && Array.isArray(memoryStore.userWorkspace.history)) {
+      for (const wh of memoryStore.userWorkspace.history) {
+        const exists = await WorkHistory.findOne({ $or: [{ customId: wh.id }, { taskId: wh.taskId }] });
+        if (!exists) await WorkHistory.create({ ...wh, customId: wh.id });
+      }
+    }
+    // 11. Meetings
+    for (const mt of (memoryStore.meetings || [])) {
+      const exists = await Meeting.findOne({ $or: [{ customId: mt.id }, { meetingId: mt.meetingId }] });
+      if (!exists) await Meeting.create({ ...mt, customId: mt.id });
+    }
+    // 12. Notifications
+    for (const notif of (memoryStore.notifications || [])) {
+      const exists = await Notification.findOne({ $or: [{ customId: notif.id }, { title: notif.title, timestamp: notif.timestamp }] });
+      if (!exists) await Notification.create({ ...notif, customId: notif.id });
     }
     console.log('[Storage] Seamless synchronization with MongoDB Atlas complete.');
   } catch (err) {
@@ -470,7 +574,7 @@ const getDepartments = async () => {
   if (getStatus()) {
     try {
       const list = await Department.find().lean();
-      return list.map(d => ({ ...d, id: d._id.toString() }));
+      return list.map(d => ({ ...d, id: d.customId || d._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error, falling back to memoryStore:', e.message);
     }
@@ -490,8 +594,13 @@ const createDepartment = async (data) => {
 
   if (getStatus()) {
     try {
-      const created = await Department.create(data);
-      return { ...created.toObject(), id: created._id.toString() };
+      const created = await Department.create({
+        customId: newDept.id,
+        name: newDept.name,
+        icon: newDept.icon,
+        description: newDept.description
+      });
+      return { ...created.toObject(), id: newDept.id };
     } catch (e) {
       console.warn('Mongo create error:', e.message);
     }
@@ -500,7 +609,7 @@ const createDepartment = async (data) => {
 };
 
 const updateDepartment = async (id, data) => {
-  const index = memoryStore.departments.findIndex(d => d.id === id);
+  const index = memoryStore.departments.findIndex(d => d.id === id || d.customId === id);
   if (index !== -1) {
     memoryStore.departments[index] = { ...memoryStore.departments[index], ...data };
     saveStore();
@@ -508,8 +617,8 @@ const updateDepartment = async (id, data) => {
 
   if (getStatus()) {
     try {
-      const updated = await Department.findByIdAndUpdate(id, data, { new: true }).lean();
-      if (updated) return { ...updated, id: updated._id.toString() };
+      const updated = await Department.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo update error:', e.message);
     }
@@ -533,16 +642,16 @@ const deleteDepartment = async (id) => {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.departmentId !== id);
   }
 
-  memoryStore.departments = memoryStore.departments.filter(d => d.id !== id);
+  memoryStore.departments = memoryStore.departments.filter(d => d.id !== id && d.customId !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
   memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
-      await Department.findByIdAndDelete(id);
-      await Team.deleteMany({ departmentId: id });
-      await Member.deleteMany({ departmentId: id });
+      await Department.findOneAndDelete(buildIdQuery(id));
+      await Team.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
+      await Member.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
       await Assignment.deleteMany({ departmentId: id });
       if (deletedEmails.length > 0) {
         await User.deleteMany({ email: { $in: deletedEmails } });
@@ -558,9 +667,9 @@ const deleteDepartment = async (id) => {
 const getTeams = async (departmentId = null) => {
   if (getStatus()) {
     try {
-      const filter = departmentId ? { departmentId } : {};
+      const filter = departmentId ? { $or: [{ departmentId }, { 'departmentId.customId': departmentId }] } : {};
       const list = await Team.find(filter).lean();
-      return list.map(t => ({ ...t, id: t._id.toString(), departmentId: t.departmentId.toString() }));
+      return list.map(t => ({ ...t, id: t.customId || t._id.toString(), departmentId: t.departmentId ? t.departmentId.toString() : '' }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
@@ -583,8 +692,13 @@ const createTeam = async (data) => {
 
   if (getStatus()) {
     try {
-      const created = await Team.create(data);
-      return { ...created.toObject(), id: created._id.toString() };
+      const created = await Team.create({
+        customId: newTeam.id,
+        name: newTeam.name,
+        departmentId: newTeam.departmentId,
+        description: newTeam.description
+      });
+      return { ...created.toObject(), id: newTeam.id };
     } catch (e) {
       console.warn('Mongo create error:', e.message);
     }
@@ -593,7 +707,7 @@ const createTeam = async (data) => {
 };
 
 const updateTeam = async (id, data) => {
-  const index = memoryStore.teams.findIndex(t => t.id === id);
+  const index = memoryStore.teams.findIndex(t => t.id === id || t.customId === id);
   if (index !== -1) {
     memoryStore.teams[index] = { ...memoryStore.teams[index], ...data };
     saveStore();
@@ -601,8 +715,8 @@ const updateTeam = async (id, data) => {
 
   if (getStatus()) {
     try {
-      const updated = await Team.findByIdAndUpdate(id, data, { new: true }).lean();
-      if (updated) return { ...updated, id: updated._id.toString() };
+      const updated = await Team.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo update error:', e.message);
     }
@@ -626,14 +740,14 @@ const deleteTeam = async (id) => {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.teamId !== id);
   }
 
-  memoryStore.teams = memoryStore.teams.filter(t => t.id !== id);
+  memoryStore.teams = memoryStore.teams.filter(t => t.id !== id && t.customId !== id);
   memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
-      await Team.findByIdAndDelete(id);
-      await Member.deleteMany({ teamId: id });
+      await Team.findOneAndDelete(buildIdQuery(id));
+      await Member.deleteMany({ $or: [{ teamId: id }, { 'teamId.customId': id }] });
       await Assignment.deleteMany({ teamId: id });
       await Task.deleteMany({ teamId: id });
       if (deletedEmails.length > 0) {
@@ -651,10 +765,10 @@ const getMembers = async (teamId = null, departmentId = null) => {
   if (getStatus()) {
     try {
       const filter = {};
-      if (teamId) filter.teamId = teamId;
-      if (departmentId) filter.departmentId = departmentId;
+      if (teamId) filter.$or = [{ teamId }, { 'teamId.customId': teamId }];
+      if (departmentId) filter.$or = [{ departmentId }, { 'departmentId.customId': departmentId }];
       const list = await Member.find(filter).lean();
-      return list.map(m => ({ ...m, id: m._id.toString() }));
+      return list.map(m => ({ ...m, id: m.customId || m._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
@@ -733,6 +847,7 @@ const createMember = async (data) => {
   if (getStatus()) {
     try {
       const created = await Member.create({
+        customId: newMember.id,
         name: newMember.name,
         email: cleanEmail,
         phone: newMember.phone,
@@ -751,7 +866,7 @@ const createMember = async (data) => {
           password: '',
           hasPassword: false,
           role: 'user',
-          memberId: created._id.toString(),
+          memberId: newMember.id,
           department: data.departmentId,
           team: data.teamId,
           teamRole: data.role || 'Team Member',
@@ -759,9 +874,9 @@ const createMember = async (data) => {
           title: data.role || 'Team Member'
         });
       }
-      return { ...created.toObject(), id: created._id.toString() };
+      return { ...created.toObject(), id: newMember.id };
     } catch (e) {
-      console.warn('Mongo create error:', e.message);
+      console.warn('Mongo create member error:', e.message);
     }
   }
   return newMember;
@@ -770,14 +885,14 @@ const createMember = async (data) => {
 const updateMember = async (id, data) => {
   if (data && data.email) {
     const cleanEmail = (data.email || '').trim().toLowerCase();
-    const duplicate = (memoryStore.members || []).find(m => m.id !== id && (m.email || '').toLowerCase() === cleanEmail);
+    const duplicate = (memoryStore.members || []).find(m => m.id !== id && m.customId !== id && (m.email || '').toLowerCase() === cleanEmail);
     if (duplicate) {
       throw new Error('Another team member is already registered with this email address');
     }
     unmarkDeletedEmail(cleanEmail);
     data.email = cleanEmail;
   }
-  const index = memoryStore.members.findIndex(m => m.id === id);
+  const index = memoryStore.members.findIndex(m => m.id === id || m.customId === id);
   if (index !== -1) {
     memoryStore.members[index] = { ...memoryStore.members[index], ...data };
     saveStore();
@@ -785,10 +900,10 @@ const updateMember = async (id, data) => {
 
   if (getStatus()) {
     try {
-      const updated = await Member.findByIdAndUpdate(id, data, { new: true }).lean();
-      if (updated) return { ...updated, id: updated._id.toString() };
+      const updated = await Member.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
-      console.warn('Mongo update error:', e.message);
+      console.warn('Mongo update member error:', e.message);
     }
   }
   return index !== -1 ? memoryStore.members[index] : null;
@@ -1070,10 +1185,14 @@ const createAssignment = async (data) => {
   // 7. Persist into MongoDB Atlas if connected
   if (getStatus()) {
     try {
-      const createdAssign = await Assignment.create(newAssign);
+      const createdAssign = await Assignment.create({
+        ...newAssign,
+        customId: newAssign.id
+      });
       const createdTask = await Task.create({
+        customId: newTask.id,
         teamId: data.teamId || 'general',
-        assignmentId: createdAssign._id.toString(),
+        assignmentId: newAssign.id,
         memberId: targetUserId,
         memberName: assigneeName || (assigneeRole === 'admin' ? 'Admin' : 'Team Member'),
         title: data.workTitle,
@@ -1084,7 +1203,7 @@ const createAssignment = async (data) => {
         assignerRole: assignerRole,
         assignmentType: assignmentType
       });
-      newTask.id = createdTask._id.toString();
+      newTask.id = createdTask.customId || createdTask._id.toString();
 
       await UserTask.create({
         customId: userTask.id,
@@ -1120,21 +1239,21 @@ const createAssignment = async (data) => {
 };
 
 const deleteAssignment = async (id) => {
-  const assign = (memoryStore.assignments || []).find(a => a.id === id);
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id);
+  const assign = (memoryStore.assignments || []).find(a => a.id === id || a.customId === id);
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id && a.customId !== id);
 
   // Synchronously delete corresponding task and assignedWork in user workspace
-  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.id !== id && t.assignmentId !== id && (!assign || t.title !== assign.workTitle));
+  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.id !== id && t.customId !== id && t.assignmentId !== id && (!assign || t.title !== assign.workTitle));
   if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w =>
-      w.id !== id && w.assignmentId !== id && w.taskId !== id && (!assign || w.title !== assign.workTitle)
+      w.id !== id && w.customId !== id && w.assignmentId !== id && w.taskId !== id && (!assign || w.title !== assign.workTitle)
     );
   }
   saveStore();
 
   if (getStatus()) {
     try {
-      await Assignment.findByIdAndDelete(id);
+      await Assignment.findOneAndDelete(buildIdQuery(id));
       await Task.deleteMany({ $or: [{ customId: id }, { assignmentId: id }] });
       await UserTask.deleteMany({ $or: [{ customId: id }, { assignmentId: id }, { taskId: id }] });
     } catch (e) {
@@ -1148,9 +1267,9 @@ const deleteAssignment = async (id) => {
 const getTasks = async (teamId = null) => {
   if (getStatus()) {
     try {
-      const filter = teamId ? { teamId } : {};
+      const filter = teamId ? { $or: [{ teamId }, { 'teamId.customId': teamId }] } : {};
       const list = await Task.find(filter).lean();
-      return list.map(t => ({ ...t, id: t._id.toString() }));
+      return list.map(t => ({ ...t, id: t.customId || t._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
@@ -1175,8 +1294,11 @@ const createTask = async (data) => {
 
   if (getStatus()) {
     try {
-      const created = await Task.create(data);
-      return { ...created.toObject(), id: created._id.toString() };
+      const created = await Task.create({
+        ...data,
+        customId: newTask.id
+      });
+      return { ...created.toObject(), id: newTask.id };
     } catch (e) {
       console.warn('Mongo create error:', e.message);
     }
@@ -1185,7 +1307,7 @@ const createTask = async (data) => {
 };
 
 const updateTask = async (id, data) => {
-  const index = memoryStore.tasks.findIndex(t => t.id === id);
+  const index = memoryStore.tasks.findIndex(t => t.id === id || t.customId === id);
   if (index !== -1) {
     memoryStore.tasks[index] = { ...memoryStore.tasks[index], ...data };
     saveStore();
@@ -1193,8 +1315,8 @@ const updateTask = async (id, data) => {
 
   if (getStatus()) {
     try {
-      const updated = await Task.findByIdAndUpdate(id, data, { new: true }).lean();
-      if (updated) return { ...updated, id: updated._id.toString() };
+      const updated = await Task.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo update error:', e.message);
     }
@@ -1203,7 +1325,7 @@ const updateTask = async (id, data) => {
 };
 
 const toggleTask = async (id) => {
-  const index = memoryStore.tasks.findIndex(t => t.id === id);
+  const index = memoryStore.tasks.findIndex(t => t.id === id || t.customId === id);
   if (index !== -1) {
     memoryStore.tasks[index].completed = !memoryStore.tasks[index].completed;
     saveStore();
@@ -1211,11 +1333,11 @@ const toggleTask = async (id) => {
 
   if (getStatus()) {
     try {
-      const task = await Task.findById(id);
+      const task = await Task.findOne(buildIdQuery(id));
       if (task) {
         task.completed = !task.completed;
         await task.save();
-        return { ...task.toObject(), id: task._id.toString() };
+        return { ...task.toObject(), id: task.customId || task._id.toString() };
       }
     } catch (e) {
       console.warn('Mongo toggle error:', e.message);
@@ -1225,21 +1347,21 @@ const toggleTask = async (id) => {
 };
 
 const deleteTask = async (id) => {
-  const t = (memoryStore.tasks || []).find(x => x.id === id);
-  memoryStore.tasks = (memoryStore.tasks || []).filter(x => x.id !== id);
+  const t = (memoryStore.tasks || []).find(x => x.id === id || x.customId === id);
+  memoryStore.tasks = (memoryStore.tasks || []).filter(x => x.id !== id && x.customId !== id);
 
   // Synchronously purge from user workspace assigned work
   if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w =>
-      w.id !== id && w.taskId !== id && (!t || w.title !== t.title)
+      w.id !== id && w.customId !== id && w.taskId !== id && (!t || w.title !== t.title)
     );
   }
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id && (!t || a.workTitle !== t.title));
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id && a.customId !== id && (!t || a.workTitle !== t.title));
   saveStore();
 
   if (getStatus()) {
     try {
-      await Task.findByIdAndDelete(id);
+      await Task.findOneAndDelete(buildIdQuery(id));
       await UserTask.deleteMany({ $or: [{ customId: id }, { taskId: id }] });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
@@ -1252,9 +1374,9 @@ const deleteTask = async (id) => {
 const getWorkDone = async (teamId = null) => {
   if (getStatus()) {
     try {
-      const filter = teamId ? { teamId } : {};
+      const filter = teamId ? { $or: [{ teamId }, { 'teamId.customId': teamId }] } : {};
       const list = await WorkDone.find(filter).lean();
-      return list.map(w => ({ ...w, id: w._id.toString() }));
+      return list.map(w => ({ ...w, id: w.customId || w._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
@@ -3034,7 +3156,7 @@ const createAppointment = async (data) => {
         status: newApt.status,
         isToday: newApt.isToday
       });
-      createdResult = { ...created.toObject(), id: created._id.toString() };
+      createdResult = { ...created.toObject(), id: newApt.id };
     } catch (e) {
       console.warn('Mongo appointment create error:', e.message);
     }
@@ -3095,7 +3217,7 @@ const updateAppointment = async (id, data) => {
   if (!memoryStore.appointments) {
     memoryStore.appointments = [];
   }
-  const index = memoryStore.appointments.findIndex(a => a.id === id);
+  const index = memoryStore.appointments.findIndex(a => a.id === id || a.customId === id);
   if (index !== -1) {
     memoryStore.appointments[index] = {
       ...memoryStore.appointments[index],
@@ -3107,11 +3229,11 @@ const updateAppointment = async (id, data) => {
   if (getStatus()) {
     try {
       const updated = await Appointment.findOneAndUpdate(
-        { $or: [{ customId: id }, { _id: id }] },
+        buildIdQuery(id),
         data,
         { new: true }
       ).lean();
-      if (updated) return { ...updated, id: updated._id.toString() };
+      if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo appointment update error:', e.message);
     }
@@ -3124,19 +3246,19 @@ const deleteAppointment = async (id) => {
   if (!memoryStore.appointments) {
     memoryStore.appointments = [];
   }
-  const apt = memoryStore.appointments.find(a => a.id === id);
-  memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id);
+  const apt = memoryStore.appointments.find(a => a.id === id || a.customId === id);
+  memoryStore.appointments = memoryStore.appointments.filter(a => a.id !== id && a.customId !== id);
 
   if (memoryStore.meetings) {
     memoryStore.meetings = memoryStore.meetings.filter(m =>
-      m.id !== id && m.appointmentId !== id && (!apt || (m.meetingId && m.meetingId !== apt.meetingId))
+      m.id !== id && m.customId !== id && m.appointmentId !== id && (!apt || (m.meetingId && m.meetingId !== apt.meetingId))
     );
   }
   saveStore();
 
   if (getStatus()) {
     try {
-      await Appointment.findOneAndDelete({ $or: [{ customId: id }, { _id: id }] });
+      await Appointment.findOneAndDelete(buildIdQuery(id));
       await Meeting.deleteMany({ $or: [{ customId: id }, { appointmentId: id }] });
     } catch (e) {
       console.warn('Mongo appointment delete error:', e.message);

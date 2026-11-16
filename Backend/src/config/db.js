@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 const dns = require('dns');
 
-// Disable Mongoose command buffering immediately so operations never hang when disconnected
-mongoose.set('bufferCommands', false);
-
 // Prefer IPv4 for DNS resolution in Node.js
 try {
   if (dns.setDefaultResultOrder) {
@@ -37,24 +34,22 @@ mongoose.connection.on('disconnected', () => {
   isConnected = false;
   if (lastReportedState !== 'disconnected') {
     lastReportedState = 'disconnected';
-    console.log(`[Database] Operating with high-speed persistent disk storage (data safely preserved in db.json).`);
+    console.warn(`[Database] MongoDB Atlas disconnected. Active operations preserved locally in db.json until reconnect.`);
   }
 });
 
 mongoose.connection.on('error', (err) => {
   isConnected = false;
-  // Silently mark offline; do not flood console logs on ECONNRESET
   if (lastReportedState !== 'error') {
     lastReportedState = 'error';
-    console.warn(`[Database] MongoDB Atlas connection status: Offline (${err.message}). High-speed persistent disk storage active.`);
+    console.warn(`[Database] MongoDB Atlas connection error: ${err.message}`);
   }
 });
 
 const connectDB = async () => {
   const mongoURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/worker_space';
 
-  const tryConnect = async (timeout = 5000) => {
-    // If already connected or currently connecting, skip
+  const tryConnect = async (timeout = 10000) => {
     if (mongoose.connection.readyState === 1) {
       isConnected = true;
       return mongoose.connection;
@@ -66,45 +61,55 @@ const connectDB = async () => {
     try {
       const conn = await mongoose.connect(mongoURI, {
         serverSelectionTimeoutMS: timeout,
-        connectTimeoutMS: 6000,
-        socketTimeoutMS: 30000,
-        maxPoolSize: 5,
-        heartbeatFrequencyMS: 15000,
-        bufferCommands: false
+        connectTimeoutMS: 10000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10,
+        heartbeatFrequencyMS: 10000
       });
       isConnected = true;
       return conn;
     } catch (error) {
       isConnected = false;
+      if (lastReportedState !== 'connect_failed') {
+        lastReportedState = 'connect_failed';
+        console.error(`\n========================================================================`);
+        console.error(`[Database Alert] Unable to connect to MongoDB Atlas:`);
+        console.error(`Error: ${error.message}`);
+        if (error.message.includes('whitelist') || error.message.includes('Could not connect to any servers')) {
+          console.error(`\n[CRITICAL REQUIREMENT] MongoDB Atlas IP Whitelist:`);
+          console.error(`MongoDB Atlas has blocked this IP from accessing the database.`);
+          console.error(`To fix:`);
+          console.error(`1. Go to MongoDB Atlas: https://cloud.mongodb.com`);
+          console.error(`2. In the left sidebar under "Security", click "Network Access"`);
+          console.error(`3. Click "Add IP Address"`);
+          console.error(`4. Choose "Allow Access From Anywhere" (0.0.0.0/0) or add your current IP.`);
+          console.error(`5. Click "Confirm". Reconnection will occur automatically once active.`);
+        }
+        console.error(`========================================================================\n`);
+      }
       return null;
     }
   };
 
-  const initialConn = await tryConnect(5000);
+  const initialConn = await tryConnect(10000);
   if (initialConn) {
     console.log(`[Database] MongoDB Atlas connected on startup: ${initialConn.connection.host}`);
   } else {
-    console.log(`[Database] System fully operational with persistent disk storage (Backend/data/db.json). Zero data loss.`);
+    console.log(`[Database] Operating with local fallback (Backend/data/db.json) while retrying Atlas connection every 10s...`);
   }
 
-  // Graceful background auto-reconnect with exponential backoff to avoid connection resets
-  let reconnectDelay = 30000;
+  // Active background auto-reconnect with 10s intervals
   const scheduleReconnect = () => {
     setTimeout(async () => {
       if (!getStatus() && mongoose.connection.readyState === 0) {
         try {
-          const res = await tryConnect(4000);
-          if (res) {
-            reconnectDelay = 30000;
-          } else {
-            reconnectDelay = Math.min(reconnectDelay * 1.5, 180000); // Max 3 minutes
-          }
+          await tryConnect(10000);
         } catch (e) {
-          reconnectDelay = Math.min(reconnectDelay * 1.5, 180000);
+          // ignore
         }
       }
       scheduleReconnect();
-    }, reconnectDelay);
+    }, 10000);
   };
   scheduleReconnect();
 

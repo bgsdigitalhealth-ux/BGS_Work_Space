@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const workDoneSchema = new mongoose.Schema({
+  customId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   teamId: {
     type: mongoose.Schema.Types.Mixed,
     required: true
@@ -28,4 +33,3 @@ const workDoneSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('WorkDone', workDoneSchema);
-

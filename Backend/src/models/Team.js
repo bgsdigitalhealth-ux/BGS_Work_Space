@@ -1,13 +1,18 @@
 const mongoose = require('mongoose');
 
 const teamSchema = new mongoose.Schema({
+  customId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
   name: {
     type: String,
     required: true,
     trim: true
   },
   departmentId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: mongoose.Schema.Types.Mixed,
     ref: 'Department',
     required: true
   },
@@ -18,4 +23,3 @@ const teamSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 module.exports = mongoose.model('Team', teamSchema);
-
