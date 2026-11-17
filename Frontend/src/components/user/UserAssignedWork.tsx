@@ -21,7 +21,6 @@ import {
 import { useApp } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
-import { AssignedWorkGlassSlider } from '../common/AssignedWorkGlassSlider';
 
 interface UserAssignedWorkProps {
   initialView?: 'cards' | 'details';
@@ -276,9 +275,6 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
             </div>
           </div>
         </div>
-
-        {/* Live Assigned Work Horizontal Slider (One-by-One Glass Structure) */}
-        <AssignedWorkGlassSlider title="Live Assigned Work & Duty Timings" />
 
         {/* Filter & Search Bar */}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
