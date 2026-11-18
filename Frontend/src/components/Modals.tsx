@@ -178,7 +178,7 @@ export const Modals: React.FC = () => {
           role: memRole.trim() || 'Developer',
           assignedWork: memWork.trim(),
           teamId: selectedTeam.id,
-          departmentId: selectedDepartment.id
+          departmentId: selectedTeam.departmentId || selectedDepartment.id
         });
       }
       memberSaved = true;

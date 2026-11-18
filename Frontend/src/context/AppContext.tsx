@@ -634,20 +634,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u = await api.getUsers();
       const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
       setAllUsers(sanitized);
-      // Strictly protect active administrators from unwarranted session termination.
-      // If a regular user account was genuinely deleted from the system, revoke access.
-      if (currentUser && currentUser.role !== 'admin' && Array.isArray(sanitized) && sanitized.length > 0) {
-        const stillExists = sanitized.some(x =>
-          (currentUser.id && x.id === currentUser.id) ||
-          (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
-        );
-        if (!stillExists) {
-          console.warn('[Session] Current user account no longer active. Terminating session.');
-          logout();
-          alert('Your account has been deleted by an administrator. Access to the dashboard has been revoked.');
-          window.location.href = '/';
-        }
-      }
     } catch (e) {
       console.error(e);
     }
@@ -688,8 +674,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let isMounted = true;
     api.validateSession(currentUser.id, currentUser.email).then((res) => {
       if (!isMounted) return;
-      if (!res.valid) {
-        console.warn('[Session] Session verification failed on startup:', res.error);
+      // Only revoke session if backend explicitly confirmed deletion in MongoDB Atlas (never on cold start / network blip)
+      if (!res.valid && res.deleted) {
+        console.warn('[Session] Session verification confirmed account deleted by admin:', res.error);
         logout();
         alert('Your account has been deleted by an administrator. Access denied.');
         window.location.href = '/';

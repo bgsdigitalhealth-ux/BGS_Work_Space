@@ -57,6 +57,22 @@ const broadcast = (type, payload = {}) => {
   }
 };
 
+// --- Strict Admin-Only Authorization Middleware (Verified Against MongoDB Atlas) ---
+const requireAdmin = async (req, res, next) => {
+  const role = req.headers['x-user-role'] || req.body?.requestRole || req.query?.requestRole;
+  const email = req.headers['x-user-email'] || req.body?.requestEmail || req.query?.requestEmail;
+  const id = req.headers['x-user-id'] || req.body?.requestUserId || req.query?.requestUserId;
+
+  const isAdmin = await dataService.verifyAdminAccess({ role, email, id });
+  if (!isAdmin) {
+    return res.status(403).json({
+      success: false,
+      error: 'Access denied: Only administrators are authorized to remove or modify this data.'
+    });
+  }
+  next();
+};
+
 // --- Authentication (ONLY TWO ROLES: admin and user) ---
 router.post('/auth/check-email', async (req, res) => {
   try {
@@ -142,8 +158,8 @@ router.get('/auth/users', async (req, res) => {
   }
 });
 
-// Update User (Name, Email, Role, Password) from Admin Settings
-router.put('/auth/users/:id', async (req, res) => {
+// Update User (Name, Email, Role, Password) from Admin Settings (Admin Only)
+router.put('/auth/users/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.updateUser(req.params.id, req.body);
     if (!result.success) {
@@ -157,8 +173,8 @@ router.put('/auth/users/:id', async (req, res) => {
   }
 });
 
-// Permanently Delete User from Admin Settings
-router.delete('/auth/users/:id', async (req, res) => {
+// Permanently Delete User from Admin Settings (Admin Only)
+router.delete('/auth/users/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteUser(req.params.id);
     if (!result.success) {
@@ -223,7 +239,7 @@ router.get('/auth/admins', async (req, res) => {
   }
 });
 
-router.post('/auth/admins', async (req, res) => {
+router.post('/auth/admins', requireAdmin, async (req, res) => {
   try {
     const { name, email, password } = req.body;
     if (!name || !email || !password) {
@@ -240,7 +256,7 @@ router.post('/auth/admins', async (req, res) => {
   }
 });
 
-router.delete('/auth/admins/:id', async (req, res) => {
+router.delete('/auth/admins/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteAdmin(req.params.id);
     if (!result.success) {
@@ -318,7 +334,7 @@ router.get('/departments', async (req, res) => {
   }
 });
 
-router.post('/departments', async (req, res) => {
+router.post('/departments', requireAdmin, async (req, res) => {
   try {
     const { name, icon, description } = req.body;
     if (!name) return res.status(400).json({ error: 'Name is required' });
@@ -330,7 +346,7 @@ router.post('/departments', async (req, res) => {
   }
 });
 
-router.put('/departments/:id', async (req, res) => {
+router.put('/departments/:id', requireAdmin, async (req, res) => {
   try {
     const updated = await dataService.updateDepartment(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Department not found' });
@@ -341,7 +357,7 @@ router.put('/departments/:id', async (req, res) => {
   }
 });
 
-router.delete('/departments/:id', async (req, res) => {
+router.delete('/departments/:id', requireAdmin, async (req, res) => {
   try {
     await dataService.deleteDepartment(req.params.id);
     broadcast('ORG_CHANGED', { entity: 'department', action: 'delete', id: req.params.id });
@@ -362,7 +378,7 @@ router.get('/teams', async (req, res) => {
   }
 });
 
-router.post('/teams', async (req, res) => {
+router.post('/teams', requireAdmin, async (req, res) => {
   try {
     const { name, departmentId, description } = req.body;
     if (!name || !departmentId) return res.status(400).json({ error: 'Name and departmentId are required' });
@@ -374,7 +390,7 @@ router.post('/teams', async (req, res) => {
   }
 });
 
-router.put('/teams/:id', async (req, res) => {
+router.put('/teams/:id', requireAdmin, async (req, res) => {
   try {
     const updated = await dataService.updateTeam(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Team not found' });
@@ -385,7 +401,7 @@ router.put('/teams/:id', async (req, res) => {
   }
 });
 
-router.delete('/teams/:id', async (req, res) => {
+router.delete('/teams/:id', requireAdmin, async (req, res) => {
   try {
     await dataService.deleteTeam(req.params.id);
     broadcast('ORG_CHANGED', { entity: 'team', action: 'delete', id: req.params.id });
@@ -406,7 +422,7 @@ router.get('/members', async (req, res) => {
   }
 });
 
-router.post('/members', async (req, res) => {
+router.post('/members', requireAdmin, async (req, res) => {
   try {
     const { name, email, phone, role, teamId, departmentId, assignedWork } = req.body;
     if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
@@ -431,7 +447,7 @@ router.post('/members', async (req, res) => {
   }
 });
 
-router.put('/members/:id', async (req, res) => {
+router.put('/members/:id', requireAdmin, async (req, res) => {
   try {
     const updated = await dataService.updateMember(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Member not found' });
@@ -447,7 +463,7 @@ router.put('/members/:id', async (req, res) => {
   }
 });
 
-router.delete('/members/:id', async (req, res) => {
+router.delete('/members/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteMember(req.params.id);
     broadcast('MEMBER_DELETED', { id: req.params.id, ...result });
@@ -502,7 +518,7 @@ router.post('/assignments', async (req, res) => {
   }
 });
 
-router.delete('/assignments/:id', async (req, res) => {
+router.delete('/assignments/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteAssignment(req.params.id);
     broadcast('ASSIGNMENT_DELETED', { id: req.params.id });
@@ -514,7 +530,7 @@ router.delete('/assignments/:id', async (req, res) => {
 });
 
 // --- Admin Work Review (Approve / Rework) ---
-router.post('/work/:id/approve', async (req, res) => {
+router.post('/work/:id/approve', requireAdmin, async (req, res) => {
   try {
     const { comment } = req.body;
     const result = await dataService.approveWork(req.params.id, comment);
@@ -525,7 +541,7 @@ router.post('/work/:id/approve', async (req, res) => {
   }
 });
 
-router.post('/work/:id/rework', async (req, res) => {
+router.post('/work/:id/rework', requireAdmin, async (req, res) => {
   try {
     const { feedback } = req.body;
     const result = await dataService.requestRework(req.params.id, feedback);
@@ -547,7 +563,7 @@ router.get('/tasks', async (req, res) => {
   }
 });
 
-router.post('/tasks', async (req, res) => {
+router.post('/tasks', requireAdmin, async (req, res) => {
   try {
     const { teamId, title, priority, date } = req.body;
     if (!title) return res.status(400).json({ error: 'Title is required' });
@@ -559,7 +575,7 @@ router.post('/tasks', async (req, res) => {
   }
 });
 
-router.put('/tasks/:id', async (req, res) => {
+router.put('/tasks/:id', requireAdmin, async (req, res) => {
   try {
     const updated = await dataService.updateTask(req.params.id, req.body);
     if (!updated) return res.status(404).json({ error: 'Task not found' });
@@ -581,7 +597,7 @@ router.patch('/tasks/:id/toggle', async (req, res) => {
   }
 });
 
-router.delete('/tasks/:id', async (req, res) => {
+router.delete('/tasks/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteTask(req.params.id);
     broadcast('TASK_CHANGED', { action: 'delete', id: req.params.id });
@@ -615,7 +631,7 @@ router.post('/work-done', async (req, res) => {
   }
 });
 
-router.delete('/work-done/:id', async (req, res) => {
+router.delete('/work-done/:id', requireAdmin, async (req, res) => {
   try {
     await dataService.deleteWorkDone(req.params.id);
     broadcast('WORK_DONE_CHANGED', { action: 'delete', id: req.params.id });
@@ -774,7 +790,7 @@ router.put('/appointments/:id', async (req, res) => {
   }
 });
 
-router.delete('/appointments/:id', async (req, res) => {
+router.delete('/appointments/:id', requireAdmin, async (req, res) => {
   try {
     const result = await dataService.deleteAppointment(req.params.id);
     broadcast('APPOINTMENT_CHANGED', { action: 'delete', id: req.params.id });
@@ -785,8 +801,8 @@ router.delete('/appointments/:id', async (req, res) => {
   }
 });
 
-// --- Purge & Reset All Dummy Data ---
-router.post(['/reset-data', '/purge-all-data'], async (req, res) => {
+// --- Purge & Reset All Dummy Data (Admin Only) ---
+router.post(['/reset-data', '/purge-all-data'], requireAdmin, async (req, res) => {
   try {
     const result = await dataService.clearAllData();
     broadcast('DATA_RESET', { message: 'All dummy data purged completely' });

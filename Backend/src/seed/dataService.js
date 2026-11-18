@@ -293,11 +293,12 @@ const loadFromMongo = async () => {
     if (mems && mems.length > 0) {
       for (const m of mems) {
         const cleanEmail = (m.email || '').toLowerCase();
-        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) || !m.name || m.name.trim() === '' || !m.email || m.email.trim() === '') {
-          // Permanently purge from MongoDB Atlas
+        // Only purge explicitly banned dummy accounts or malformed empty rows; Atlas is source of truth for real members
+        if (isBannedEmail(cleanEmail) || !m.name || m.name.trim() === '' || !m.email || m.email.trim() === '') {
           await Member.deleteOne({ _id: m._id }).catch(() => { });
           continue;
         }
+        unmarkDeletedEmail(cleanEmail);
         const id = m.customId || m._id.toString();
         if (!memoryStore.members.some(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id)) {
           memoryStore.members.push({ ...m, id });
@@ -308,11 +309,12 @@ const loadFromMongo = async () => {
     if (usrs && usrs.length > 0) {
       for (const u of usrs) {
         const cleanEmail = (u.email || '').toLowerCase();
-        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail))) {
-          // Permanently purge from MongoDB Atlas
+        // Only purge explicitly banned dummy accounts; never auto-delete real Atlas users from local cache
+        if (isBannedEmail(cleanEmail)) {
           await User.deleteOne({ _id: u._id }).catch(() => { });
           continue;
         }
+        unmarkDeletedEmail(cleanEmail);
         const id = u.customId || u._id.toString();
         const idx = memoryStore.users.findIndex(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id);
         if (idx === -1) {
@@ -429,21 +431,7 @@ const initMongoSeed = async () => {
       ]
     }).catch(() => { });
 
-    // Purge emails in deletedEmails that are truly deleted (not active in users/members)
-    if (Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.length > 0) {
-      const trulyDeleted = [];
-      for (const dEmail of memoryStore.deletedEmails) {
-        if (!isEmailCurrentlyActive(dEmail)) {
-          trulyDeleted.push(dEmail);
-        }
-      }
-      if (trulyDeleted.length > 0) {
-        await User.deleteMany({ email: { $in: trulyDeleted } }).catch(() => { });
-        await Member.deleteMany({ email: { $in: trulyDeleted } }).catch(() => { });
-      }
-    }
-
-    // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
+    // 1. Load authoritative cloud records from MongoDB Atlas into memoryStore (never wipe real Atlas accounts from local cache)
     await loadFromMongo();
 
     // 2. Ensure base login accounts (initialData.users) exist and are verified with active credentials
@@ -659,37 +647,46 @@ const updateDepartment = async (id, data) => {
 };
 
 const deleteDepartment = async (id) => {
-  // Find members and users belonging to this department
-  const deptMembers = memoryStore.members.filter(m => m.departmentId === id);
-  const deletedEmails = deptMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
+  // IMPORTANT: Never auto-delete User or Member accounts when deleting a department!
+  // Only an admin explicitly deleting a User/Member should remove user accounts.
+  // Unbind affected members and users so their accounts remain permanently preserved.
+  const deptTeams = (memoryStore.teams || []).filter(t => t.departmentId === id).map(t => t.id);
 
-  // Remove users associated with those members
-  if (deletedEmails.length > 0) {
-    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
-  }
+  memoryStore.members = (memoryStore.members || []).map(m => {
+    if (m.departmentId === id || deptTeams.includes(m.teamId)) {
+      return { ...m, departmentId: '', teamId: '' };
+    }
+    return m;
+  });
 
-  // Remove assignments in this department
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.departmentId !== id);
-  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
-    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.departmentId !== id);
-  }
+  memoryStore.users = (memoryStore.users || []).map(u => {
+    if (u.department === id || deptTeams.includes(u.team)) {
+      return { ...u, department: '', team: '' };
+    }
+    return u;
+  });
 
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id && d.customId !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
-  memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
       await Department.findOneAndDelete(buildIdQuery(id));
       await Team.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
-      await Member.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
-      await Assignment.deleteMany({ departmentId: id });
-      if (deletedEmails.length > 0) {
-        await User.deleteMany({ email: { $in: deletedEmails } });
-      }
+      // Unbind members & users in MongoDB Atlas without deleting their accounts
+      const teamOr = deptTeams.length > 0 ? [{ teamId: { $in: deptTeams } }] : [];
+      await Member.updateMany(
+        { $or: [{ departmentId: id }, { 'departmentId.customId': id }, ...teamOr] },
+        { $set: { departmentId: '', teamId: '' } }
+      );
+      const userTeamOr = deptTeams.length > 0 ? [{ team: { $in: deptTeams } }] : [];
+      await User.updateMany(
+        { $or: [{ department: id }, ...userTeamOr] },
+        { $set: { department: '', team: '' } }
+      );
     } catch (e) {
-      console.warn('Mongo delete error:', e.message);
+      console.warn('Mongo deleteDepartment error:', e.message);
     }
   }
   return true;
@@ -757,36 +754,31 @@ const updateTeam = async (id, data) => {
 };
 
 const deleteTeam = async (id) => {
-  // Find members and users belonging to this team
-  const teamMembers = memoryStore.members.filter(m => m.teamId === id);
-  const deletedEmails = teamMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
-
-  if (deletedEmails.length > 0) {
-    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
-  }
-
-  // Remove assignments and tasks in this team
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.teamId !== id);
-  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.teamId !== id);
-  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
-    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.teamId !== id);
-  }
+  // IMPORTANT: Never auto-delete User or Member accounts when deleting a team!
+  // Unbind affected members & users so their accounts remain permanently preserved.
+  memoryStore.members = (memoryStore.members || []).map(m =>
+    m.teamId === id ? { ...m, teamId: '' } : m
+  );
+  memoryStore.users = (memoryStore.users || []).map(u =>
+    u.team === id ? { ...u, team: '' } : u
+  );
 
   memoryStore.teams = memoryStore.teams.filter(t => t.id !== id && t.customId !== id);
-  memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
       await Team.findOneAndDelete(buildIdQuery(id));
-      await Member.deleteMany({ $or: [{ teamId: id }, { 'teamId.customId': id }] });
-      await Assignment.deleteMany({ teamId: id });
-      await Task.deleteMany({ teamId: id });
-      if (deletedEmails.length > 0) {
-        await User.deleteMany({ email: { $in: deletedEmails } });
-      }
+      await Member.updateMany(
+        { $or: [{ teamId: id }, { 'teamId.customId': id }] },
+        { $set: { teamId: '' } }
+      );
+      await User.updateMany(
+        { team: id },
+        { $set: { team: '' } }
+      );
     } catch (e) {
-      console.warn('Mongo delete error:', e.message);
+      console.warn('Mongo deleteTeam error:', e.message);
     }
   }
   return true;
@@ -910,23 +902,26 @@ const createMember = async (data) => {
         departmentId: newMember.departmentId,
         avatar: newMember.avatar
       });
-      const dbUser = await User.findOne({ email: cleanEmail });
-      if (!dbUser) {
-        await User.create({
-          customId: existingUser.id,
-          name: newMember.name,
-          email: cleanEmail,
-          password: '',
-          hasPassword: false,
-          role: 'user',
-          memberId: newMember.id,
-          department: data.departmentId,
-          team: data.teamId,
-          teamRole: data.role || 'Team Member',
-          avatar: newMember.avatar,
-          title: data.role || 'Team Member'
-        });
-      }
+      await User.findOneAndUpdate(
+        { email: cleanEmail },
+        {
+          $setOnInsert: {
+            customId: existingUser.id,
+            name: newMember.name,
+            email: cleanEmail,
+            password: '',
+            hasPassword: false,
+            role: 'user',
+            memberId: newMember.id,
+            department: data.departmentId || '',
+            team: data.teamId || '',
+            teamRole: data.role || 'Team Member',
+            avatar: newMember.avatar,
+            title: data.role || 'Team Member'
+          }
+        },
+        { upsert: true, new: true }
+      );
       return { ...created.toObject(), id: newMember.id };
     } catch (e) {
       console.warn('Mongo create member error:', e.message);
@@ -2623,16 +2618,70 @@ const deleteAdmin = async (id) => {
   return { success: true, message: 'Administrator removed successfully', deletedUser: targetAdmin };
 };
 
+// Strictly verify that the requesting account is an active administrator (cannot be spoofed by role header alone)
+const verifyAdminAccess = async ({ role, email, id } = {}) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanId = (id || '').trim();
+
+  if (!cleanEmail && !cleanId) {
+    return false;
+  }
+
+  // 1. Check initialData base administrators
+  const inInitial = (initialData.users || []).find(u =>
+    u.role === 'admin' && (
+      (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+      (cleanId && (u.id === cleanId || u.customId === cleanId))
+    )
+  );
+  if (inInitial && !isBannedEmail(inInitial.email)) {
+    return true;
+  }
+
+  // 2. Check MongoDB Atlas as authoritative source of truth
+  if (getStatus()) {
+    try {
+      const orConditions = [];
+      if (cleanEmail) orConditions.push({ email: cleanEmail });
+      if (cleanId) {
+        orConditions.push({ customId: cleanId });
+        if (mongoose.Types.ObjectId.isValid(cleanId) && cleanId.length === 24) {
+          orConditions.push({ _id: cleanId });
+        }
+      }
+      if (orConditions.length > 0) {
+        const dbUser = await User.findOne({ $or: orConditions }).lean();
+        if (dbUser) {
+          return dbUser.role === 'admin' && !isBannedEmail(dbUser.email);
+        }
+      }
+    } catch (e) {
+      console.warn('Mongo verifyAdminAccess notice:', e.message);
+    }
+  }
+
+  // 3. Fallback to memoryStore
+  const memUser = (memoryStore.users || []).find(u =>
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (u.id === cleanId || u.customId === cleanId))
+  );
+  if (memUser) {
+    return memUser.role === 'admin' && !isBannedEmail(memUser.email);
+  }
+
+  return false;
+};
+
 // Validate that an active user/admin session still exists in the system
 const validateSession = async (id, email) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanId = (id || '').trim();
 
-  if (cleanEmail && (await isEmailDeleted(cleanEmail))) {
-    return { valid: false, message: 'User account has been deleted by an administrator. Access revoked.' };
+  if (cleanEmail && isBannedEmail(cleanEmail)) {
+    return { valid: false, deleted: true, message: 'User account has been deleted by an administrator. Access revoked.' };
   }
 
-  // 1. Check initialData.users (System admins are always valid unless banned/deleted)
+  // 1. Check initialData.users (System admins are always valid unless banned)
   const initialUser = (initialData.users || []).find(u =>
     (cleanId && (u.id === cleanId || u.customId === cleanId)) ||
     (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)
@@ -2642,30 +2691,14 @@ const validateSession = async (id, email) => {
     return { valid: true, user: safeUser };
   }
 
-  // 2. Check memoryStore.users
-  const users = memoryStore.users || [];
-  let user = null;
-  if (cleanId) {
-    user = users.find(u => u.id === cleanId || u._id === cleanId || u.customId === cleanId);
-  }
-  if (!user && cleanEmail) {
-    user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
-  }
-
-  if (user && !isBannedEmail(user.email)) {
-    const { password, ...safeUser } = user;
-    return { valid: true, user: safeUser };
-  }
-
-  // 3. Check MongoDB if connected
+  // 2. Check MongoDB Atlas as authoritative source of truth when connected
   if (getStatus()) {
     try {
-      const mongoose = require('mongoose');
       const orConditions = [];
       if (cleanEmail) orConditions.push({ email: cleanEmail });
       if (cleanId) {
         orConditions.push({ customId: cleanId });
-        if (mongoose.Types.ObjectId.isValid(cleanId)) {
+        if (mongoose.Types.ObjectId.isValid(cleanId) && cleanId.length === 24) {
           orConditions.push({ _id: cleanId });
         }
       }
@@ -2674,13 +2707,39 @@ const validateSession = async (id, email) => {
         if (dbUser && !isBannedEmail(dbUser.email)) {
           return { valid: true, user: { ...dbUser, id: dbUser.customId || dbUser._id.toString() } };
         }
+        // Also check Member collection in case user was registered as member and session uses memberId/email
+        if (cleanEmail) {
+          const dbMember = await Member.findOne({ email: cleanEmail }).lean();
+          if (dbMember && !isBannedEmail(dbMember.email)) {
+            return { valid: true, user: { id: dbMember.customId || dbMember._id.toString(), name: dbMember.name, email: dbMember.email, role: 'user' } };
+          }
+        }
       }
+      // Atlas IS connected and definitively confirmed this account does not exist
+      return { valid: false, deleted: true, message: 'User account has been deleted by an administrator.' };
     } catch (e) {
       console.warn('Mongo validateSession notice:', e.message);
+      // Transient Atlas query error: do NOT falsely kick out the user
+      return { valid: true, pendingDb: true };
     }
   }
 
-  return { valid: false, message: 'User account has been deleted by an administrator.' };
+  // 3. MongoDB Atlas is not yet connected (e.g. Render cold start) — check memoryStore,
+  // and if absent, DO NOT falsely report "deleted" while Atlas is still connecting!
+  const users = memoryStore.users || [];
+  let user = null;
+  if (cleanId) {
+    user = users.find(u => u.id === cleanId || u._id === cleanId || u.customId === cleanId);
+  }
+  if (!user && cleanEmail) {
+    user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
+  }
+  if (user && !isBannedEmail(user.email)) {
+    const { password, ...safeUser } = user;
+    return { valid: true, user: safeUser };
+  }
+
+  return { valid: true, pendingDb: true };
 };
 
 // Update existing user from Admin Settings (Name, Email, Role, Password)
@@ -2688,10 +2747,22 @@ const updateUser = async (id, { name, email, role, password, avatar }) => {
   const cleanId = (id || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
 
-  const user = (memoryStore.users || []).find(u =>
+  let user = (memoryStore.users || []).find(u =>
     u.id === cleanId ||
+    u.customId === cleanId ||
+    (u._id && String(u._id) === cleanId) ||
     (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
   );
+
+  if (!user && getStatus()) {
+    try {
+      const dbUser = await User.findOne(buildIdQuery(cleanId)).lean();
+      if (dbUser) {
+        user = { ...dbUser, id: dbUser.customId || dbUser._id.toString() };
+        memoryStore.users.push(user);
+      }
+    } catch (e) { }
+  }
 
   if (!user) {
     return { success: false, error: 'User account not found' };
@@ -2763,10 +2834,21 @@ const updateUser = async (id, { name, email, role, password, avatar }) => {
 // Permanently delete user from Admin Settings and ensure email is completely unregistered
 const deleteUser = async (id) => {
   const cleanId = (id || '').trim();
-  const user = (memoryStore.users || []).find(u =>
+  let user = (memoryStore.users || []).find(u =>
     u.id === cleanId ||
+    u.customId === cleanId ||
+    (u._id && String(u._id) === cleanId) ||
     (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
   );
+
+  if (!user && getStatus()) {
+    try {
+      const dbUser = await User.findOne(buildIdQuery(cleanId)).lean();
+      if (dbUser) {
+        user = { ...dbUser, id: dbUser.customId || dbUser._id.toString() };
+      }
+    } catch (e) { }
+  }
 
   const targetEmail = (user ? user.email : cleanId).toLowerCase();
   const targetId = user ? user.id : cleanId;
@@ -4215,6 +4297,7 @@ module.exports = {
   getAdmins,
   createAdmin,
   deleteAdmin,
+  verifyAdminAccess,
   getNotifications,
   createNotification,
   markNotificationRead,
