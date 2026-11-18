@@ -11,7 +11,7 @@ export const TeamList: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-xs w-full lg:w-64 shrink-0">
+    <div className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-xs w-full shrink-0">
       <div className="flex items-center justify-between mb-4 pb-1">
         <h3 className="font-bold text-slate-900 text-sm leading-tight">
           Teams in {selectedDepartment?.name || 'Department'}
@@ -51,7 +51,7 @@ export const TeamList: React.FC = () => {
                   <Users className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-bold truncate text-slate-900">{team.name}</p>
+                  <p className="font-bold truncate text-slate-900" title={team.name}>{team.name}</p>
                   <p className={`text-xs mt-0.5 ${isSelected ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
                     {getTeamMemberCount(team.id)}
                   </p>

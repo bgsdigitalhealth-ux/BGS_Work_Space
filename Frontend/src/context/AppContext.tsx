@@ -662,6 +662,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       refreshAppointments(),
       refreshNotifications()
     ];
+    if (selectedDepartment) {
+      promises.push(fetchTeams(selectedDepartment.id));
+    }
     if (selectedTeam) {
       promises.push(fetchMembers(selectedTeam.id));
       promises.push(fetchAssignments(selectedTeam.id));

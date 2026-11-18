@@ -143,7 +143,7 @@ export const App: React.FC = () => {
 
             {/* Central Departments & Teams (Left) + Unified Department Detail (Right) */}
             <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
-              <div className="w-full lg:w-72 shrink-0 space-y-5">
+              <div className="w-full lg:w-80 shrink-0 space-y-5">
                 <DepartmentList />
                 <TeamList />
               </div>

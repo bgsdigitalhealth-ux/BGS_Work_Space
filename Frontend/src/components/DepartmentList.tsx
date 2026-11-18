@@ -26,7 +26,7 @@ export const DepartmentList: React.FC = () => {
   };
 
   return (
-    <div id="departments-section" className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-xs w-full lg:w-72 shrink-0">
+    <div id="departments-section" className="bg-white rounded-2xl border border-slate-200/60 p-4 shadow-xs w-full shrink-0">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-bold text-slate-900 text-base">Departments</h3>
         <button
@@ -52,17 +52,18 @@ export const DepartmentList: React.FC = () => {
             return (
               <button
                 key={dept.id}
+                title={dept.name}
                 onClick={() => setSelectedDepartment(dept)}
                 className={`w-full flex items-center justify-between py-2.5 pr-3 text-left text-sm font-semibold transition-all cursor-pointer rounded-r-xl ${isSelected
                   ? 'border-l-4 border-indigo-600 pl-3 bg-indigo-50/70 text-indigo-950 font-bold'
                   : 'border-l-4 border-transparent pl-3 text-slate-700 hover:bg-slate-50/80'
                   }`}
               >
-                <div className="flex items-center gap-3 truncate">
+                <div className="flex items-center gap-3 truncate min-w-0">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-white shadow-2xs' : 'bg-slate-100'}`}>
                     {getIcon(dept.icon || dept.name)}
                   </div>
-                  <span className="truncate">{dept.name}</span>
+                  <span className="truncate" title={dept.name}>{dept.name}</span>
                 </div>
                 <span className={`text-xs font-normal shrink-0 ${isSelected ? 'text-indigo-600 font-medium' : 'text-slate-400'}`}>
                   {getTeamCountText(dept)}

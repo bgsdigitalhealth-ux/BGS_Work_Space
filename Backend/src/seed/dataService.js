@@ -421,7 +421,12 @@ const initMongoSeed = async () => {
     await Member.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
     await User.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
     await Member.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
-    await Member.deleteMany({ $or: [{ name: '' }, { email: '' }, { name: null }, { email: null }] }).catch(() => { });
+    await Member.deleteMany({
+      $or: [
+        { name: '' }, { email: '' }, { name: null }, { email: null },
+        { name: { $exists: false } }, { email: { $exists: false } }
+      ]
+    }).catch(() => { });
 
     // Purge emails in deletedEmails that are truly deleted (not active in users/members)
     if (Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.length > 0) {
@@ -795,17 +800,35 @@ const getMembers = async (teamId = null, departmentId = null) => {
       if (departmentId) filter.$or = [{ departmentId }, { 'departmentId.customId': departmentId }];
       const list = await Member.find(filter).lean();
       return list
-        .filter(m => m && !isBannedEmail(m.email) && m.name && m.email && m.name.trim() !== '' && m.email.trim() !== '')
-        .map(m => ({ ...m, id: m.customId || m._id.toString() }));
+        .filter(m => m && !isBannedEmail(m.email) && m.name && m.email && String(m.name).trim() !== '' && String(m.email).trim() !== '')
+        .map(m => ({
+          ...m,
+          id: m.customId || m._id.toString(),
+          name: (m.name || 'Team Member').trim(),
+          email: (m.email || '').trim().toLowerCase(),
+          phone: (m.phone || '').trim(),
+          role: m.role || 'Developer',
+          assignedWork: m.assignedWork || '',
+          avatar: m.avatar || (m.name ? String(m.name).trim().charAt(0).toUpperCase() : 'M')
+        }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
   }
   let res = memoryStore.members || [];
-  res = res.filter(m => m && !isBannedEmail(m.email) && m.name && m.email && m.name.trim() !== '' && m.email.trim() !== '');
+  res = res.filter(m => m && !isBannedEmail(m.email) && m.name && m.email && String(m.name).trim() !== '' && String(m.email).trim() !== '');
   if (teamId) res = res.filter(m => m.teamId === teamId);
   else if (departmentId) res = res.filter(m => m.departmentId === departmentId);
-  return res;
+  return res.map(m => ({
+    ...m,
+    id: m.id || m.customId || generateId('mem'),
+    name: (m.name || 'Team Member').trim(),
+    email: (m.email || '').trim().toLowerCase(),
+    phone: (m.phone || '').trim(),
+    role: m.role || 'Developer',
+    assignedWork: m.assignedWork || '',
+    avatar: m.avatar || (m.name ? String(m.name).trim().charAt(0).toUpperCase() : 'M')
+  }));
 };
 
 const createMember = async (data) => {
