@@ -27,4 +27,6 @@ tokens/
 Backend/data/wpp_messages.json
 *.backup.*
 *.backup.json
+.cache/
+
 

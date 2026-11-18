@@ -1,8 +1,8 @@
 import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage } from '../types';
 
-// Support production backend on Render via VITE_API_URL or fallback to local proxy /api
-const rawBase = (import.meta.env.VITE_API_URL || '').trim();
-export const API_BASE = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api';
+// Support production backend on Render via VITE_API_URL (Cloudflare Pages) or fallback to local proxy /api
+const rawBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+export const API_BASE = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`) : '/api';
 
 export const api = {
   // Stats

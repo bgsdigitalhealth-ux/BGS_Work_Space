@@ -5,11 +5,11 @@ let socket: Socket | null = null;
 let activeUser: User | null = null;
 let heartbeatInterval: any = null;
 
-// Determine backend Socket.IO URL
+// Determine backend Socket.IO URL (supports Render backend via VITE_API_URL on Cloudflare Pages)
 const getSocketUrl = (): string => {
-  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
   if (envUrl) {
-    return envUrl.replace(/\/api\/?$/, '');
+    return envUrl.replace(/\/api$/, '');
   }
   if (typeof window !== 'undefined') {
     // If local dev on port 3000 or any dev port:

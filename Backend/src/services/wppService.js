@@ -149,16 +149,21 @@ const getChromeExecutablePath = () => {
     for (const p of linuxPaths) {
       if (fs.existsSync(p)) return p;
     }
-    // Check Puppeteer cache directory on Render (/opt/render/.cache/puppeteer)
+    // Check Puppeteer cache directories on Render and Linux systems
     const renderCachePaths = [
+      process.env.PUPPETEER_CACHE_DIR,
+      path.resolve(__dirname, '../../.cache/puppeteer'),
+      path.resolve(process.cwd(), '.cache/puppeteer'),
+      '/opt/render/project/src/Backend/.cache/puppeteer',
+      '/opt/render/project/src/.cache/puppeteer',
       '/opt/render/.cache/puppeteer',
       path.join(process.env.HOME || '/root', '.cache/puppeteer')
-    ];
+    ].filter(Boolean);
     for (const cacheDir of renderCachePaths) {
       if (fs.existsSync(cacheDir)) {
         try {
           const findChromeRecursive = (dir, depth = 0) => {
-            if (depth > 5) return null;
+            if (depth > 6) return null;
             const entries = fs.readdirSync(dir, { withFileTypes: true });
             for (const entry of entries) {
               const full = path.join(dir, entry.name);
@@ -397,9 +402,16 @@ const initWppSession = async ({ isAutoRetry = false } = {}) => {
       session: SESSION_NAME
     });
 
-    // Schedule automatic background reconnection if not manually stopped
-    if (!isManualStop) {
+    // Schedule automatic background reconnection unless Chrome binary itself is absent
+    const isMissingChrome =
+      lastInitError.includes('Could not find Chrome') ||
+      lastInitError.includes('Could not find expected browser') ||
+      lastInitError.includes('no open browser');
+
+    if (!isManualStop && !isMissingChrome) {
       scheduleAutoReconnect();
+    } else if (isMissingChrome) {
+      console.warn('[WPPConnect] Chrome binary not detected on host. WhatsApp messages remain safely queued until Chrome is available.');
     }
   } finally {
     isInitializing = false;

@@ -8,8 +8,9 @@ let sseClients = [];
 
 router.get('/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
   const clientId = Date.now();
@@ -18,7 +19,17 @@ router.get('/events', (req, res) => {
 
   res.write(`data: ${JSON.stringify({ type: 'CONNECTED', clientId })}\n\n`);
 
+  // Keep SSE connection alive through Render & Cloudflare proxy timeouts
+  const keepAliveTimer = setInterval(() => {
+    try {
+      res.write(': keepalive\n\n');
+    } catch (e) {
+      clearInterval(keepAliveTimer);
+    }
+  }, 25000);
+
   req.on('close', () => {
+    clearInterval(keepAliveTimer);
     sseClients = sseClients.filter(c => c.id !== clientId);
   });
 });
