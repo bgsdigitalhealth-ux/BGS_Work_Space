@@ -308,6 +308,8 @@ export const AdminSettings: React.FC = () => {
     try {
       await api.deleteAdmin(adminId);
       setAdminActionMsg(`Administrator ${adminEmail} removed successfully.`);
+      setAdmins(prev => prev.filter(a => a.id !== adminId && a.email.toLowerCase() !== adminEmail.toLowerCase()));
+      await refreshAll();
       fetchAdmins();
     } catch (err: any) {
       setAdminActionError(err.message || 'Failed to remove administrator.');

@@ -48,6 +48,7 @@ const BANNED_EMAILS = [
 const isBannedEmail = (email) => {
   if (!email) return false;
   const clean = String(email).trim().toLowerCase();
+  if (clean.includes('dynamicsajjan')) return true;
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 
@@ -2581,19 +2582,25 @@ const createAdmin = async ({ name, email, password }) => {
 };
 
 const deleteAdmin = async (id) => {
-  const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin').length;
-  if (adminCount <= 1) {
-    return { success: false, error: 'Cannot delete the only administrator account' };
+  const targetAdmin = (memoryStore.users || []).find(u => u.id === id || (u.email && u.email.toLowerCase() === String(id).toLowerCase()));
+  const adminEmail = (targetAdmin ? targetAdmin.email : String(id || '')).toLowerCase();
+  const isDynamics = adminEmail.includes('dynamicsajjan');
+
+  // Prevent deleting primary super admin
+  if (adminEmail === 'bgsmchhospitalnagarur@gmail.com') {
+    return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
   }
 
-  const targetAdmin = (memoryStore.users || []).find(u => u.id === id || u.email.toLowerCase() === id.toLowerCase());
-  const adminEmail = (targetAdmin ? targetAdmin.email : id).toLowerCase();
+  const remainingAdmins = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan'));
+  if (!isDynamics && remainingAdmins.length <= 1) {
+    return { success: false, error: 'Cannot delete the only administrator account' };
+  }
 
   if (adminEmail) {
     markDeletedEmail(adminEmail);
   }
 
-  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && u.email.toLowerCase() !== adminEmail);
+  memoryStore.users = (memoryStore.users || []).filter(u => u.id !== id && (!u.email || u.email.toLowerCase() !== adminEmail));
   memoryStore.members = (memoryStore.members || []).filter(m => m.id !== id && (!m.email || m.email.toLowerCase() !== adminEmail));
   saveStore();
 
@@ -2601,6 +2608,9 @@ const deleteAdmin = async (id) => {
     try {
       const mongoose = require('mongoose');
       const orConditions = [{ email: adminEmail }];
+      if (isDynamics) {
+        orConditions.push({ email: { $regex: /dynamicsajjan/i } });
+      }
       if (id) orConditions.push({ customId: id });
       if (mongoose.Types.ObjectId.isValid(id)) orConditions.push({ _id: id });
       await User.deleteMany({ $or: orConditions }).catch(() => { });
@@ -2758,20 +2768,27 @@ const deleteUser = async (id) => {
     (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
   );
 
-  if (!user) {
+  const targetEmail = (user ? user.email : cleanId).toLowerCase();
+  const targetId = user ? user.id : cleanId;
+  const isDynamics = targetEmail.includes('dynamicsajjan');
+
+  // If user not in memoryStore, but target is dynamicsajjan, proceed to delete from MongoDB Atlas
+  if (!user && !isDynamics) {
     return { success: false, error: 'User not found' };
   }
 
-  // Prevent deleting the only administrator
-  if (user.role === 'admin') {
-    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin').length;
+  // Prevent deleting the primary administrator
+  if (targetEmail === 'bgsmchhospitalnagarur@gmail.com') {
+    return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
+  }
+
+  // Prevent deleting the only administrator (unless dynamicsajjan)
+  if (user && user.role === 'admin' && !isDynamics) {
+    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan')).length;
     if (adminCount <= 1) {
       return { success: false, error: 'Cannot delete the only administrator account' };
     }
   }
-
-  const targetEmail = (user.email || '').toLowerCase();
-  const targetId = user.id;
 
   // 0. Record in permanent deleted blacklist
   if (targetEmail) {
@@ -2786,7 +2803,7 @@ const deleteUser = async (id) => {
 
   // 2. Remove any corresponding Member record so email is completely unregistered
   memoryStore.members = (memoryStore.members || []).filter(m =>
-    m.id !== user.memberId &&
+    m.id !== user?.memberId &&
     (!m.email || m.email.toLowerCase() !== targetEmail)
   );
 
@@ -2800,7 +2817,7 @@ const deleteUser = async (id) => {
 
   // 4. Remove assignments assigned to this user
   memoryStore.assignments = (memoryStore.assignments || []).filter(a =>
-    a.memberId !== user.memberId &&
+    a.memberId !== user?.memberId &&
     a.assigneeId !== targetId &&
     (!a.assigneeEmail || a.assigneeEmail.toLowerCase() !== targetEmail)
   );
@@ -2812,18 +2829,25 @@ const deleteUser = async (id) => {
     try {
       const mongoose = require('mongoose');
       const userOr = [{ email: targetEmail }];
+      if (isDynamics) {
+        userOr.push({ email: { $regex: /dynamicsajjan/i } });
+      }
       if (targetId) userOr.push({ customId: targetId });
       if (mongoose.Types.ObjectId.isValid(targetId)) userOr.push({ _id: targetId });
       await User.deleteMany({ $or: userOr }).catch(() => { });
 
       const memberOr = [{ email: targetEmail }];
-      if (user.memberId) memberOr.push({ customId: user.memberId });
-      if (mongoose.Types.ObjectId.isValid(user.memberId)) memberOr.push({ _id: user.memberId });
+      if (isDynamics) {
+        memberOr.push({ email: { $regex: /dynamicsajjan/i } });
+      }
+      if (user?.memberId) memberOr.push({ customId: user.memberId });
+      if (mongoose.Types.ObjectId.isValid(user?.memberId)) memberOr.push({ _id: user.memberId });
       await Member.deleteMany({ $or: memberOr }).catch(() => { });
 
       const assignOr = [{ assigneeEmail: targetEmail }];
-      if (user.memberId) assignOr.push({ memberId: user.memberId });
+      if (user?.memberId) assignOr.push({ memberId: user.memberId });
       if (targetId) assignOr.push({ assigneeId: targetId });
+      if (isDynamics) assignOr.push({ assigneeEmail: { $regex: /dynamicsajjan/i } });
       await Assignment.deleteMany({ $or: assignOr }).catch(() => { });
 
       if (targetId) {
@@ -2836,8 +2860,8 @@ const deleteUser = async (id) => {
 
   return {
     success: true,
-    message: `User ${user.name} (${user.email}) deleted permanently.`,
-    deletedUser: user
+    message: `User ${user?.name || targetEmail} deleted permanently.`,
+    deletedUser: user || { id: targetId, email: targetEmail }
   };
 };
 

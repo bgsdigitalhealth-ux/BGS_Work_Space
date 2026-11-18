@@ -175,6 +175,7 @@ export const BANNED_EMAILS = [
 export const isBannedEmail = (email?: string): boolean => {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
+  if (clean.includes('dynamicsajjan')) return true;
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 

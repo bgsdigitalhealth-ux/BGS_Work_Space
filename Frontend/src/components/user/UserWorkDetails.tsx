@@ -67,45 +67,9 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     setIsAddingComment(false);
   };
 
-  const comments = task.comments && task.comments.length > 0 ? task.comments : [
-    {
-      id: 'c-1',
-      author: 'Rahul Sharma',
-      role: 'Team Member',
-      date: '04 Nov 2026, 11:10 AM',
-      badge: 'Work Started',
-      text: 'Started working on the poster. Concept and layout are under progress.'
-    },
-    {
-      id: 'c-2',
-      author: 'Rahul Sharma',
-      role: 'Team Member',
-      date: '05 Nov 2026, 04:20 PM',
-      badge: 'Update',
-      text: 'Draft version completed. Attached for review and feedback.'
-    },
-    {
-      id: 'c-3',
-      author: 'Priya Verma (Team Lead)',
-      role: 'Team Lead',
-      date: '05 Nov 2026, 05:00 PM',
-      badge: 'Feedback',
-      text: 'Looks good. Please add the venue and contact details, then submit the final version.'
-    }
-  ];
+  const comments = task.comments && task.comments.length > 0 ? task.comments : [];
 
-  const attachments = task.attachments && task.attachments.length > 0 ? task.attachments : [
-    {
-      name: 'CME_Brief.pdf',
-      size: '1.2 MB | 03 Nov 2026',
-      type: 'pdf'
-    },
-    {
-      name: 'Branding_Assets.zip',
-      size: '4.8 MB | 03 Nov 2026',
-      type: 'zip'
-    }
-  ];
+  const attachments = task.attachments && task.attachments.length > 0 ? task.attachments : [];
 
   const getCommentBadgeStyle = (badge?: string) => {
     if (badge === 'Work Started') return 'bg-blue-50 text-blue-600 border border-blue-200';
@@ -132,9 +96,9 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 {task.title}
               </h2>
               <p className="text-xs text-gray-500 font-medium mt-1">
-                Department: <span className="font-semibold text-gray-800">{task.department || 'Events'}</span> &nbsp;|&nbsp;
-                Team: <span className="font-semibold text-gray-800">{task.team || 'Design'}</span> &nbsp;|&nbsp;
-                Assigned by: <span className="font-semibold text-gray-800">{task.assignedBy || 'Priya Verma'}</span>
+                Department: <span className="font-semibold text-gray-800">{task.department || 'Hospital Workspace'}</span> &nbsp;|&nbsp;
+                Team: <span className="font-semibold text-gray-800">{task.team || 'General'}</span> &nbsp;|&nbsp;
+                Assigned by: <span className="font-semibold text-gray-800">{task.assignedBy || 'Administrator'}</span>
               </p>
             </div>
           </div>
@@ -223,7 +187,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Description</h3>
               </div>
               <p className="text-xs text-gray-600 leading-relaxed font-normal">
-                {task.description || 'Design an event poster for the upcoming CME on "Anaesthesia Awareness Programme" with institutional branding, date, venue and resource faculty details.'}
+                {task.description || 'No specific description provided for this work assignment.'}
               </p>
             </div>
 
@@ -236,11 +200,11 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Assigned On</span>
-                  <span className="font-semibold text-gray-900">: {task.assignedOn || '03 Nov 2026, 10:30 AM'}</span>
+                  <span className="font-semibold text-gray-900">: {task.assignedOn || (task as any).date || 'Recently'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Due Date</span>
-                  <span className="font-semibold text-gray-900">: {task.dueDate || '06 Nov 2026'}</span>
+                  <span className="font-semibold text-gray-900">: {task.dueDate || (task as any).date || 'Scheduled'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-gray-500">Time Left</span>
@@ -422,7 +386,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
 
             {/* Comments Thread */}
             <div className="space-y-5">
-              {comments.map((c) => {
+              {comments.length === 0 ? (
+                <div className="p-6 rounded-2xl bg-gray-50/70 border border-dashed border-gray-200 text-center text-xs text-gray-400">
+                  No activity updates posted yet.
+                </div>
+              ) : (
+                comments.map((c) => {
                 const isLead = c.role && c.role.includes('Lead');
                 return (
                   <div key={c.id} className="flex items-start gap-3.5 group">
@@ -457,7 +426,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                     </div>
                   </div>
                 );
-              })}
+              }))}
             </div>
           </div>
         </div>
@@ -552,7 +521,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
             </div>
 
             <div className="space-y-2.5">
-              {attachments.map((file, idx) => (
+              {attachments.length === 0 ? (
+                <div className="p-4 rounded-xl bg-gray-50/70 border border-dashed border-gray-200 text-center text-xs text-gray-400">
+                  No files attached to this task.
+                </div>
+              ) : (
+                attachments.map((file, idx) => (
                 <div key={idx} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${
@@ -575,7 +549,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                     <Download className="w-4 h-4" />
                   </button>
                 </div>
-              ))}
+              )))}
             </div>
           </div>
         </div>
