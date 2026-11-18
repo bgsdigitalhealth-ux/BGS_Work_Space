@@ -37,6 +37,7 @@ app.use(cors({
       allowedOrigins.length === 0 ||
       allowedOrigins.includes(cleanOrigin) ||
       cleanOrigin.endsWith('.pages.dev') ||
+      cleanOrigin.endsWith('.workers.dev') ||
       cleanOrigin.includes('localhost') ||
       cleanOrigin.includes('127.0.0.1')
     ) {
