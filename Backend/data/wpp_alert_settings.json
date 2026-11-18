@@ -3,7 +3,7 @@
   "channels": {
     "email": {
       "enabled": false,
-      "recipient": "dynamicsajjan@gmail.com"
+      "recipient": "bgsmchhospitalnagarur@gmail.com"
     },
     "sms": {
       "enabled": false,
@@ -17,16 +17,6 @@
   "lastAlertIncidentId": null,
   "lastAlertSentAt": null,
   "alertHistory": [
-    {
-      "id": "alt-1794205325790-wizu",
-      "incidentId": "manual-test",
-      "channel": "email",
-      "recipient": "dynamicsajjan@gmail.com",
-      "status": "failed",
-      "error": "Setup required. Missing environment variables: SMTP_HOST, SMTP_USER, SMTP_PASS",
-      "summary": "Test email failed: setup required",
-      "timestamp": "2026-11-09T06:22:05.790Z"
-    },
     {
       "id": "alt-1794205315473-ie1j",
       "incidentId": "manual-test",

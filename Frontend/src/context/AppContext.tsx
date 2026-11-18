@@ -162,14 +162,20 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const BANNED_EMAILS = [
+  'dynamicsajjan@gmail.com',
   'dynamicsajjan@gamil.com',
   'admin@company.com',
-  'user@company.com'
+  'user@company.com',
+  'rahul@company.com',
+  'priya@company.com',
+  'amit@company.com',
+  'sneha@company.com'
 ];
 
 export const isBannedEmail = (email?: string): boolean => {
   if (!email) return false;
-  return BANNED_EMAILS.includes(email.trim().toLowerCase());
+  const clean = email.trim().toLowerCase();
+  return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

@@ -25,4 +25,6 @@ Thumbs.db
 tokens/
 *.session.data.json
 Backend/data/wpp_messages.json
+*.backup.*
+*.backup.json
 

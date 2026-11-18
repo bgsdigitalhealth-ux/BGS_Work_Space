@@ -35,15 +35,20 @@ const buildIdQuery = (id) => {
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
 const BANNED_EMAILS = [
+  'dynamicsajjan@gmail.com',
   'dynamicsajjan@gamil.com',
   'admin@company.com',
-  'user@company.com'
+  'user@company.com',
+  'rahul@company.com',
+  'priya@company.com',
+  'amit@company.com',
+  'sneha@company.com'
 ];
 
 const isBannedEmail = (email) => {
   if (!email) return false;
   const clean = String(email).trim().toLowerCase();
-  return BANNED_EMAILS.includes(clean);
+  return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 
 // Check if an email is currently registered / active in users or members (memoryStore, initialData, or MongoDB Atlas)
@@ -131,9 +136,14 @@ const loadStore = () => {
       if (parsed) {
         memoryStore = { ...initialData, ...parsed };
         const bannedEmails = [
+          'dynamicsajjan@gmail.com',
           'dynamicsajjan@gamil.com',
           'admin@company.com',
-          'user@company.com'
+          'user@company.com',
+          'rahul@company.com',
+          'priya@company.com',
+          'amit@company.com',
+          'sneha@company.com'
         ];
         if (!Array.isArray(memoryStore.deletedEmails)) {
           memoryStore.deletedEmails = [...bannedEmails];
@@ -178,7 +188,16 @@ const loadStore = () => {
     console.warn('[Storage] Disk read error, initializing default store:', e.message);
   }
   memoryStore = JSON.parse(JSON.stringify(initialData));
-  memoryStore.deletedEmails = ['dynamicsajjan@gamil.com', 'admin@company.com', 'user@company.com'];
+  memoryStore.deletedEmails = [
+    'dynamicsajjan@gmail.com',
+    'dynamicsajjan@gamil.com',
+    'admin@company.com',
+    'user@company.com',
+    'rahul@company.com',
+    'priya@company.com',
+    'amit@company.com',
+    'sneha@company.com'
+  ];
   memoryStore.users = (memoryStore.users || []).filter(u => !isBannedEmail(u.email));
   saveStore();
 };
@@ -234,8 +253,10 @@ const clearAllData = async () => {
       await Message.deleteMany({});
       await UserTask.deleteMany({});
       await WorkHistory.deleteMany({});
-      await User.deleteMany({ email: { $nin: ['dynamicsajjan@gmail.com', 'rpy6425@gmail.com'] } });
-      await User.deleteMany({ email: { $in: ['dynamicsajjan@gamil.com', 'admin@company.com', 'user@company.com'] } });
+      await User.deleteMany({ email: { $nin: ['bgsmchhospitalnagarur@gmail.com'] } });
+      await User.deleteMany({ email: { $in: BANNED_EMAILS } });
+      await User.deleteMany({ email: { $regex: /@company\.com$/i } });
+      await User.deleteMany({ email: { $regex: /dynamicsajjan/i } });
       console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
     } catch (e) {
       console.warn('[Storage] Mongo wipe error:', e.message);
@@ -271,7 +292,7 @@ const loadFromMongo = async () => {
     if (mems && mems.length > 0) {
       for (const m of mems) {
         const cleanEmail = (m.email || '').toLowerCase();
-        if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) || !m.name || m.name.trim() === '' || !m.email || m.email.trim() === '') {
           // Permanently purge from MongoDB Atlas
           await Member.deleteOne({ _id: m._id }).catch(() => { });
           continue;
@@ -286,7 +307,7 @@ const loadFromMongo = async () => {
     if (usrs && usrs.length > 0) {
       for (const u of usrs) {
         const cleanEmail = (u.email || '').toLowerCase();
-        if (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) {
+        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail))) {
           // Permanently purge from MongoDB Atlas
           await User.deleteOne({ _id: u._id }).catch(() => { });
           continue;
@@ -396,6 +417,11 @@ const initMongoSeed = async () => {
       await User.deleteMany({ email: { $in: BANNED_EMAILS } }).catch(() => { });
       await Member.deleteMany({ email: { $in: BANNED_EMAILS } }).catch(() => { });
     }
+    await User.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
+    await Member.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
+    await User.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
+    await Member.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
+    await Member.deleteMany({ $or: [{ name: '' }, { email: '' }, { name: null }, { email: null }] }).catch(() => { });
 
     // Purge emails in deletedEmails that are truly deleted (not active in users/members)
     if (Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.length > 0) {
@@ -768,12 +794,15 @@ const getMembers = async (teamId = null, departmentId = null) => {
       if (teamId) filter.$or = [{ teamId }, { 'teamId.customId': teamId }];
       if (departmentId) filter.$or = [{ departmentId }, { 'departmentId.customId': departmentId }];
       const list = await Member.find(filter).lean();
-      return list.map(m => ({ ...m, id: m.customId || m._id.toString() }));
+      return list
+        .filter(m => m && !isBannedEmail(m.email) && m.name && m.email && m.name.trim() !== '' && m.email.trim() !== '')
+        .map(m => ({ ...m, id: m.customId || m._id.toString() }));
     } catch (e) {
       console.warn('Mongo read error:', e.message);
     }
   }
-  let res = memoryStore.members;
+  let res = memoryStore.members || [];
+  res = res.filter(m => m && !isBannedEmail(m.email) && m.name && m.email && m.name.trim() !== '' && m.email.trim() !== '');
   if (teamId) res = res.filter(m => m.teamId === teamId);
   else if (departmentId) res = res.filter(m => m.departmentId === departmentId);
   return res;

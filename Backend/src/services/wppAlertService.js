@@ -20,7 +20,7 @@ const DEFAULT_SETTINGS = {
   channels: {
     email: {
       enabled: false,
-      recipient: 'dynamicsajjan@gmail.com'
+      recipient: 'bgsmchhospitalnagarur@gmail.com'
     },
     sms: {
       enabled: false,
