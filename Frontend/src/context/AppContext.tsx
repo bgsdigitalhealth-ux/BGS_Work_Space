@@ -176,6 +176,67 @@ export const isBannedEmail = (email?: string): boolean => {
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 
+// Check if a user holds a Manager, Head, Lead, or Administrator role
+export const isUserManager = (user?: User | null, member?: Member | null): boolean => {
+  if (!user && !member) return false;
+  if (user && (user.role === 'admin' || (user.role as any) === 'manager')) return true;
+  const roleString = [
+    user?.role,
+    user?.teamRole,
+    user?.title,
+    member?.role
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return roleString.includes('admin') ||
+         roleString.includes('manager') ||
+         roleString.includes('head') ||
+         roleString.includes('lead');
+};
+
+// Dynamic Multi-Team Visibility Isolation:
+// - Managers & Admins can see ALL teams' member works.
+// - Regular team members can ONLY see assigned works belonging to the SAME team (or assigned directly to them).
+export const filterTasksForUser = (tasks: UserAssignedWork[], user: User | null, member?: Member | null): UserAssignedWork[] => {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  if (!user) return [];
+
+  // Managers and Admins can see ALL teams' member works
+  if (isUserManager(user, member)) {
+    return tasks;
+  }
+
+  // Regular team member: ONLY see tasks belonging to the SAME team (or assigned directly to them)
+  const myTeam = (user.team || '').trim().toLowerCase();
+  const myTeamId = (user as any).teamId || member?.teamId || '';
+  const myEmail = (user.email || '').trim().toLowerCase();
+  const myId = user.id || '';
+
+  return tasks.filter(t => {
+    // 1. Direct assignment to this user
+    const matchId = myId && (t.userId === myId || (t as any).assigneeId === myId);
+    const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
+    const matchMember = (user as any).memberId && (t as any).memberId === (user as any).memberId;
+    const matchName = user.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === user.name.toLowerCase();
+    if (matchId || matchEmail || matchMember || matchName) {
+      return true;
+    }
+
+    // 2. Same team check: task must belong to this user's team
+    const taskTeamId = (t as any).teamId || '';
+    const taskTeamName = (t.team || '').trim().toLowerCase();
+
+    if (myTeamId && taskTeamId && myTeamId === taskTeamId) {
+      return true;
+    }
+    if (myTeam && taskTeamName && myTeam === taskTeamName) {
+      return true;
+    }
+
+    // Different team: NOT visible
+    return false;
+  });
+};
+
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   // Session / Authentication state: default to stored user or null (Login Page)
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -516,21 +577,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const data = await api.getUserWorkspace(currentUser?.id, currentUser?.email);
 
-      // Strict User Isolation: Regular users can NEVER see other users' assigned work
+      // Dynamic Multi-Team Isolation:
+      // Managers & Admins see ALL teams member works.
+      // Regular team members ONLY see assigned works of the SAME team.
       if (currentUser && currentUser.role === 'user') {
-        const myTasks = (data.assignedWork || []).filter(t => {
-          const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
-          const matchEmail = currentUser.email && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === currentUser.email.toLowerCase();
-          const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
-          const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
-          return Boolean(matchId || matchEmail || matchMember || matchName);
-        });
+        const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === (currentUser.email || '').toLowerCase()) || m.id === currentUser.id);
+        const visibleTasks = filterTasksForUser(data.assignedWork || [], currentUser, myMember);
 
-        data.assignedWork = myTasks;
-        data.stats.totalAssigned = myTasks.length;
-        data.stats.inProgress = myTasks.filter(t => t.status === 'In Progress').length;
-        data.stats.upcomingWork = myTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
-        data.stats.completedWork = myTasks.filter(t => t.status === 'Completed').length;
+        data.assignedWork = visibleTasks;
+        data.stats.totalAssigned = visibleTasks.length;
+        data.stats.inProgress = visibleTasks.filter(t => t.status === 'In Progress').length;
+        data.stats.upcomingWork = visibleTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
+        data.stats.completedWork = visibleTasks.filter(t => t.status === 'Completed').length;
+        data.stats.completionPercentage = visibleTasks.length > 0
+          ? Math.round((data.stats.completedWork / visibleTasks.length) * 100)
+          : 0;
+        data.stats.completedFractionText = `${data.stats.completedWork} of ${visibleTasks.length} Tasks`;
       }
 
       setUserWorkspace(data);

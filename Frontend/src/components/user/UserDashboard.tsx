@@ -15,13 +15,14 @@ import {
   Send,
   ChevronDown
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager, filterTasksForUser } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
 export const UserDashboard: React.FC = () => {
   const { 
     currentUser,
     userWorkspace, 
+    members,
     setUserNav, 
     setSelectedUserTask,
     isSubmitWorkDrawerOpen,
@@ -40,21 +41,19 @@ export const UserDashboard: React.FC = () => {
   const [drawerStatus, setDrawerStatus] = useState<'Completed' | 'In Progress' | 'Under Review'>('Completed');
   const [drawerComment, setDrawerComment] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
+  const [teamFilter, setTeamFilter] = useState('All Teams');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
+  const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === myEmail) || (currentUser?.id && m.id === currentUser.id));
+  const isManager = isUserManager(currentUser, myMember);
 
-  // Strict User Isolation: Filter out tasks that do not belong to current logged-in user
-  const assignedList = currentUser?.role === 'user'
-    ? rawAssigned.filter(t => {
-        const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
-        const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
-        const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
-        const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
-        return Boolean(matchId || matchEmail || matchMember || matchName);
-      })
-    : rawAssigned;
+  // Dynamic Multi-Team Isolation:
+  // - Managers see ALL teams member works.
+  // - Regular team members ONLY see works belonging to their SAME team.
+  const assignedList = filterTasksForUser(rawAssigned, currentUser, myMember);
+  const availableTeams = Array.from(new Set(assignedList.map(t => t.team).filter(Boolean)));
 
   const historyList = userWorkspace?.history || [];
 
@@ -85,6 +84,11 @@ export const UserDashboard: React.FC = () => {
       if (departmentFilter === 'High' && task.priority !== 'High') return false;
       if (departmentFilter === 'Medium' && task.priority !== 'Medium') return false;
       if (departmentFilter === 'Low' && task.priority !== 'Low') return false;
+    }
+
+    // Team filter for Managers
+    if (isManager && teamFilter !== 'All Teams' && task.team.toLowerCase() !== teamFilter.toLowerCase()) {
+      return false;
     }
 
     // Search query
@@ -229,7 +233,14 @@ export const UserDashboard: React.FC = () => {
           {/* Table Header Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-gray-900 tracking-tight">My Assigned Work</h2>
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                {isManager ? 'All Teams Member Works' : (currentUser?.team ? `${currentUser.team} Work` : 'My Team Work')}
+                {isManager && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
+                    Manager Access
+                  </span>
+                )}
+              </h2>
               <button
                 onClick={() => setUserNav('assign-work')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-sm cursor-pointer"
@@ -240,14 +251,31 @@ export const UserDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-3">
-              {/* Dropdown Filter */}
+              {/* Dynamic Team Selector for Manager */}
+              {isManager && availableTeams.length > 0 && (
+                <div className="relative">
+                  <select
+                    value={teamFilter}
+                    onChange={(e) => setTeamFilter(e.target.value)}
+                    className="appearance-none bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
+                  >
+                    <option value="All Teams">All Teams ({assignedList.length})</option>
+                    {availableTeams.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-indigo-500 absolute right-2.5 top-3 pointer-events-none" />
+                </div>
+              )}
+
+              {/* Priority Filter */}
               <div className="relative">
                 <select
                   value={departmentFilter}
                   onChange={(e) => setDepartmentFilter(e.target.value)}
                   className="appearance-none bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
                 >
-                  <option value="All Work">All Work</option>
+                  <option value="All Work">All Priorities</option>
                   <option value="High">High Priority</option>
                   <option value="Medium">Medium Priority</option>
                   <option value="Low">Low Priority</option>
@@ -365,11 +393,18 @@ export const UserDashboard: React.FC = () => {
                                   </span>
                                 )}
                               </div>
-                              {task.assignedBy && (
-                                <span className="text-[10px] text-gray-400 font-medium">
-                                  By: {task.assignedBy}
-                                </span>
-                              )}
+                              <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                {task.assignedBy && (
+                                  <span className="text-[10px] text-gray-400 font-medium">
+                                    By: {task.assignedBy}
+                                  </span>
+                                )}
+                                {(task.assigneeName || (task as any).assignedTo) && (
+                                  <span className="text-[10px] text-indigo-600 font-semibold bg-indigo-50/80 px-1.5 py-0.5 rounded">
+                                    Assignee: {task.assigneeName || (task as any).assignedTo}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </td>

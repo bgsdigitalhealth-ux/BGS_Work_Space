@@ -75,7 +75,31 @@ const userTaskSchema = new mongoose.Schema({
   userId: {
     type: String,
     default: 'usr-user'
+  },
+  teamId: {
+    type: String,
+    default: ''
+  },
+  departmentId: {
+    type: String,
+    default: ''
+  },
+  assigneeId: {
+    type: String,
+    default: ''
+  },
+  assigneeEmail: {
+    type: String,
+    default: ''
+  },
+  assigneeName: {
+    type: String,
+    default: ''
+  },
+  assignmentId: {
+    type: String,
+    default: ''
   }
-}, { timestamps: true });
+}, { timestamps: true, strict: false });
 
 module.exports = mongoose.model('UserTask', userTaskSchema);

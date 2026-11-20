@@ -18,7 +18,7 @@ import {
   MessageSquare,
   Paperclip
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager, filterTasksForUser } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 
@@ -30,6 +30,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
   const {
     currentUser,
     userWorkspace,
+    members,
     selectedUserTask,
     setSelectedUserTask,
     userNav,
@@ -38,17 +39,13 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
 
   const rawAssignedList = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
+  const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === myEmail) || (currentUser?.id && m.id === currentUser.id));
+  const isManager = isUserManager(currentUser, myMember);
 
-  // Strict User Isolation: Filter out tasks that do not belong to current logged-in user
-  const assignedList = currentUser?.role === 'user'
-    ? rawAssignedList.filter(t => {
-      const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
-      const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
-      const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
-      const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
-      return Boolean(matchId || matchEmail || matchMember || matchName);
-    })
-    : rawAssignedList;
+  // Dynamic Multi-Team Isolation:
+  // - Managers see ALL teams member works.
+  // - Regular team members ONLY see works belonging to their SAME team.
+  const assignedList = filterTasksForUser(rawAssignedList, currentUser, myMember);
 
   // View mode: 'cards' or 'details'
   const [viewMode, setViewMode] = useState<'cards' | 'details'>(() => {
@@ -71,9 +68,11 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
   const [statusFilter, setStatusFilter] = useState<'All' | 'To Do' | 'In Progress' | 'Under Review' | 'Completed'>('All');
   const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
   const [departmentFilter, setDepartmentFilter] = useState<string>('All');
+  const [teamFilter, setTeamFilter] = useState<string>('All');
 
-  // Dynamic department list from actual assigned tasks
+  // Dynamic department & team lists from actual assigned tasks
   const availableDepartments = Array.from(new Set(assignedList.map(t => t.department).filter(Boolean)));
+  const availableTeams = Array.from(new Set(assignedList.map(t => t.team).filter(Boolean)));
 
   // KPI stats
   const totalCount = assignedList.length;
@@ -95,6 +94,9 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
 
     // Priority filter
     if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
+
+    // Team filter for Managers
+    if (isManager && teamFilter !== 'All' && task.team.toLowerCase() !== teamFilter.toLowerCase()) return false;
 
     // Department filter
     if (departmentFilter !== 'All' && task.department !== departmentFilter) return false;
@@ -207,8 +209,13 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
                   <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                    My Assigned Work
+                    {isManager ? 'All Teams Member Works' : (currentUser?.team ? `${currentUser.team} Work` : 'My Team Work')}
                   </h2>
+                  {isManager && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-indigo-700">
+                      Manager Access
+                    </span>
+                  )}
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5a36e6] border border-purple-200">
                     {totalCount} {totalCount === 1 ? 'Task' : 'Tasks'}
                   </span>
@@ -322,6 +329,23 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-gray-400 absolute right-2.5 top-3 pointer-events-none" />
             </div>
+
+            {/* Team Filter for Managers */}
+            {isManager && availableTeams.length > 0 && (
+              <div className="relative">
+                <select
+                  value={teamFilter}
+                  onChange={(e) => setTeamFilter(e.target.value)}
+                  className="appearance-none bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] cursor-pointer"
+                >
+                  <option value="All">All Teams ({assignedList.length})</option>
+                  {availableTeams.map(tm => (
+                    <option key={tm} value={tm}>{tm}</option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-indigo-500 absolute right-2.5 top-3 pointer-events-none" />
+              </div>
+            )}
 
             {/* Department Filter (if available) */}
             {availableDepartments.length > 0 && (
@@ -448,6 +472,9 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView 
                         </h3>
                         <p className="text-[11px] text-gray-500 font-medium mt-1">
                           Assigned by: <span className="font-semibold text-gray-700">{task.assignedBy || 'Admin'}</span>
+                          {(task.assigneeName || (task as any).assignedTo) && (
+                            <span className="text-gray-400 ml-2">• For: <span className="font-semibold text-indigo-700">{task.assigneeName || (task as any).assignedTo}</span></span>
+                          )}
                         </p>
                       </div>
                     </div>

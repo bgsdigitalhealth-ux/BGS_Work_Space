@@ -177,7 +177,10 @@ export const UserHeader: React.FC = () => {
               )}
               <div className="text-left hidden sm:block">
                 <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Team Member'}</div>
-                <div className="text-[10px] text-gray-500 font-medium">Team Member</div>
+                <div className="text-[10px] text-gray-500 font-medium">
+                  {currentUser?.teamRole || currentUser?.title || (currentUser?.role === 'admin' ? 'Administrator' : 'Team Member')}
+                  {currentUser?.team ? ` • ${currentUser.team}` : ''}
+                </div>
               </div>
               <ChevronDown className="w-4 h-4 text-gray-400" />
             </button>
