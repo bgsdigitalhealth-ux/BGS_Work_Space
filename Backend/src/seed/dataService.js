@@ -1216,6 +1216,10 @@ const createAssignment = async (data) => {
     assignerId: data.assignerId || '',
     assignmentType: assignmentType,
     assignedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    assignedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    assignedAt: new Date().toISOString(),
+    workStartedAt: (data.status === 'In Progress' || !data.status) ? new Date().toISOString() : undefined,
+    workStartedTime: (data.status === 'In Progress' || !data.status) ? new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
     description: data.workDescription || '',
     progress: 0,
     comments: [],
@@ -1684,12 +1688,49 @@ const submitUserWork = async (data) => {
   const ws = memoryStore.userWorkspace;
   const { taskId, workStatus, comment, userId } = data;
 
-  const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
+  const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId || String(t._id) === taskId);
   let task = taskIndex >= 0 ? ws.assignedWork[taskIndex] : null;
+
+  // If not found in memoryStore, try fetching from MongoDB Atlas
+  if (!task && getStatus()) {
+    try {
+      const dbTask = await UserTask.findOne({
+        $or: [
+          { customId: taskId },
+          { taskId: taskId },
+          ...(mongoose.Types.ObjectId.isValid(taskId) ? [{ _id: taskId }] : [])
+        ]
+      }).lean();
+      if (dbTask) {
+        task = { ...dbTask, id: dbTask.customId || dbTask._id.toString() };
+        ws.assignedWork.unshift(task);
+      }
+    } catch (_) {}
+  }
 
   if (task) {
     task.status = workStatus === 'Completed' ? 'Completed' : 'Under Review';
     task.progress = 100;
+    task.submittedAt = now.toISOString();
+    task.submittedDate = fullDateTime;
+    if (workStatus === 'Completed') {
+      task.completedAt = now.toISOString();
+      task.completedDate = fullDateTime;
+    }
+    if (!task.comments) task.comments = [];
+    task.comments.push({
+      id: generateId('c'),
+      author: (task && (task.assigneeName || task.userName)) || 'Team Member',
+      role: 'Team Member',
+      date: fullDateTime,
+      badge: 'Submission',
+      text: comment || 'Work deliverables submitted for review.'
+    });
   }
 
   const newHistoryItem = {
@@ -1698,9 +1739,9 @@ const submitUserWork = async (data) => {
     taskId: task && task.taskId ? task.taskId : `TSK-${Date.now().toString().slice(-4)}`,
     department: task ? task.department : 'General',
     team: task ? task.team : 'Team',
-    submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    status: 'Under Review',
-    reviewerFeedback: 'Submitted. Pending review by Admin / Team Lead.',
+    submittedDate: fullDateTime,
+    status: workStatus === 'Completed' ? 'Completed' : 'Under Review',
+    reviewerFeedback: workStatus === 'Completed' ? 'Work completed and verified.' : 'Submitted. Pending review by Admin / Team Lead.',
     assignedBy: task ? task.assignedBy : 'Admin',
     dueDate: task ? task.dueDate : 'Today',
     submittedComment: comment || 'Work completed and submitted for review.',
@@ -1765,8 +1806,16 @@ const submitUserWork = async (data) => {
     try {
       if (task) {
         await UserTask.findOneAndUpdate(
-          { $or: [{ customId: taskId }, { taskId: taskId }] },
-          { status: task.status, progress: 100 }
+          { $or: [{ customId: taskId }, { taskId: taskId }, ...(mongoose.Types.ObjectId.isValid(taskId) ? [{ _id: taskId }] : [])] },
+          {
+            status: task.status,
+            progress: 100,
+            submittedAt: task.submittedAt,
+            submittedDate: task.submittedDate,
+            completedAt: task.completedAt,
+            completedDate: task.completedDate,
+            comments: task.comments
+          }
         );
       }
       if (taskTitle) {

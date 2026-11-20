@@ -125,6 +125,17 @@ export interface UserAssignedWork {
   memberId?: string;
   teamId?: string;
   departmentId?: string;
+  assignedTime?: string;
+  assignedAt?: string;
+  workStartedAt?: string;
+  workStartedTime?: string;
+  submittedAt?: string;
+  submittedDate?: string;
+  completedAt?: string;
+  completedDate?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  timeLeft?: string;
 }
 
 export interface UserWorkHistory {

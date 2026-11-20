@@ -638,6 +638,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const openSubmitWorkDrawer = (task?: UserAssignedWork) => {
     if (task) {
       setDrawerSelectedTask(task);
+    } else if (selectedUserTask) {
+      setDrawerSelectedTask(selectedUserTask);
     } else if (userWorkspace?.assignedWork?.length) {
       setDrawerSelectedTask(userWorkspace.assignedWork[0]);
     }
@@ -647,11 +649,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const handleSubmitWork = async (payload: { taskId: string; workStatus: string; comment: string }) => {
     try {
       await api.submitUserWork(payload);
+
+      // Immediately update selectedUserTask locally for responsive UI in UserWorkDetails
+      if (selectedUserTask && (selectedUserTask.id === payload.taskId || selectedUserTask.taskId === payload.taskId)) {
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
+        const updatedComments = [
+          ...(selectedUserTask.comments || []),
+          {
+            id: `c-${Date.now()}`,
+            author: currentUser?.name || 'Team Member',
+            role: 'Team Member',
+            date: fullDateTime,
+            badge: 'Submission',
+            text: payload.comment || 'Work deliverables submitted for review.'
+          }
+        ];
+
+        setSelectedUserTask({
+          ...selectedUserTask,
+          status: payload.workStatus === 'Completed' ? 'Completed' : 'Under Review',
+          progress: 100,
+          submittedDate: fullDateTime,
+          submittedAt: now.toISOString(),
+          completedDate: payload.workStatus === 'Completed' ? fullDateTime : undefined,
+          completedAt: payload.workStatus === 'Completed' ? now.toISOString() : undefined,
+          comments: updatedComments
+        });
+      }
+
       await refreshUserWorkspace();
       await refreshNotifications();
       setIsSubmitWorkDrawerOpen(false);
     } catch (e) {
-      console.error(e);
+      console.error('Submit work error:', e);
+      throw e;
     }
   };
 

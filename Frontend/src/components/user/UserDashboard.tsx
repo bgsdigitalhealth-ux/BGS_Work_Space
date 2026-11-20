@@ -11,7 +11,6 @@ import {
   Image as ImageIcon, 
   Share2, 
   BarChart3, 
-  X, 
   Send,
   ChevronDown
 } from 'lucide-react';
@@ -25,24 +24,16 @@ export const UserDashboard: React.FC = () => {
     members,
     setUserNav, 
     setSelectedUserTask,
-    isSubmitWorkDrawerOpen,
-    setIsSubmitWorkDrawerOpen,
-    drawerSelectedTask,
     openSubmitWorkDrawer,
     userFilterTab,
     setUserFilterTab,
     userSearchQuery,
     setUserSearchQuery,
-    handleSubmitWork,
     handleStartUserWork
   } = useApp();
 
-  // Drawer Form State
-  const [drawerStatus, setDrawerStatus] = useState<'Completed' | 'In Progress' | 'Under Review'>('Completed');
-  const [drawerComment, setDrawerComment] = useState('');
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
   const [teamFilter, setTeamFilter] = useState('All Teams');
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
@@ -124,18 +115,6 @@ export const UserDashboard: React.FC = () => {
   const handleRowClick = (task: UserAssignedWork) => {
     setSelectedUserTask(task);
     setUserNav('details');
-  };
-
-  const onDrawerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!drawerSelectedTask) return;
-    setIsSubmitting(true);
-    await handleSubmitWork({
-      taskId: drawerSelectedTask.id,
-      workStatus: drawerStatus,
-      comment: drawerComment
-    });
-    setIsSubmitting(false);
   };
 
   return (
@@ -226,10 +205,10 @@ export const UserDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Grid: My Assigned Work Table + Submit Work Drawer */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Table Area (spans 12 or 8 if drawer open) */}
-        <div className={`${isSubmitWorkDrawerOpen ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-gray-100 shadow-sm p-6 transition-all duration-300`}>
+      {/* Main Grid: My Assigned Work Table */}
+      <div className="w-full">
+        {/* Table Area (spans full width) */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 transition-all duration-300">
           {/* Table Header Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-3">
@@ -472,108 +451,6 @@ export const UserDashboard: React.FC = () => {
             </table>
           </div>
         </div>
-
-        {/* Submit Work Slide-Over Drawer on Right */}
-        {isSubmitWorkDrawerOpen && (
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-xl p-5 sticky top-6 animate-in slide-in-from-right-4 duration-200">
-            {/* Drawer Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-gray-100 mb-4">
-              <div className="flex items-center gap-2 text-[#5a36e6]">
-                <Upload className="w-5 h-5" />
-                <h3 className="font-bold text-gray-900 text-sm">Submit Work</h3>
-              </div>
-              <button 
-                onClick={() => setIsSubmitWorkDrawerOpen(false)}
-                className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Task Card Summary */}
-            {drawerSelectedTask && (
-              <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-100 mb-4 flex items-start gap-3">
-                <div className="p-2 rounded-lg bg-indigo-100 text-[#5a36e6] shrink-0 mt-0.5">
-                  <FileText className="w-4 h-4" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-gray-900 leading-snug">
-                    {drawerSelectedTask.title}
-                  </h4>
-                  <p className="text-[11px] text-gray-500 font-medium mt-1">
-                    {drawerSelectedTask.department} / {drawerSelectedTask.team} | Due: {drawerSelectedTask.dueDate}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Form */}
-            <form onSubmit={onDrawerSubmit} className="space-y-4">
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Work Status <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={drawerStatus}
-                  onChange={(e) => setDrawerStatus(e.target.value as any)}
-                  className="w-full bg-gray-50 border border-gray-200 text-xs font-semibold rounded-xl px-3 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
-                >
-                  <option value="Completed">Completed</option>
-                  <option value="Under Review">Under Review</option>
-                  <option value="In Progress">In Progress</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Work Done Description / Comment <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  rows={4}
-                  value={drawerComment}
-                  onChange={(e) => setDrawerComment(e.target.value)}
-                  placeholder="Detail what was completed, links, or notes..."
-                  className="w-full bg-gray-50 border border-gray-200 text-xs rounded-xl p-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-700 mb-1.5">
-                  Attachments (Optional)
-                </label>
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-5 text-center bg-gray-50/50 hover:bg-gray-50 transition cursor-pointer">
-                  <div className="w-10 h-10 rounded-full bg-indigo-50 text-[#5a36e6] flex items-center justify-center mx-auto mb-2">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs text-gray-700 font-medium">
-                    Drag & drop files here or <span className="text-[#5a36e6] font-bold underline">Browse Files</span>
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-1">Supported: PDF, JPG, PNG, DOCX (Max 25 MB)</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSubmitWorkDrawerOpen(false)}
-                  className="w-1/2 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-1/2 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30"
-                >
-                  <Send className="w-3.5 h-3.5" />
-                  {isSubmitting ? 'Submitting...' : 'Submit Work'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
       </div>
 
       {/* Bottom Row: My Work Overview (Donut) + Recent Activity */}

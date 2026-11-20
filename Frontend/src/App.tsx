@@ -22,6 +22,7 @@ import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
 import { UserSettings } from './components/user/UserSettings';
+import { SubmitWorkDrawer } from './components/user/SubmitWorkDrawer';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';
@@ -96,6 +97,9 @@ export const App: React.FC = () => {
             </div>
           )}
         </main>
+
+        {/* Global Submit Work Drawer for Worker Mode */}
+        <SubmitWorkDrawer />
       </div>
     );
   }
