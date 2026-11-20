@@ -6,7 +6,7 @@
   "main": "Backend/src/server.js",
   "scripts": {
     "start": "node Backend/src/server.js",
-    "build": "cd Frontend && npm install && npm run build",
+    "build": "cd Frontend && npm install && npm run build && node -e \"const fs=require('fs'); fs.cpSync('dist', '../dist', {recursive:true});\"",
     "backend:start": "cd Backend && npm start",
     "backend:dev": "cd Backend && npm run dev",
     "frontend:dev": "cd Frontend && npm run dev",
