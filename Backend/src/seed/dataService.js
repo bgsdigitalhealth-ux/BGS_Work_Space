@@ -35,8 +35,6 @@ const buildIdQuery = (id) => {
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
 const BANNED_EMAILS = [
-  'dynamicsajjan@gmail.com',
-  'dynamicsajjan@gamil.com',
   'admin@company.com',
   'user@company.com',
   'rahul@company.com',
@@ -48,7 +46,6 @@ const BANNED_EMAILS = [
 const isBannedEmail = (email) => {
   if (!email) return false;
   const clean = String(email).trim().toLowerCase();
-  if (clean.includes('dynamicsajjan')) return true;
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
 };
 
@@ -137,8 +134,6 @@ const loadStore = () => {
       if (parsed) {
         memoryStore = { ...initialData, ...parsed };
         const bannedEmails = [
-          'dynamicsajjan@gmail.com',
-          'dynamicsajjan@gamil.com',
           'admin@company.com',
           'user@company.com',
           'rahul@company.com',
@@ -190,8 +185,6 @@ const loadStore = () => {
   }
   memoryStore = JSON.parse(JSON.stringify(initialData));
   memoryStore.deletedEmails = [
-    'dynamicsajjan@gmail.com',
-    'dynamicsajjan@gamil.com',
     'admin@company.com',
     'user@company.com',
     'rahul@company.com',
@@ -257,7 +250,6 @@ const clearAllData = async () => {
       await User.deleteMany({ email: { $nin: ['bgsmchhospitalnagarur@gmail.com'] } });
       await User.deleteMany({ email: { $in: BANNED_EMAILS } });
       await User.deleteMany({ email: { $regex: /@company\.com$/i } });
-      await User.deleteMany({ email: { $regex: /dynamicsajjan/i } });
       console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
     } catch (e) {
       console.warn('[Storage] Mongo wipe error:', e.message);
@@ -422,8 +414,6 @@ const initMongoSeed = async () => {
     }
     await User.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
     await Member.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
-    await User.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
-    await Member.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
     await Member.deleteMany({
       $or: [
         { name: '' }, { email: '' }, { name: null }, { email: null },
@@ -2579,15 +2569,14 @@ const createAdmin = async ({ name, email, password }) => {
 const deleteAdmin = async (id) => {
   const targetAdmin = (memoryStore.users || []).find(u => u.id === id || (u.email && u.email.toLowerCase() === String(id).toLowerCase()));
   const adminEmail = (targetAdmin ? targetAdmin.email : String(id || '')).toLowerCase();
-  const isDynamics = adminEmail.includes('dynamicsajjan');
 
   // Prevent deleting primary super admin
   if (adminEmail === 'bgsmchhospitalnagarur@gmail.com') {
     return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
   }
 
-  const remainingAdmins = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan'));
-  if (!isDynamics && remainingAdmins.length <= 1) {
+  const remainingAdmins = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email));
+  if (remainingAdmins.length <= 1) {
     return { success: false, error: 'Cannot delete the only administrator account' };
   }
 
@@ -2603,9 +2592,6 @@ const deleteAdmin = async (id) => {
     try {
       const mongoose = require('mongoose');
       const orConditions = [{ email: adminEmail }];
-      if (isDynamics) {
-        orConditions.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (id) orConditions.push({ customId: id });
       if (mongoose.Types.ObjectId.isValid(id)) orConditions.push({ _id: id });
       await User.deleteMany({ $or: orConditions }).catch(() => { });
@@ -2852,10 +2838,8 @@ const deleteUser = async (id) => {
 
   const targetEmail = (user ? user.email : cleanId).toLowerCase();
   const targetId = user ? user.id : cleanId;
-  const isDynamics = targetEmail.includes('dynamicsajjan');
 
-  // If user not in memoryStore, but target is dynamicsajjan, proceed to delete from MongoDB Atlas
-  if (!user && !isDynamics) {
+  if (!user) {
     return { success: false, error: 'User not found' };
   }
 
@@ -2864,9 +2848,9 @@ const deleteUser = async (id) => {
     return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
   }
 
-  // Prevent deleting the only administrator (unless dynamicsajjan)
-  if (user && user.role === 'admin' && !isDynamics) {
-    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan')).length;
+  // Prevent deleting the only administrator
+  if (user && user.role === 'admin') {
+    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email)).length;
     if (adminCount <= 1) {
       return { success: false, error: 'Cannot delete the only administrator account' };
     }
@@ -2911,17 +2895,11 @@ const deleteUser = async (id) => {
     try {
       const mongoose = require('mongoose');
       const userOr = [{ email: targetEmail }];
-      if (isDynamics) {
-        userOr.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (targetId) userOr.push({ customId: targetId });
       if (mongoose.Types.ObjectId.isValid(targetId)) userOr.push({ _id: targetId });
       await User.deleteMany({ $or: userOr }).catch(() => { });
 
       const memberOr = [{ email: targetEmail }];
-      if (isDynamics) {
-        memberOr.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (user?.memberId) memberOr.push({ customId: user.memberId });
       if (mongoose.Types.ObjectId.isValid(user?.memberId)) memberOr.push({ _id: user.memberId });
       await Member.deleteMany({ $or: memberOr }).catch(() => { });
@@ -2929,7 +2907,6 @@ const deleteUser = async (id) => {
       const assignOr = [{ assigneeEmail: targetEmail }];
       if (user?.memberId) assignOr.push({ memberId: user.memberId });
       if (targetId) assignOr.push({ assigneeId: targetId });
-      if (isDynamics) assignOr.push({ assigneeEmail: { $regex: /dynamicsajjan/i } });
       await Assignment.deleteMany({ $or: assignOr }).catch(() => { });
 
       if (targetId) {
