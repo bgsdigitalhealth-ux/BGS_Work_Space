@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight, Shield } from 'lucide-react';
+import { useApp, isUserManager } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
@@ -13,10 +13,18 @@ export const UserHeader: React.FC = () => {
     setMobileSidebarOpen,
     userToast,
     setUserToast,
-    userWorkspace
+    userWorkspace,
+    members,
+    setPortalMode
   } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+  const isManager = isUserManager(currentUser, myMember);
 
   return (
     <>
@@ -148,6 +156,19 @@ export const UserHeader: React.FC = () => {
 
         {/* Right Controls */}
         <div className="flex items-center gap-3 relative">
+          {/* Manager Panel Switcher (For Managers, Team Heads, and Admins) */}
+          {isManager && (
+            <button
+              type="button"
+              onClick={() => setPortalMode('admin')}
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer"
+              title="Switch to Management Panel (Departments, Teams & Members)"
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Manager Panel</span>
+            </button>
+          )}
+
           {/* Notification Bell */}
           <div className="relative">
             <button
@@ -192,6 +213,18 @@ export const UserHeader: React.FC = () => {
                   <p className="text-xs font-bold text-gray-900 truncate">{currentUser?.name || 'Team Member'}</p>
                   <p className="text-[11px] text-gray-500 truncate">{currentUser?.email || ''}</p>
                 </div>
+                {isManager && (
+                  <button
+                    onClick={() => {
+                      setShowDropdown(false);
+                      setPortalMode('admin');
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-xs text-indigo-600 font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors cursor-pointer"
+                  >
+                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Manager Panel (Depts & Teams)</span>
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     setUserNav('settings');

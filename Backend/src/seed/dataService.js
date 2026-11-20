@@ -874,6 +874,9 @@ const createMember = async (data) => {
   // If this email was previously marked as deleted, re-entry by admin verifies and restores it to valid
   unmarkDeletedEmail(cleanEmail);
 
+  const isMgr = isManagerOrAdmin(null, { role: data.role });
+  const assignedRole = isMgr ? 'admin' : 'user';
+
   let existingUser = (memoryStore.users || []).find(u => (u.email || '').toLowerCase() === cleanEmail);
   if (!existingUser) {
     existingUser = {
@@ -882,17 +885,22 @@ const createMember = async (data) => {
       email: cleanEmail,
       password: '',
       hasPassword: false,
-      role: 'user',
+      role: assignedRole,
       memberId: newMember.id,
-      department: data.departmentId,
-      team: data.teamId,
-      teamRole: data.role || 'Team Member',
+      department: data.departmentId || '',
+      team: data.teamId || '',
+      teamRole: data.role || (isMgr ? 'Manager' : 'Team Member'),
       avatar: newMember.avatar,
-      title: data.role || 'Team Member'
+      title: data.role || (isMgr ? 'Manager' : 'Team Member')
     };
     memoryStore.users.push(existingUser);
-  } else if (!existingUser.memberId) {
+  } else {
     existingUser.memberId = newMember.id;
+    existingUser.role = assignedRole;
+    existingUser.teamRole = data.role || existingUser.teamRole || (isMgr ? 'Manager' : 'Team Member');
+    existingUser.title = data.role || existingUser.title || (isMgr ? 'Manager' : 'Team Member');
+    if (data.departmentId) existingUser.department = data.departmentId;
+    if (data.teamId) existingUser.team = data.teamId;
   }
   saveStore();
 
@@ -918,13 +926,15 @@ const createMember = async (data) => {
             email: cleanEmail,
             password: '',
             hasPassword: false,
-            role: 'user',
+            avatar: newMember.avatar
+          },
+          $set: {
+            role: assignedRole,
             memberId: newMember.id,
             department: data.departmentId || '',
             team: data.teamId || '',
-            teamRole: data.role || 'Team Member',
-            avatar: newMember.avatar,
-            title: data.role || 'Team Member'
+            teamRole: data.role || (isMgr ? 'Manager' : 'Team Member'),
+            title: data.role || (isMgr ? 'Manager' : 'Team Member')
           }
         },
         { upsert: true, new: true }
@@ -953,9 +963,36 @@ const updateMember = async (id, data) => {
     saveStore();
   }
 
+  // If role is updated, synchronize user role and hierarchy permissions
+  if (data && data.role) {
+    const isMgr = isManagerOrAdmin(null, { role: data.role });
+    const assignedRole = isMgr ? 'admin' : 'user';
+    const targetMember = index !== -1 ? memoryStore.members[index] : null;
+    const cleanEmail = ((data.email || targetMember?.email) || '').trim().toLowerCase();
+    const targetUser = (memoryStore.users || []).find(u => 
+      (cleanEmail && (u.email || '').toLowerCase() === cleanEmail) || 
+      u.memberId === id
+    );
+    if (targetUser) {
+      targetUser.role = assignedRole;
+      targetUser.teamRole = data.role;
+      targetUser.title = data.role;
+      saveStore();
+    }
+  }
+
   if (getStatus()) {
     try {
       const updated = await Member.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (data && data.role) {
+        const isMgr = isManagerOrAdmin(null, { role: data.role });
+        const assignedRole = isMgr ? 'admin' : 'user';
+        const cleanEmail = (data.email || updated?.email || '').trim().toLowerCase();
+        await User.updateMany(
+          { $or: [{ memberId: id }, cleanEmail ? { email: cleanEmail } : null].filter(Boolean) },
+          { $set: { role: assignedRole, teamRole: data.role, title: data.role } }
+        ).catch(() => {});
+      }
       if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo update member error:', e.message);
@@ -1980,20 +2017,22 @@ const checkEmail = async (email) => {
     try {
       const dbUser = await User.findOne({ email: cleanEmail }).lean();
       if (dbUser) {
+        const isMgr = isManagerOrAdmin(dbUser);
         return {
           exists: true,
           hasPassword: Boolean(dbUser.hasPassword && dbUser.password),
           name: dbUser.name,
-          role: dbUser.role
+          role: isMgr ? 'admin' : (dbUser.role || 'user')
         };
       }
       const dbMember = await Member.findOne({ email: cleanEmail }).lean();
       if (dbMember) {
+        const isMgr = isManagerOrAdmin(null, dbMember);
         return {
           exists: true,
           hasPassword: false,
           name: dbMember.name,
-          role: 'user'
+          role: isMgr ? 'admin' : 'user'
         };
       }
     } catch (e) {
@@ -2004,21 +2043,23 @@ const checkEmail = async (email) => {
   // 2. Check memoryStore
   const user = (memoryStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
   if (user) {
+    const isMgr = isManagerOrAdmin(user);
     return {
       exists: true,
       hasPassword: Boolean(user.hasPassword && user.password),
       name: user.name,
-      role: user.role
+      role: isMgr ? 'admin' : (user.role || 'user')
     };
   }
 
   const member = (memoryStore.members || []).find(m => m.email.toLowerCase() === cleanEmail);
   if (member) {
+    const isMgr = isManagerOrAdmin(null, member);
     return {
       exists: true,
       hasPassword: false,
       name: member.name,
-      role: 'user'
+      role: isMgr ? 'admin' : 'user'
     };
   }
 
@@ -2222,10 +2263,15 @@ const createPassword = async (email, password) => {
     safeUser.title = m.role || safeUser.title || safeUser.teamRole || 'Team Member';
   }
 
+  const isMgr = isManagerOrAdmin(safeUser, m);
+  if (isMgr) {
+    safeUser.role = 'admin';
+  }
+
   return {
     success: true,
     user: safeUser,
-    token: `token-${user.role}-${Date.now()}`
+    token: `token-${safeUser.role}-${Date.now()}`
   };
 };
 
@@ -2297,19 +2343,23 @@ const loginUser = async (email, password) => {
           if (memDept) enrichedDept = memDept.name;
         }
 
+        const isMgr = isManagerOrAdmin(safeUser, dbMemberInfo);
+        const resolvedRole = isMgr ? 'admin' : (safeUser.role || 'user');
+
         return {
           success: true,
           user: {
             ...safeUser,
+            role: resolvedRole,
             id: dbUser.customId || dbUser._id.toString(),
             team: enrichedTeam,
             department: enrichedDept,
             teamId: enrichedTeamId,
             departmentId: enrichedDeptId,
-            teamRole: dbMemberInfo?.role || safeUser.teamRole || safeUser.title || 'Team Member',
-            title: dbMemberInfo?.role || safeUser.title || safeUser.teamRole || 'Team Member'
+            teamRole: dbMemberInfo?.role || safeUser.teamRole || safeUser.title || (isMgr ? 'Manager' : 'Team Member'),
+            title: dbMemberInfo?.role || safeUser.title || safeUser.teamRole || (isMgr ? 'Manager' : 'Team Member')
           },
-          token: `token-${dbUser.role}-${Date.now()}`
+          token: `token-${resolvedRole}-${Date.now()}`
         };
       }
 
@@ -2378,10 +2428,15 @@ const loginUser = async (email, password) => {
     safeUser.title = m.role || safeUser.title || safeUser.teamRole || 'Team Member';
   }
 
+  const isMgr = isManagerOrAdmin(safeUser, m);
+  if (isMgr) {
+    safeUser.role = 'admin';
+  }
+
   return {
     success: true,
     user: safeUser,
-    token: `token-${user.role}-${Date.now()}`
+    token: `token-${safeUser.role}-${Date.now()}`
   };
 };
 
@@ -2714,7 +2769,7 @@ const deleteAdmin = async (id) => {
   return { success: true, message: 'Administrator removed successfully', deletedUser: targetAdmin };
 };
 
-// Strictly verify that the requesting account is an active administrator (cannot be spoofed by role header alone)
+// Strictly verify that the requesting account is an active administrator or manager (cannot be spoofed by role header alone)
 const verifyAdminAccess = async ({ role, email, id } = {}) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanId = (id || '').trim();
@@ -2725,12 +2780,10 @@ const verifyAdminAccess = async ({ role, email, id } = {}) => {
 
   // 1. Check initialData base administrators
   const inInitial = (initialData.users || []).find(u =>
-    u.role === 'admin' && (
-      (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
-      (cleanId && (u.id === cleanId || u.customId === cleanId))
-    )
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (u.id === cleanId || u.customId === cleanId))
   );
-  if (inInitial && !isBannedEmail(inInitial.email)) {
+  if (inInitial && isManagerOrAdmin(inInitial) && !isBannedEmail(inInitial.email)) {
     return true;
   }
 
@@ -2747,8 +2800,9 @@ const verifyAdminAccess = async ({ role, email, id } = {}) => {
       }
       if (orConditions.length > 0) {
         const dbUser = await User.findOne({ $or: orConditions }).lean();
-        if (dbUser) {
-          return dbUser.role === 'admin' && !isBannedEmail(dbUser.email);
+        const dbMember = cleanEmail ? await Member.findOne({ email: cleanEmail }).lean() : null;
+        if (dbUser || dbMember) {
+          return isManagerOrAdmin(dbUser, dbMember) && !isBannedEmail(dbUser?.email || dbMember?.email);
         }
       }
     } catch (e) {
@@ -2761,8 +2815,9 @@ const verifyAdminAccess = async ({ role, email, id } = {}) => {
     (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
     (cleanId && (u.id === cleanId || u.customId === cleanId))
   );
-  if (memUser) {
-    return memUser.role === 'admin' && !isBannedEmail(memUser.email);
+  const memMember = cleanEmail ? (memoryStore.members || []).find(m => (m.email || '').toLowerCase() === cleanEmail) : null;
+  if (memUser || memMember) {
+    return isManagerOrAdmin(memUser, memMember) && !isBannedEmail(memUser?.email || memMember?.email);
   }
 
   return false;
@@ -2801,13 +2856,16 @@ const validateSession = async (id, email) => {
       if (orConditions.length > 0) {
         const dbUser = await User.findOne({ $or: orConditions }).select('-password').lean();
         if (dbUser && !isBannedEmail(dbUser.email)) {
-          return { valid: true, user: { ...dbUser, id: dbUser.customId || dbUser._id.toString() } };
+          const isMgr = isManagerOrAdmin(dbUser);
+          const resolvedRole = isMgr ? 'admin' : (dbUser.role || 'user');
+          return { valid: true, user: { ...dbUser, role: resolvedRole, id: dbUser.customId || dbUser._id.toString() } };
         }
         // Also check Member collection in case user was registered as member and session uses memberId/email
         if (cleanEmail) {
           const dbMember = await Member.findOne({ email: cleanEmail }).lean();
           if (dbMember && !isBannedEmail(dbMember.email)) {
-            return { valid: true, user: { id: dbMember.customId || dbMember._id.toString(), name: dbMember.name, email: dbMember.email, role: 'user' } };
+            const isMgr = isManagerOrAdmin(null, dbMember);
+            return { valid: true, user: { id: dbMember.customId || dbMember._id.toString(), name: dbMember.name, email: dbMember.email, role: isMgr ? 'admin' : 'user' } };
           }
         }
       }
@@ -2832,7 +2890,19 @@ const validateSession = async (id, email) => {
   }
   if (user && !isBannedEmail(user.email)) {
     const { password, ...safeUser } = user;
+    const m = (memoryStore.members || []).find(mem => mem.email && mem.email.toLowerCase() === cleanEmail);
+    const isMgr = isManagerOrAdmin(safeUser, m);
+    if (isMgr) safeUser.role = 'admin';
     return { valid: true, user: safeUser };
+  }
+
+  const member = (memoryStore.members || []).find(m => 
+    (cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) || 
+    (cleanId && (m.id === cleanId || m.customId === cleanId))
+  );
+  if (member && !isBannedEmail(member.email)) {
+    const isMgr = isManagerOrAdmin(null, member);
+    return { valid: true, user: { id: member.id, name: member.name, email: member.email, role: isMgr ? 'admin' : 'user' } };
   }
 
   return { valid: true, pendingDb: true };

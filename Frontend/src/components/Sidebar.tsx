@@ -33,7 +33,8 @@ export const Sidebar: React.FC = () => {
     currentUser,
     logout,
     mobileSidebarOpen,
-    setMobileSidebarOpen
+    setMobileSidebarOpen,
+    setPortalMode
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
@@ -254,6 +255,24 @@ export const Sidebar: React.FC = () => {
             <span>Settings</span>
           </button>
         </nav>
+
+        {/* Switch to Personal Member Workspace */}
+        <div className="px-4 mb-2">
+          <button
+            onClick={() => {
+              setPortalMode('user');
+              setMobileSidebarOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs bg-white/10 hover:bg-white/15 text-white border border-white/10 transition cursor-pointer"
+            title="Switch to Personal Member Workspace"
+          >
+            <div className="flex items-center gap-2">
+              <UserCheck className="w-4 h-4 text-emerald-400" />
+              <span>My Workspace</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">User Mode</span>
+          </button>
+        </div>
 
         {/* Bottom Admin User Card with Sign Out */}
         <div className="p-4 border-t border-indigo-950/60">

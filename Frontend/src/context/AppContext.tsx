@@ -29,6 +29,7 @@ interface AppContextType {
 
   // Portal ('admin' | 'user') derived from logged-in user role
   portalMode: 'admin' | 'user';
+  setPortalMode: (mode: 'admin' | 'user') => void;
 
   // Admin Navigation: 'dashboard' | 'appointments'
   adminNav: string;
@@ -249,9 +250,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return null;
   });
 
-  // Portal mode strictly derived from logged in user's role: 'admin' or 'user'
-  const portalMode: 'admin' | 'user' = currentUser?.role === 'user' ? 'user' : 'admin';
-
   // Admin navigation
   const [adminNav, setAdminNav] = useState<string>('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
@@ -262,6 +260,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+
+  // Modifiable portal mode for managers/admins (toggle between 'admin' Panel and 'user' Workspace)
+  const [portalModeState, setPortalModeState] = useState<'admin' | 'user'>('admin');
+
+  // Find member corresponding to current user to check manager role accurately
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const isMgr = isUserManager(currentUser, myMember);
+  // Non-managers are strictly locked to 'user' mode.
+  // Managers default to 'admin' (Management Panel) and can toggle to 'user' (My Workspace).
+  const portalMode: 'admin' | 'user' = !currentUser ? 'admin' : (!isMgr ? 'user' : portalModeState);
+
+  const setPortalMode = (mode: 'admin' | 'user') => {
+    if (mode === 'admin' && !isUserManager(currentUser, myMember)) {
+      setPortalModeState('user');
+      return;
+    }
+    setPortalModeState(mode);
+  };
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workDone, setWorkDone] = useState<WorkDone[]>([]);
@@ -1077,6 +1097,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         logout,
         updateUserProfile,
         portalMode,
+        setPortalMode,
         adminNav,
         setAdminNav,
         mobileSidebarOpen,

@@ -1,17 +1,129 @@
 {
-  "departments": [],
-  "teams": [],
-  "members": [],
-  "assignments": [],
-  "tasks": [],
+  "departments": [
+    {
+      "id": "dept-1795150363088-476",
+      "name": "Research & Innovation",
+      "icon": "activity",
+      "description": "AI and Robotics research"
+    }
+  ],
+  "teams": [
+    {
+      "id": "team-1795150363088-71",
+      "name": "Neural Network Team",
+      "departmentId": "dept-1795150363088-476",
+      "description": "Deep Learning models"
+    }
+  ],
+  "members": [
+    {
+      "id": "mem-1795150363087-294",
+      "name": "DR. Sajjan",
+      "email": "dynamicsajjan@gmail.com",
+      "phone": "9844990059",
+      "role": "Team Head",
+      "assignedWork": "",
+      "teamId": "team-mgmt",
+      "departmentId": "dept-dhac",
+      "avatar": "D"
+    },
+    {
+      "id": "mem-1795150363089-466",
+      "name": "Haribushan Kumar",
+      "email": "haribushan@gmail.com",
+      "phone": "9988776655",
+      "role": "Developer",
+      "assignedWork": "",
+      "teamId": "team-1795150363088-71",
+      "departmentId": "dept-1795150363088-476",
+      "avatar": "H"
+    }
+  ],
+  "assignments": [
+    {
+      "id": "assign-1795150363089-980",
+      "teamId": "team-1795150363088-71",
+      "departmentId": "",
+      "workTitle": "Build Model Pipeline",
+      "workDescription": "Setup PyTorch pipeline",
+      "role": "Developer",
+      "priority": "Medium",
+      "dueDate": "20 Nov 2026",
+      "status": "In Progress",
+      "assignerId": "",
+      "assignerName": "Haribushan Kumar",
+      "assignerRole": "user",
+      "assignerEmail": "haribushan@gmail.com",
+      "assigneeName": "Haribushan Kumar",
+      "assigneeRole": "user",
+      "assigneeEmail": "haribushan@gmail.com",
+      "assignmentType": "user_to_self",
+      "createdAt": "2026-11-20T04:52:43.103Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "task-1795150363103-370",
+      "teamId": "team-1795150363088-71",
+      "assignmentId": "assign-1795150363089-980",
+      "memberName": "Haribushan Kumar",
+      "title": "Build Model Pipeline",
+      "priority": "Medium",
+      "completed": false,
+      "date": "2026-11-20",
+      "assignedBy": "Self (Haribushan Kumar)",
+      "assignerRole": "user",
+      "assignmentType": "user_to_self"
+    }
+  ],
   "workDone": [],
   "appointments": [],
-  "notifications": [],
+  "notifications": [
+    {
+      "id": "notif-1795150363114-921",
+      "recipientRole": "user",
+      "recipientUserId": null,
+      "recipientEmail": "",
+      "referenceId": "",
+      "title": "Self Assigned Task",
+      "message": "Task \"Build Model Pipeline\" was self-assigned in your workspace.",
+      "timestamp": "20 Nov 2026, 10:22 AM",
+      "read": false,
+      "link": "assigned-work",
+      "actionUrl": ""
+    }
+  ],
   "conversations": [],
   "messages": [],
   "userWorkspace": {
     "stats": {},
-    "assignedWork": [],
+    "assignedWork": [
+      {
+        "id": "user-task-1795150363103-41",
+        "taskId": "TSK-3103",
+        "title": "Build Model Pipeline",
+        "department": "Research & Innovation",
+        "team": "Neural Network Team",
+        "priority": "High",
+        "dueDate": "Today",
+        "status": "In Progress",
+        "assignedBy": "Self (Haribushan Kumar)",
+        "assignerRole": "user",
+        "assignerId": "",
+        "assignmentType": "user_to_self",
+        "assignedOn": "20 Nov 2026",
+        "description": "Setup PyTorch pipeline",
+        "progress": 0,
+        "comments": [],
+        "userId": "usr-user",
+        "assigneeId": "",
+        "assigneeEmail": "haribushan@gmail.com",
+        "assigneeName": "Haribushan Kumar",
+        "assignedTo": "Haribushan Kumar",
+        "teamId": "team-1795150363088-71",
+        "departmentId": ""
+      }
+    ],
     "history": [],
     "recentActivities": []
   },
@@ -25,6 +137,34 @@
       "role": "admin",
       "avatar": "B",
       "title": "Administrator"
+    },
+    {
+      "id": "usr-1795150363087-258",
+      "name": "DR. Sajjan",
+      "email": "dynamicsajjan@gmail.com",
+      "password": "",
+      "hasPassword": false,
+      "role": "admin",
+      "memberId": "mem-1795150363087-294",
+      "department": "dept-dhac",
+      "team": "team-mgmt",
+      "teamRole": "Team Head",
+      "avatar": "D",
+      "title": "Team Head"
+    },
+    {
+      "id": "usr-1795150363089-696",
+      "name": "Haribushan Kumar",
+      "email": "haribushan@gmail.com",
+      "password": "",
+      "hasPassword": false,
+      "role": "user",
+      "memberId": "mem-1795150363089-466",
+      "department": "dept-1795150363088-476",
+      "team": "team-1795150363088-71",
+      "teamRole": "Developer",
+      "avatar": "H",
+      "title": "Developer"
     }
   ],
   "meetings": [],
