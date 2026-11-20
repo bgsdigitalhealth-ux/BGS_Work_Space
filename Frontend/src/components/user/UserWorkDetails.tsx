@@ -8,10 +8,7 @@ import {
   Download,
   MoreHorizontal,
   Paperclip,
-  Settings,
   Info,
-  HelpCircle,
-  CalendarPlus,
   MessageSquare,
   Check,
   ClipboardCheck
@@ -28,7 +25,6 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const {
     selectedUserTask,
     setUserNav,
-    openSubmitWorkDrawer,
     handleAddUserComment
   } = useApp();
 
@@ -511,43 +507,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           </div>
         </div>
 
-        {/* Right Column: Actions, Task Information, Attachments (4 cols) */}
+        {/* Right Column: Task Information & Attachments (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Actions Card */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <div className="flex items-center gap-2 text-gray-900 mb-2 font-bold text-xs uppercase tracking-wider">
-              <Settings className="w-4 h-4 text-[#5a36e6]" />
-              <span>Actions</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => openSubmitWorkDrawer(task)}
-              className="w-full py-3 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-indigo-600/30 cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-              Submit Work (Mark as Completed)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alert('Extension request submitted to Team Lead for review.')}
-              className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <CalendarPlus className="w-4 h-4 text-[#5a36e6]" />
-              Request Extension
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alert('Support query sent to Team Lead.')}
-              className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4 text-[#5a36e6]" />
-              Raise a Query
-            </button>
-          </div>
-
           {/* Task Information Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
             <div className="flex items-center gap-2 text-gray-900 mb-2 font-bold text-xs uppercase tracking-wider">
