@@ -31,7 +31,7 @@ import { MeetingRoom } from './components/meet/MeetingRoom';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { currentUser, userNav, adminNav } = useApp();
+  const { currentUser, userNav, adminNav, portalMode } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
   // Check if current route is a private video meeting route: /meet/<meeting-id>
@@ -71,7 +71,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (currentUser.role === 'user') {
+  if (portalMode === 'user' || currentUser.role === 'user') {
     return (
       <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
         {/* WorkHub Sidebar */}

@@ -70,7 +70,9 @@ export const Sidebar: React.FC = () => {
             </div>
             <div>
               <h1 className="text-white font-bold text-base leading-tight">WorkHub</h1>
-              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">Admin Panel</span>
+              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">
+                {currentUser?.role === 'manager' ? 'Manager Panel' : 'Admin Panel'}
+              </span>
             </div>
           </div>
 
@@ -281,7 +283,9 @@ export const Sidebar: React.FC = () => {
               <UserCheck className="w-4 h-4 text-emerald-400" />
               <span>My Workspace</span>
             </div>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">User Mode</span>
+            <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">
+              {currentUser?.role === 'manager' ? 'Manager Workspace' : 'User Mode'}
+            </span>
           </button>
         </div>
 

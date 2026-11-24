@@ -472,6 +472,11 @@ const initMongoSeed = async () => {
         { upsert: true, new: true }
       ).catch(() => { });
     }
+    // Ensure dynamicsajjan@gmail.com is strictly configured as manager, not admin
+    await User.updateOne(
+      { email: 'dynamicsajjan@gmail.com' },
+      { $set: { role: 'manager' } }
+    ).catch(() => { });
     console.log('[Seed] Base authorized users verified in MongoDB Atlas.');
     await syncToMongo();
   } catch (err) {
@@ -2325,8 +2330,11 @@ const createPassword = async (email, password) => {
   }
 
   const isMgr = isManagerOrAdmin(safeUser, m);
-  if (isMgr) {
+  const isAdminEmail = cleanEmail === 'bgsmchhospitalnagarur@gmail.com';
+  if (isAdminEmail) {
     safeUser.role = 'admin';
+  } else if (isMgr) {
+    safeUser.role = 'manager';
   }
 
   return {
@@ -2405,7 +2413,8 @@ const loginUser = async (email, password) => {
         }
 
         const isMgr = isManagerOrAdmin(safeUser, dbMemberInfo);
-        const resolvedRole = isMgr ? 'admin' : (safeUser.role || 'user');
+        const isAdminEmail = cleanEmail === 'bgsmchhospitalnagarur@gmail.com';
+        const resolvedRole = isAdminEmail ? 'admin' : (isMgr ? 'manager' : (safeUser.role || 'user'));
 
         return {
           success: true,
@@ -2490,8 +2499,11 @@ const loginUser = async (email, password) => {
   }
 
   const isMgr = isManagerOrAdmin(safeUser, m);
-  if (isMgr) {
+  const isAdminEmail = cleanEmail === 'bgsmchhospitalnagarur@gmail.com';
+  if (isAdminEmail) {
     safeUser.role = 'admin';
+  } else if (isMgr) {
+    safeUser.role = 'manager';
   }
 
   return {
@@ -2953,7 +2965,12 @@ const validateSession = async (id, email) => {
     const { password, ...safeUser } = user;
     const m = (memoryStore.members || []).find(mem => mem.email && mem.email.toLowerCase() === cleanEmail);
     const isMgr = isManagerOrAdmin(safeUser, m);
-    if (isMgr) safeUser.role = 'admin';
+    const isAdminEmail = cleanEmail === 'bgsmchhospitalnagarur@gmail.com';
+    if (isAdminEmail) {
+      safeUser.role = 'admin';
+    } else if (isMgr) {
+      safeUser.role = 'manager';
+    }
     return { valid: true, user: safeUser };
   }
 
@@ -2963,7 +2980,8 @@ const validateSession = async (id, email) => {
   );
   if (member && !isBannedEmail(member.email)) {
     const isMgr = isManagerOrAdmin(null, member);
-    return { valid: true, user: { id: member.id, name: member.name, email: member.email, role: isMgr ? 'admin' : 'user' } };
+    const isAdminEmail = cleanEmail === 'bgsmchhospitalnagarur@gmail.com';
+    return { valid: true, user: { id: member.id, name: member.name, email: member.email, role: isAdminEmail ? 'admin' : (isMgr ? 'manager' : 'user') } };
   }
 
   return { valid: true, pendingDb: true };

@@ -537,7 +537,8 @@ router.put('/assignments/:id', async (req, res) => {
       name: req.body.operatorName || req.body.userName || 'Admin',
       role: req.body.operatorRole || req.body.userRole || 'admin'
     };
-    const isManagerOrAdmin = user.role === 'admin' || user.role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    const opRoleStr = String(req.body.operatorTeamRole || user.teamRole || '').toLowerCase();
+    const isManagerOrAdmin = user.role === 'admin' || user.role === 'manager' || opRoleStr.includes('manager') || opRoleStr.includes('lead') || opRoleStr.includes('head');
     if (!isManagerOrAdmin) {
       return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can edit assignments.' });
     }
@@ -680,7 +681,8 @@ router.get('/reports', async (req, res) => {
 router.put('/reports/:id', async (req, res) => {
   try {
     const role = req.body.userRole || req.body.operatorRole || 'user';
-    const isManagerOrAdmin = role === 'admin' || role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    const opRoleStr = String(req.body.operatorTeamRole || '').toLowerCase();
+    const isManagerOrAdmin = role === 'admin' || role === 'manager' || opRoleStr.includes('manager') || opRoleStr.includes('lead') || opRoleStr.includes('head');
     if (!isManagerOrAdmin) {
       return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can modify reports.' });
     }
@@ -700,7 +702,8 @@ router.put('/reports/:id', async (req, res) => {
 router.delete('/reports/:id', async (req, res) => {
   try {
     const role = req.body.userRole || req.body.operatorRole || req.query.userRole || 'user';
-    const isManagerOrAdmin = role === 'admin' || role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    const opRoleStr = String(req.body.operatorTeamRole || '').toLowerCase();
+    const isManagerOrAdmin = role === 'admin' || role === 'manager' || opRoleStr.includes('manager') || opRoleStr.includes('lead') || opRoleStr.includes('head');
     if (!isManagerOrAdmin) {
       return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can delete report entries.' });
     }

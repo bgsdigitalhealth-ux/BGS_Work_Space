@@ -275,7 +275,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [members, setMembers] = useState<Member[]>([]);
 
   // Modifiable portal mode for managers/admins (toggle between 'admin' Panel and 'user' Workspace)
-  const [portalModeState, setPortalModeState] = useState<'admin' | 'user'>('admin');
+  const [portalModeState, setPortalModeState] = useState<'admin' | 'user'>(() => {
+    try {
+      const saved = localStorage.getItem('workhub_portal_mode');
+      if (saved === 'admin' || saved === 'user') return saved;
+    } catch (_) {}
+    return 'user';
+  });
 
   // Find member corresponding to current user to check manager role accurately
   const myMember = (members || []).find(m =>
@@ -285,7 +291,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const isMgr = isUserManager(currentUser, myMember);
   // Non-managers are strictly locked to 'user' mode.
-  // Managers default to 'admin' (Management Panel) and can toggle to 'user' (My Workspace).
+  // Managers can seamlessly toggle between 'user' (Manager Workspace) and 'admin' (Manager Panel).
   const portalMode: 'admin' | 'user' = !currentUser ? 'admin' : (!isMgr ? 'user' : portalModeState);
 
   const setPortalMode = (mode: 'admin' | 'user') => {
@@ -294,6 +300,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       return;
     }
     setPortalModeState(mode);
+    try {
+      localStorage.setItem('workhub_portal_mode', mode);
+    } catch (_) {}
   };
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -363,8 +372,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const isManagerOrAdmin = Boolean(
     currentUser?.role === 'admin' ||
     currentUser?.role === 'manager' ||
+    isUserManager(currentUser, myMember) ||
     currentUser?.teamRole === 'Manager' ||
-    currentUser?.teamRole === 'Team Lead'
+    currentUser?.teamRole === 'Team Lead' ||
+    currentUser?.teamRole === 'Team Head' ||
+    (currentUser?.teamRole && currentUser.teamRole.toLowerCase().includes('head')) ||
+    (currentUser?.teamRole && currentUser.teamRole.toLowerCase().includes('manager')) ||
+    (currentUser?.teamRole && currentUser.teamRole.toLowerCase().includes('lead'))
   );
 
   const refreshTodayAttendance = async () => {
