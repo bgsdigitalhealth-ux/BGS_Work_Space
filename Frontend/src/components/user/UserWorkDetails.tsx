@@ -12,7 +12,8 @@ import {
   MessageSquare,
   Check,
   ClipboardCheck,
-  Edit3
+  Edit3,
+  Trash2
 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
@@ -28,7 +29,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     selectedUserTask,
     setUserNav,
     handleAddUserComment,
-    handleEditAssignment
+    handleEditAssignment,
+    handleDeleteAssignment
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'attachments' | 'activity'>('overview');
@@ -278,15 +280,30 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               {task.status || 'In Progress'}
             </span>
-            <button
-              type="button"
-              onClick={() => setIsEditModalOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-[#5a36e6] hover:bg-[#4828c4] text-white transition shadow-sm cursor-pointer ml-auto"
-              title="Edit Work (Full Editable)"
-            >
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Edit Work</span>
-            </button>
+            <div className="flex items-center gap-2 ml-auto">
+              <button
+                type="button"
+                onClick={() => setIsEditModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-[#5a36e6] hover:bg-[#4828c4] text-white transition shadow-sm cursor-pointer"
+                title="Edit Work (Full Editable)"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Edit Work</span>
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await handleDeleteAssignment(task.id);
+                  if (onBack) onBack();
+                  else setUserNav('assigned-work');
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition shadow-sm cursor-pointer"
+                title="Delete this assigned work"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Work</span>
+              </button>
+            </div>
           </div>
         </div>
 

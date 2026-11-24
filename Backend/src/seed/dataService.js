@@ -1355,23 +1355,71 @@ const createAssignment = async (data) => {
 };
 
 const deleteAssignment = async (id) => {
-  const assign = (memoryStore.assignments || []).find(a => a.id === id || a.customId === id);
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.id !== id && a.customId !== id);
+  const userTask = (memoryStore.userWorkspace?.assignedWork || []).find(w => w.id === id || w.customId === id || w.taskId === id);
+  const assign = (memoryStore.assignments || []).find(a =>
+    a.id === id || a.customId === id || (userTask && (a.workTitle === userTask.title || a.id === userTask.taskId || a.id === userTask.assignmentId))
+  );
 
-  // Synchronously delete corresponding task and assignedWork in user workspace
-  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.id !== id && t.customId !== id && t.assignmentId !== id && (!assign || t.title !== assign.workTitle));
+  const targetIds = [id];
+  if (assign) {
+    if (assign.id) targetIds.push(assign.id);
+    if (assign.customId) targetIds.push(assign.customId);
+  }
+  if (userTask) {
+    if (userTask.id) targetIds.push(userTask.id);
+    if (userTask.customId) targetIds.push(userTask.customId);
+    if (userTask.taskId) targetIds.push(userTask.taskId);
+    if (userTask.assignmentId) targetIds.push(userTask.assignmentId);
+  }
+
+  memoryStore.assignments = (memoryStore.assignments || []).filter(a =>
+    !targetIds.includes(a.id) && !targetIds.includes(a.customId) && (!userTask || a.workTitle !== userTask.title)
+  );
+
+  memoryStore.tasks = (memoryStore.tasks || []).filter(t =>
+    !targetIds.includes(t.id) && !targetIds.includes(t.customId) && !targetIds.includes(t.assignmentId) && (!assign || t.title !== assign.workTitle) && (!userTask || t.title !== userTask.title)
+  );
+
   if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
     memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w =>
-      w.id !== id && w.customId !== id && w.assignmentId !== id && w.taskId !== id && (!assign || w.title !== assign.workTitle)
+      !targetIds.includes(w.id) && !targetIds.includes(w.customId) && !targetIds.includes(w.taskId) && !targetIds.includes(w.assignmentId) && (!assign || w.title !== assign.workTitle)
     );
   }
+
+  // Also remove from today's workDone if it was logged
+  if (memoryStore.workDone) {
+    memoryStore.workDone = memoryStore.workDone.filter(wd =>
+      !targetIds.includes(wd.taskId) && (!userTask || wd.title !== userTask.title)
+    );
+  }
+
   saveStore();
 
   if (getStatus()) {
     try {
-      await Assignment.findOneAndDelete(buildIdQuery(id));
-      await Task.deleteMany({ $or: [{ customId: id }, { assignmentId: id }] });
-      await UserTask.deleteMany({ $or: [{ customId: id }, { assignmentId: id }, { taskId: id }] });
+      await Assignment.deleteMany({
+        $or: [
+          { customId: { $in: targetIds } },
+          { _id: { $in: targetIds.filter(x => mongoose.Types.ObjectId.isValid(x)) } },
+          ...(userTask ? [{ workTitle: userTask.title }] : [])
+        ]
+      });
+      await Task.deleteMany({
+        $or: [
+          { customId: { $in: targetIds } },
+          { assignmentId: { $in: targetIds } },
+          { _id: { $in: targetIds.filter(x => mongoose.Types.ObjectId.isValid(x)) } }
+        ]
+      });
+      await UserTask.deleteMany({
+        $or: [
+          { customId: { $in: targetIds } },
+          { taskId: { $in: targetIds } },
+          { assignmentId: { $in: targetIds } },
+          { _id: { $in: targetIds.filter(x => mongoose.Types.ObjectId.isValid(x)) } },
+          ...(assign ? [{ title: assign.workTitle }] : [])
+        ]
+      });
     } catch (e) {
       console.warn('Mongo delete error:', e.message);
     }

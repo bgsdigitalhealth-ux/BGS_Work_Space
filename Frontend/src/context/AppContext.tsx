@@ -1119,12 +1119,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleDeleteAssignment = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this assignment?')) return;
+    if (!window.confirm('Are you sure you want to delete this assigned work?')) return;
     try {
       await api.deleteAssignment(id);
-      if (selectedTeam) fetchAssignments(selectedTeam.id);
-    } catch (e) {
-      console.error(e);
+      setUserWorkspace(prev => {
+        if (!prev) return prev;
+        const assignedWork = (prev.assignedWork || []).filter(t => t.id !== id && t.taskId !== id);
+        return { ...prev, assignedWork };
+      });
+      if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id)) {
+        setSelectedUserTask(null);
+        if (userNav === 'details') {
+          setUserNav('assigned-work');
+        }
+      }
+      const promises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
+      if (selectedTeam) {
+        promises.push(fetchAssignments(selectedTeam.id));
+      }
+      await Promise.all(promises);
+    } catch (e: any) {
+      console.error('Failed to delete assignment:', e);
+      alert(e.message || 'Failed to delete assignment');
     }
   };
 

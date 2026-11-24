@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users } from 'lucide-react';
+import { X, Edit3, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users, Trash2 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
@@ -14,7 +14,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   onClose,
   task
 }) => {
-  const { departments, teams, members, handleEditAssignment } = useApp();
+  const { departments, teams, members, handleEditAssignment, handleDeleteAssignment } = useApp();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -275,23 +275,38 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between gap-2.5 pt-4 border-t border-gray-100">
             <button
               type="button"
-              onClick={onClose}
+              onClick={async () => {
+                await handleDeleteAssignment(task.id);
+                onClose();
+              }}
               disabled={isSubmitting}
-              className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
+              className="px-3.5 py-2.5 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition cursor-pointer flex items-center gap-1.5"
+              title="Delete Assignment"
             >
-              Cancel
+              <Trash2 className="w-4 h-4" />
+              <span>Delete Assignment</span>
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white text-xs font-bold transition shadow-md shadow-indigo-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>{isSubmitting ? 'Saving Changes...' : 'Save & Audit Changes'}</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isSubmitting}
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white text-xs font-bold transition shadow-md shadow-indigo-600/20 flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                <span>{isSubmitting ? 'Saving Changes...' : 'Save & Audit Changes'}</span>
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -518,11 +518,14 @@ router.post('/assignments', async (req, res) => {
   }
 });
 
-router.delete('/assignments/:id', requireAdmin, async (req, res) => {
+// Delete Assignment (Admin, Manager, or User deleting their assigned work)
+router.delete('/assignments/:id', async (req, res) => {
   try {
     const result = await dataService.deleteAssignment(req.params.id);
     broadcast('ASSIGNMENT_DELETED', { id: req.params.id });
     broadcast('WORK_CHANGED', { action: 'delete', id: req.params.id });
+    broadcast('work_changed', { action: 'delete', id: req.params.id });
+    broadcast('assignment_deleted', { id: req.params.id });
     res.json({ success: true, message: 'Assignment deleted', ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });

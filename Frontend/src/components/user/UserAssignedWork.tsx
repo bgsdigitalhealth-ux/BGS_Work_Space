@@ -23,7 +23,8 @@ import {
   Pause,
   RotateCcw,
   Edit3,
-  CheckSquare
+  CheckSquare,
+  Trash2
 } from 'lucide-react';
 import { useApp, isTaskAssignedToUser, formatTaskDueDate, isUserManager } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
@@ -49,6 +50,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     handlePauseTimer,
     handleResumeTimer,
     handleFinishTimer,
+    handleDeleteAssignment,
     members
   } = useApp();
 
@@ -745,20 +747,30 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                           {task.priority} Priority
                         </span>
                         {getStatusBadge(task.status)}
-                        {/* Edit task button for Admin/Manager */}
-                        {isManagerOrAdmin && (
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setEditModalTask(task);
-                            }}
-                            className="p-1 rounded-lg bg-gray-100 hover:bg-[#5a36e6] hover:text-white text-gray-600 transition cursor-pointer"
-                            title="Edit Task Assignment"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                        {/* Edit task button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModalTask(task);
+                          }}
+                          className="p-1.5 rounded-lg bg-gray-100 hover:bg-[#5a36e6] hover:text-white text-gray-600 transition cursor-pointer"
+                          title="Edit Task Assignment"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        {/* Delete task button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAssignment(task.id);
+                          }}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 transition cursor-pointer"
+                          title="Delete this assigned work"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     </div>
 
@@ -906,17 +918,23 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                       {renderTimerControls(task)}
                     </td>
                     <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-end gap-2">
-                        {isManagerOrAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => setEditModalTask(task)}
-                            className="p-1.5 rounded-lg bg-gray-100 hover:bg-[#5a36e6] hover:text-white text-gray-600 transition cursor-pointer"
-                            title="Edit Assignment"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                      <div className="flex items-center justify-end gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditModalTask(task)}
+                          className="p-1.5 rounded-lg bg-gray-100 hover:bg-[#5a36e6] hover:text-white text-gray-600 transition cursor-pointer"
+                          title="Edit Assignment"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAssignment(task.id)}
+                          className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-600 hover:text-white text-rose-600 transition cursor-pointer"
+                          title="Delete Assignment"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleCardClick(task)}
