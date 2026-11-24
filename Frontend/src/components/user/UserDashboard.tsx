@@ -14,7 +14,7 @@ import {
   Send,
   ChevronDown
 } from 'lucide-react';
-import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
+import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
 export const UserDashboard: React.FC = () => {
@@ -442,7 +442,7 @@ export const UserDashboard: React.FC = () => {
                         <td className="py-4 whitespace-nowrap text-gray-600">
                           <div className="flex items-center gap-1.5">
                             <Calendar className="w-3.5 h-3.5 text-gray-400" />
-                            <span>{task.dueDate}</span>
+                            <span>{formatTaskDueDate(task.dueDate)}</span>
                           </div>
                         </td>
                         <td className="py-4 whitespace-nowrap">

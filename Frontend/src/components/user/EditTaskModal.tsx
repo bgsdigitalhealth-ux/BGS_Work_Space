@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, ShieldAlert, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
 interface EditTaskModalProps {
@@ -33,7 +33,16 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setDepartmentId(task.departmentId || '');
       setTeamId(task.teamId || '');
       setAssigneeId(task.assigneeId || task.userId || '');
-      setDueDate(task.dueDate || '');
+      const toISODate = (val?: string) => {
+        if (!val || val.trim().toLowerCase() === 'today') return new Date().toISOString().split('T')[0];
+        if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) return val.trim();
+        try {
+          const d = new Date(val);
+          if (!isNaN(d.getTime())) return d.toISOString().split('T')[0];
+        } catch {}
+        return new Date().toISOString().split('T')[0];
+      };
+      setDueDate(toISODate(task.dueDate));
       setPriority(task.priority || 'Medium');
       setStatus(task.status || 'In Progress');
     }
@@ -73,7 +82,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         assigneeId,
         assigneeName: selectedMember ? selectedMember.name : task.assigneeName,
         assigneeEmail: selectedMember ? selectedMember.email : task.assigneeEmail,
-        dueDate,
+        dueDate: formatTaskDueDate(dueDate) || dueDate,
         priority,
         status
       });
@@ -220,11 +229,11 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 <span>Deadline (Due Date)</span>
               </label>
               <input
-                type="text"
+                type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                placeholder="e.g. 15 Nov 2026, 05:00 PM"
-                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-medium text-gray-800"
+                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-medium text-gray-800 cursor-pointer"
+                required
               />
             </div>
           </div>

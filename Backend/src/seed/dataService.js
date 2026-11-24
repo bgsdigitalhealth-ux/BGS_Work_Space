@@ -1734,9 +1734,11 @@ const submitUserWork = async (data) => {
     task.progress = 100;
     task.submittedAt = now.toISOString();
     task.submittedDate = fullDateTime;
+    task.submittedTime = formattedTime;
     if (workStatus === 'Completed') {
       task.completedAt = now.toISOString();
       task.completedDate = fullDateTime;
+      task.completedTime = formattedTime;
     }
     if (!task.comments) task.comments = [];
     task.comments.push({
@@ -1746,6 +1748,18 @@ const submitUserWork = async (data) => {
       date: fullDateTime,
       badge: 'Submission',
       text: comment || 'Work deliverables submitted for review.'
+    });
+
+    if (!task.activityLog) task.activityLog = [];
+    task.activityLog.push({
+      id: generateId('act'),
+      type: 'deliverable_submitted',
+      performedBy: (task && (task.assigneeName || task.userName)) || 'Team Member',
+      performedByRole: 'Team Member',
+      performedById: userId || (task && task.userId),
+      timestamp: now,
+      details: { comment: comment || 'Work deliverables submitted for review.', status: task.status, submittedDate: fullDateTime },
+      message: `Submitted deliverables for review at ${fullDateTime}`
     });
   }
 
@@ -1808,8 +1822,12 @@ const submitUserWork = async (data) => {
         taskId: task ? task.taskId : taskId,
         title: task ? task.title : 'Work Completed',
         details: comment || 'Work deliverables submitted and verified.',
-        completedBy: (task && task.userName) || 'Team Member',
-        date: new Date().toISOString().split('T')[0]
+        completedBy: (task && (task.assigneeName || task.userName)) || 'Team Member',
+        date: new Date().toISOString().split('T')[0],
+        time: formattedTime,
+        submittedTime: formattedTime,
+        submittedDate: fullDateTime,
+        submittedAt: now.toISOString()
       };
       if (!memoryStore.workDone) memoryStore.workDone = [];
       memoryStore.workDone.unshift(newWorkDone);
@@ -1828,9 +1846,12 @@ const submitUserWork = async (data) => {
             progress: 100,
             submittedAt: task.submittedAt,
             submittedDate: task.submittedDate,
+            submittedTime: task.submittedTime,
             completedAt: task.completedAt,
             completedDate: task.completedDate,
-            comments: task.comments
+            completedTime: task.completedTime,
+            comments: task.comments,
+            activityLog: task.activityLog
           }
         );
       }
@@ -3386,9 +3407,21 @@ const updateUserWorkStatus = async (taskId, status) => {
   const task = ws.assignedWork.find(t => t.id === taskId || t.taskId === taskId);
   if (!task) return null;
 
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
   task.status = status;
-  if (status === 'In Progress' && task.progress === 0) {
-    task.progress = 30;
+  if (status === 'In Progress') {
+    if (!task.workStartedAt) {
+      task.workStartedAt = now.toISOString();
+      task.workStartedTime = formattedTime;
+      task.workStartedDate = fullDateTime;
+    }
+    if (task.progress === 0) {
+      task.progress = 30;
+    }
   }
 
   ws.recentActivities.unshift({
@@ -3403,7 +3436,13 @@ const updateUserWorkStatus = async (taskId, status) => {
     try {
       await UserTask.findOneAndUpdate(
         { $or: [{ customId: taskId }, { taskId: taskId }] },
-        { status: status, progress: task.progress }
+        {
+          status: status,
+          progress: task.progress,
+          workStartedAt: task.workStartedAt,
+          workStartedTime: task.workStartedTime,
+          workStartedDate: task.workStartedDate
+        }
       );
     } catch (e) {
       console.warn('Mongo update status error:', e.message);
@@ -5172,7 +5211,7 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
           let badgeColor = 'indigo';
           if (act.type === 'paused') badgeColor = 'amber';
           if (act.type === 'resumed') badgeColor = 'blue';
-          if (act.type === 'finished' || act.type === 'completed') badgeColor = 'emerald';
+          if (act.type === 'finished' || act.type === 'completed' || act.type === 'deliverable_submitted') badgeColor = 'emerald';
           if (act.type === 'deadline_change') badgeColor = 'purple';
           if (act.type === 'assignee_change') badgeColor = 'sky';
 
@@ -5190,9 +5229,10 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
               act.type === 'resumed' ? `Resumed Task` :
                 act.type === 'started' ? `Started Task` :
                   act.type === 'finished' ? `Completed Task` :
-                    act.type === 'deadline_change' ? `Deadline Changed: ${act.details?.oldDate} → ${act.details?.newDate}` :
-                      act.type === 'assignee_change' ? `Assignee Changed: ${act.details?.oldAssignee} → ${act.details?.newAssignee}` :
-                        `Task Activity`,
+                    act.type === 'deliverable_submitted' ? `Work Deliverables Submitted: "${t.title}"` :
+                      act.type === 'deadline_change' ? `Deadline Changed: ${act.details?.oldDate} → ${act.details?.newDate}` :
+                        act.type === 'assignee_change' ? `Assignee Changed: ${act.details?.oldAssignee} → ${act.details?.newAssignee}` :
+                          `Task Activity`,
             description: act.message || act.type,
             details: act.details,
             badgeColor

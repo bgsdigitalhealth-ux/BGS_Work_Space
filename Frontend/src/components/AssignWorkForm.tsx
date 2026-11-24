@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Shield, User, Mail, Phone, Calendar, AlertCircle, ArrowRight } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { Send, Shield, User, Mail, Phone, AlertCircle, ArrowRight } from 'lucide-react';
+import { useApp, formatTaskDueDate } from '../context/AppContext';
 import { api } from '../services/api';
 
 export const AssignWorkForm: React.FC = () => {
@@ -15,7 +15,7 @@ export const AssignWorkForm: React.FC = () => {
   const [workTitle, setWorkTitle] = useState('');
   const [workDescription, setWorkDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('High');
-  const [dueDate, setDueDate] = useState('');
+  const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<'In Progress' | 'To Do' | 'In Review' | 'Completed'>('In Progress');
   const [submitting, setSubmitting] = useState(false);
 
@@ -93,7 +93,7 @@ export const AssignWorkForm: React.FC = () => {
         workDescription,
         role,
         priority,
-        dueDate: dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        dueDate: formatTaskDueDate(dueDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         status,
         // Any-to-Any metadata:
         assignerId: currentUser?.id || 'usr-bgsmch-admin',
@@ -349,13 +349,12 @@ export const AssignWorkForm: React.FC = () => {
               Due Date <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-              <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
-                type="text"
+                type="date"
                 value={dueDate}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={(e) => setDueDate(e.target.value)}
-                placeholder="Jan 31, 2026"
-                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800 text-xs cursor-pointer"
                 required
               />
             </div>

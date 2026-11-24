@@ -73,6 +73,11 @@ export interface WorkDone {
   title: string;
   details?: string;
   date: string;
+  time?: string;
+  submittedTime?: string;
+  submittedAt?: string;
+  completedBy?: string;
+  taskId?: string;
 }
 
 export interface DashboardStats {

@@ -26,7 +26,7 @@ import {
   Edit3,
   CheckSquare
 } from 'lucide-react';
-import { useApp, isTaskAssignedToUser } from '../../context/AppContext';
+import { useApp, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { AttendanceWidget } from './AttendanceWidget';
@@ -306,11 +306,11 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
     return (
       <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
-        {/* Status indicator */}
-        {timer && (
+        {/* Status indicator: only when timer is running or paused */}
+        {timer && (isRunning || isPaused) && (
           <div className="text-[11px] font-mono px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 flex items-center gap-1.5">
-            <Clock className="w-3 h-3 text-[#5a36e6]" />
-            <span>Active: {formatSeconds(timer.activeSeconds)}</span>
+            <Clock className={`w-3 h-3 ${isRunning ? 'text-[#5a36e6] animate-pulse' : 'text-amber-500'}`} />
+            <span>{formatSeconds(timer.activeSeconds)}</span>
             {timer.pausedSeconds > 0 && (
               <span className="text-amber-600 font-semibold">| Paused: {formatSeconds(timer.pausedSeconds)}</span>
             )}
@@ -830,7 +830,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                       <div className="flex flex-col">
                         <span className="text-gray-400 font-medium">Deadline / Due</span>
                         <span className={`font-bold ${isDueToday ? 'text-amber-600' : 'text-gray-800'}`}>
-                          {task.dueDate || 'Pending'}
+                          {formatTaskDueDate(task.dueDate) || 'Pending'}
                         </span>
                       </div>
                     </div>
@@ -916,7 +916,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                   </h4>
                   <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
                   <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
-                    <span>Due: {task.dueDate || 'Pending'}</span>
+                    <span>Due: {formatTaskDueDate(task.dueDate) || 'Pending'}</span>
                     <span className="font-medium text-gray-700">{task.assigneeName || 'Assignee'}</span>
                   </div>
                   <div className="pt-1">
@@ -975,7 +975,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                   </h4>
                   <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
                   <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
-                    <span>Due: {task.dueDate || 'Pending'}</span>
+                    <span>Due: {formatTaskDueDate(task.dueDate) || 'Pending'}</span>
                     <span className="font-medium text-gray-700">{task.assigneeName || 'Assignee'}</span>
                   </div>
                   <div className="pt-1">
@@ -1034,7 +1034,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                   </h4>
                   <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
                   <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
-                    <span>Due: {task.dueDate || 'Pending'}</span>
+                    <span>Due: {formatTaskDueDate(task.dueDate) || 'Pending'}</span>
                     <span className="font-medium text-gray-700">{task.assigneeName || 'Assignee'}</span>
                   </div>
                   <div className="pt-1">
@@ -1166,7 +1166,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                       {getStatusBadge(task.status)}
                     </td>
                     <td className="py-3 px-4 font-medium text-gray-700">
-                      {task.dueDate || 'Pending'}
+                      {formatTaskDueDate(task.dueDate) || 'Pending'}
                     </td>
                     <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                       {renderTimerControls(task)}

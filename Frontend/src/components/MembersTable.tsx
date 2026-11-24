@@ -413,12 +413,24 @@ export const MembersTable: React.FC = () => {
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-slate-800 truncate">
-                        {item.title}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs font-semibold text-slate-800 truncate">
+                          {item.title}
+                        </p>
+                        {(item.time || (item as any).submittedTime) && (
+                          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-full">
+                            {item.time || (item as any).submittedTime}
+                          </span>
+                        )}
+                      </div>
                       {item.details && (
                         <p className="text-[11px] text-slate-500 truncate mt-0.5">
                           {item.details}
+                        </p>
+                      )}
+                      {item.completedBy && (
+                        <p className="text-[10px] text-slate-400 mt-0.5">
+                          By: {item.completedBy}
                         </p>
                       )}
                     </div>

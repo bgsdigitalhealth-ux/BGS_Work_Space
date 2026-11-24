@@ -13,7 +13,7 @@ import {
   Check,
   ClipboardCheck
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
 interface UserWorkDetailsProps {
@@ -128,19 +128,43 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
 
   const assignedDateLabel = (task as any).assignedTime && task.assignedOn
     ? `${task.assignedOn}, ${(task as any).assignedTime}`
-    : (task.createdAt ? formatDateTime(task.createdAt) : (task.assignedOn || 'Today'));
+    : (task.createdAt ? formatDateTime(task.createdAt) : (task.assignedOn ? formatTaskDueDate(task.assignedOn) : 'Assigned'));
 
-  const startedDateLabel = (task as any).workStartedTime && task.assignedOn
-    ? `${task.assignedOn}, ${(task as any).workStartedTime}`
-    : ((task as any).workStartedAt ? formatDateTime((task as any).workStartedAt) : (!isToDo ? assignedDateLabel : 'Pending Start'));
+  const getStartedTime = () => {
+    if ((task as any).workStartedDate) return (task as any).workStartedDate;
+    if ((task as any).workStartedTime && task.assignedOn) return `${formatTaskDueDate(task.assignedOn)}, ${(task as any).workStartedTime}`;
+    if ((task as any).workStartedAt) return formatDateTime((task as any).workStartedAt);
+    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'started');
+    if (act && act.timestamp) return formatDateTime(act.timestamp);
+    if ((task as any).timerState?.activeSessionStart) return formatDateTime((task as any).timerState.activeSessionStart);
+    if (isToDo) return 'Pending Start';
+    return 'In Progress';
+  };
+  const startedDateLabel = getStartedTime();
 
-  const submittedDateLabel = (task as any).submittedDate
-    ? (task as any).submittedDate
-    : ((task as any).submittedAt ? formatDateTime((task as any).submittedAt) : (isSubmitted || isCompleted ? 'Submitted' : '—'));
+  const getSubmittedTime = () => {
+    if ((task as any).submittedDate) return (task as any).submittedDate;
+    if ((task as any).submittedAt) return formatDateTime((task as any).submittedAt);
+    const subComment = (task.comments || []).find(c => c.badge === 'Submission' || (c.text && c.text.toLowerCase().includes('submitted')));
+    if (subComment && subComment.date) return subComment.date;
+    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'deliverable_submitted');
+    if (act && act.timestamp) return formatDateTime(act.timestamp);
+    if (isSubmitted || isCompleted) {
+      if ((task as any).completedDate) return (task as any).completedDate;
+      if ((task as any).completedAt) return formatDateTime((task as any).completedAt);
+    }
+    return isSubmitted ? 'Submitted' : '—';
+  };
+  const submittedDateLabel = getSubmittedTime();
 
-  const completedDateLabel = (task as any).completedDate
-    ? (task as any).completedDate
-    : ((task as any).completedAt ? formatDateTime((task as any).completedAt) : (isCompleted ? 'Completed' : '—'));
+  const getCompletedTime = () => {
+    if ((task as any).completedDate) return (task as any).completedDate;
+    if ((task as any).completedAt) return formatDateTime((task as any).completedAt);
+    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'finished' || a.type === 'completed');
+    if (act && act.timestamp) return formatDateTime(act.timestamp);
+    return isCompleted ? 'Completed' : '—';
+  };
+  const completedDateLabel = getCompletedTime();
 
   const timeLeftLabel = (task as any).timeLeft || calculateDynamicTimeLeft(task.dueDate, task.status);
 
@@ -266,7 +290,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Due Date</span>
-                  <span className="font-semibold text-gray-900">: {task.dueDate || 'Scheduled'}</span>
+                  <span className="font-semibold text-gray-900">: {formatTaskDueDate(task.dueDate) || 'Scheduled'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-gray-500">Time Left</span>
@@ -541,7 +565,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Due Date</span>
-                <span className="font-semibold text-gray-800">: {task.dueDate || 'Scheduled'}</span>
+                <span className="font-semibold text-gray-800">: {formatTaskDueDate(task.dueDate) || 'Scheduled'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Assigned By</span>

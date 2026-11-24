@@ -207,6 +207,29 @@ export const isUserManager = (user?: User | null, member?: Member | null): boole
          roleString.includes('lead');
 };
 
+// Helper to format due dates properly, replacing text strings like "Today" with proper formatted date
+export const formatTaskDueDate = (dueDate?: string): string => {
+  if (!dueDate) return '';
+  const trimmed = dueDate.trim();
+  if (trimmed.toLowerCase() === 'today') {
+    return new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  if (trimmed.toLowerCase() === 'tomorrow') {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+    try {
+      const d = new Date(trimmed);
+      if (!isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      }
+    } catch {}
+  }
+  return trimmed;
+};
+
 // Check if a task is directly assigned to a specific user (by ID, memberId, email, or assignee name)
 export const isTaskAssignedToUser = (
   task: UserAssignedWork,
@@ -759,7 +782,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       setUserWorkspace(data);
       if (data.assignedWork && data.assignedWork.length > 0) {
-        if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
+        const matchingTask = selectedUserTask
+          ? data.assignedWork.find(t => t.id === selectedUserTask.id || (selectedUserTask.taskId && t.taskId === selectedUserTask.taskId))
+          : null;
+        if (matchingTask) {
+          setSelectedUserTask(matchingTask);
+        } else if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
           setSelectedUserTask(data.assignedWork[0]);
         }
       } else {

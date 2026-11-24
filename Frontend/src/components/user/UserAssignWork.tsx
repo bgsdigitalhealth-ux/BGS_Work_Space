@@ -5,7 +5,6 @@ import {
   Shield, 
   Mail, 
   AlertCircle, 
-  Calendar, 
   Clock, 
   ArrowRight,
   ClipboardList,
@@ -14,7 +13,7 @@ import {
   Users,
   UserCheck
 } from 'lucide-react';
-import { useApp, isUserManager } from '../../context/AppContext';
+import { useApp, isUserManager, formatTaskDueDate } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Assignment } from '../../types';
 
@@ -29,7 +28,7 @@ export const UserAssignWork: React.FC = () => {
   const [workTitle, setWorkTitle] = useState('');
   const [workDescription, setWorkDescription] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('High');
-  const [dueDate, setDueDate] = useState('Today');
+  const [dueDate, setDueDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [status, setStatus] = useState<'In Progress' | 'To Do' | 'In Review' | 'Completed'>('In Progress');
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
@@ -178,7 +177,7 @@ export const UserAssignWork: React.FC = () => {
 
     try {
       setSubmitting(true);
-      const chosenDue = dueDate.trim() || 'Today';
+      const chosenDue = formatTaskDueDate(dueDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       const finalTargetId = assignMode === 'user_to_self' ? (currentUser?.id || 'usr-user') : targetId;
       const finalTargetName = assignMode === 'user_to_self' ? (currentUser?.name || 'Self') : targetName;
       const finalEmail = assignMode === 'user_to_self' ? (currentUser?.email || '') : email;
@@ -532,13 +531,13 @@ export const UserAssignWork: React.FC = () => {
                   Due Date <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
-                  <Calendar className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5 pointer-events-none" />
                   <input
-                    type="text"
+                    type="date"
+                    required
                     value={dueDate}
+                    min={new Date().toISOString().split('T')[0]}
                     onChange={(e) => setDueDate(e.target.value)}
-                    placeholder="e.g. Today / 10 Nov 2026"
-                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 text-xs cursor-pointer"
                   />
                 </div>
               </div>

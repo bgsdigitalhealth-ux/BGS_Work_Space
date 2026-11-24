@@ -73,6 +73,8 @@ export const ManagerTimelineView: React.FC = () => {
       case 'finished':
       case 'completed':
         return { icon: CheckCircle2, bg: 'bg-emerald-50 text-emerald-600 border-emerald-200' };
+      case 'deliverable_submitted':
+        return { icon: CheckCircle2, bg: 'bg-purple-50 text-[#5a36e6] border-purple-200' };
       case 'deadline_change':
         return { icon: Calendar, bg: 'bg-purple-50 text-purple-600 border-purple-200' };
       case 'assignee_change':
