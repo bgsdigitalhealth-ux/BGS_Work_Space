@@ -24,7 +24,7 @@ import { api } from '../../services/api';
 import { User } from '../../types';
 
 export const AdminSettings: React.FC = () => {
-  const { currentUser, setCurrentUser, allUsers, refreshAll } = useApp();
+  const { currentUser, setCurrentUser, allUsers, refreshAll, notify } = useApp();
 
   // Admin Profile State
   const [name, setName] = useState(currentUser?.name || 'Admin');
@@ -51,14 +51,14 @@ export const AdminSettings: React.FC = () => {
 
   // Total Users Directory State
   const [userSearch, setUserSearch] = useState('');
-  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'user'>('all');
+  const [userRoleFilter, setUserRoleFilter] = useState<'all' | 'admin' | 'manager' | 'user'>('all');
 
   // Edit & Delete User State
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [isEditUserOpen, setIsEditUserOpen] = useState(false);
   const [editUserName, setEditUserName] = useState('');
   const [editUserEmail, setEditUserEmail] = useState('');
-  const [editUserRole, setEditUserRole] = useState<'admin' | 'user'>('user');
+  const [editUserRole, setEditUserRole] = useState<'admin' | 'manager' | 'user'>('user');
   const [editUserPassword, setEditUserPassword] = useState('');
   const [showEditUserPassword, setShowEditUserPassword] = useState(false);
   const [savingUser, setSavingUser] = useState(false);
@@ -66,6 +66,7 @@ export const AdminSettings: React.FC = () => {
   const [userActionError, setUserActionError] = useState('');
 
   const regularUsersCount = (allUsers || []).filter(u => u.role === 'user' && !isBannedEmail(u.email)).length;
+  const managersCount = (allUsers || []).filter(u => u.role === 'manager' && !isBannedEmail(u.email)).length;
   const adminsCount = (allUsers || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email)).length;
 
   const filteredUsers = (allUsers || []).filter(u => {
@@ -92,7 +93,7 @@ export const AdminSettings: React.FC = () => {
     setEditingUser(u);
     setEditUserName(u.name || '');
     setEditUserEmail(u.email || '');
-    setEditUserRole((u.role as 'admin' | 'user') || 'user');
+    setEditUserRole((u.role as 'admin' | 'manager' | 'user') || 'user');
     setEditUserPassword('');
     setShowEditUserPassword(false);
     setIsEditUserOpen(true);
@@ -116,7 +117,7 @@ export const AdminSettings: React.FC = () => {
 
     setSavingUser(true);
     try {
-      const payload: { name: string; email: string; role: 'admin' | 'user'; password?: string } = {
+      const payload: { name: string; email: string; role: 'admin' | 'manager' | 'user'; password?: string } = {
         name: editUserName.trim(),
         email: editUserEmail.trim().toLowerCase(),
         role: editUserRole
@@ -151,7 +152,7 @@ export const AdminSettings: React.FC = () => {
     setUserActionError('');
 
     if (u.email.toLowerCase() === currentUser?.email.toLowerCase()) {
-      alert('You cannot delete your own currently logged-in account.');
+      notify('You cannot delete your own currently logged-in account.', 'error', 'Action Restricted');
       return;
     }
 
@@ -297,7 +298,7 @@ export const AdminSettings: React.FC = () => {
   // Handle Delete Administrator
   const handleDeleteAdmin = async (adminId: string, adminEmail: string) => {
     if (adminEmail.toLowerCase() === currentUser?.email.toLowerCase()) {
-      alert('You cannot delete your own currently logged-in administrator account.');
+      notify('You cannot delete your own currently logged-in administrator account.', 'error', 'Action Restricted');
       return;
     }
 
@@ -362,6 +363,19 @@ export const AdminSettings: React.FC = () => {
         </div>
 
         <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Managers & Leads</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-slate-900">{managersCount}</span>
+              <span className="text-[11px] text-slate-400">Team Supervisors</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-xs flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0">
             <UserCheck className="w-5 h-5" />
           </div>
@@ -369,7 +383,7 @@ export const AdminSettings: React.FC = () => {
             <p className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Team Members</p>
             <div className="flex items-baseline gap-2">
               <span className="text-xl font-bold text-slate-900">
-                {(allUsers || []).filter(u => u.role === 'user').length}
+                {regularUsersCount}
               </span>
               <span className="text-[11px] text-slate-400">Active Staff</span>
             </div>
@@ -628,7 +642,7 @@ export const AdminSettings: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-1.5 pt-1">
-              {(['all', 'admin', 'user'] as const).map(role => (
+              {(['all', 'admin', 'manager', 'user'] as const).map(role => (
                 <button
                   key={role}
                   type="button"
@@ -638,7 +652,13 @@ export const AdminSettings: React.FC = () => {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  {role === 'all' ? `All (${(allUsers || []).length})` : role === 'admin' ? `Admin (${adminsCount})` : `User (${regularUsersCount})`}
+                  {role === 'all' 
+                    ? `All (${(allUsers || []).length})` 
+                    : role === 'admin' 
+                    ? `Admins (${adminsCount})` 
+                    : role === 'manager' 
+                    ? `Managers (${managersCount})` 
+                    : `Staff (${regularUsersCount})`}
                 </button>
               ))}
             </div>
@@ -653,12 +673,15 @@ export const AdminSettings: React.FC = () => {
             ) : (
               filteredUsers.map(u => {
                 const isAdmin = u.role === 'admin';
+                const isManager = u.role === 'manager';
                 const isCurrentUser = u.email.toLowerCase() === currentUser?.email.toLowerCase();
                 return (
                   <div key={u.id || u.email} className="py-2.5 flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2.5 truncate">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isAdmin
                         ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-2xs'
+                        : isManager
+                        ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
                         : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                         }`}>
                         {u.avatar || (u.name || 'U').charAt(0).toUpperCase()}
@@ -679,9 +702,11 @@ export const AdminSettings: React.FC = () => {
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isAdmin
                         ? 'bg-purple-50 text-purple-700 border-purple-200/60'
+                        : isManager
+                        ? 'bg-amber-50 text-amber-700 border-amber-200/60'
                         : 'bg-slate-100 text-slate-600 border-slate-200/60'
                         }`}>
-                        {isAdmin ? 'Admin' : 'User'}
+                        {isAdmin ? 'Admin' : isManager ? 'Manager' : 'User'}
                       </span>
 
                       {/* Edit User Button (Issue 8: >= 40x40px hit area) */}
@@ -776,10 +801,11 @@ export const AdminSettings: React.FC = () => {
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">Platform Role *</label>
                 <select
                   value={editUserRole}
-                  onChange={(e) => setEditUserRole(e.target.value as 'admin' | 'user')}
+                  onChange={(e) => setEditUserRole(e.target.value as 'admin' | 'manager' | 'user')}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-3 text-xs text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"
                 >
                   <option value="user">User (Team Member)</option>
+                  <option value="manager">Manager (Team Supervisor)</option>
                   <option value="admin">Administrator</option>
                 </select>
               </div>

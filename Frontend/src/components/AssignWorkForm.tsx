@@ -4,9 +4,9 @@ import { useApp, formatTaskDueDate } from '../context/AppContext';
 import { api } from '../services/api';
 
 export const AssignWorkForm: React.FC = () => {
-  const { selectedTeam, members, allUsers, currentUser, refreshAll } = useApp();
+  const { selectedTeam, members, allUsers, currentUser, refreshAll, notify } = useApp();
 
-  const [assignMode, setAssignMode] = useState<'admin_to_user' | 'admin_to_admin'>('admin_to_user');
+  const [assignMode, setAssignMode] = useState<'admin_to_user' | 'admin_to_manager' | 'admin_to_admin'>('admin_to_user');
   const [targetId, setTargetId] = useState('');
   const [targetName, setTargetName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,21 +20,35 @@ export const AssignWorkForm: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const adminUsers = allUsers.filter(u => u.role === 'admin');
+  const managerUsers = allUsers.filter(u => u.role === 'manager');
+  const regularMembers = members.filter(m => m.role !== 'Administrator' && m.role !== 'Team Head');
 
   useEffect(() => {
     if (assignMode === 'admin_to_user') {
-      if (members.length > 0) {
-        setTargetId(members[0].id);
-        setTargetName(members[0].name);
-        setEmail(members[0].email);
-        setPhone(members[0].phone || '+91 98765 43210');
-        setRole(members[0].role || 'Developer');
+      const candidates = regularMembers.length > 0 ? regularMembers : members;
+      if (candidates.length > 0) {
+        setTargetId(candidates[0].id);
+        setTargetName(candidates[0].name);
+        setEmail(candidates[0].email);
+        setPhone(candidates[0].phone || '+91 98765 43210');
+        setRole(candidates[0].role || 'Developer');
       } else {
         setTargetId('');
         setTargetName('');
         setEmail('');
         setPhone('');
         setRole('Developer');
+      }
+    } else if (assignMode === 'admin_to_manager') {
+      const defaultMgr = managerUsers.length > 0
+        ? managerUsers[0]
+        : members.find(m => m.role?.toLowerCase().includes('head') || m.role?.toLowerCase().includes('manager'));
+      if (defaultMgr) {
+        setTargetId(defaultMgr.id);
+        setTargetName(defaultMgr.name);
+        setEmail(defaultMgr.email);
+        setPhone((defaultMgr as any).phone || '+91 98449 90059');
+        setRole((defaultMgr as any).teamRole || (defaultMgr as any).title || (defaultMgr as any).role || 'Team Head');
       }
     } else {
       // admin_to_admin
@@ -52,12 +66,23 @@ export const AssignWorkForm: React.FC = () => {
 
   const handleMemberChange = (mId: string) => {
     setTargetId(mId);
-    const found = members.find((m) => m.id === mId);
+    const found = members.find((m) => m.id === mId) || allUsers.find(u => u.id === mId);
     if (found) {
       setTargetName(found.name);
       setEmail(found.email);
-      setPhone(found.phone || '+91 98765 43210');
-      setRole(found.role || 'Developer');
+      setPhone((found as any).phone || '+91 98765 43210');
+      setRole((found as any).role || (found as any).teamRole || 'Developer');
+    }
+  };
+
+  const handleManagerChange = (mgrId: string) => {
+    setTargetId(mgrId);
+    const found = managerUsers.find(m => m.id === mgrId) || members.find(m => m.id === mgrId);
+    if (found) {
+      setTargetName(found.name);
+      setEmail(found.email);
+      setPhone((found as any).phone || '+91 98449 90059');
+      setRole((found as any).teamRole || (found as any).title || (found as any).role || 'Team Head');
     }
   };
 
@@ -79,14 +104,15 @@ export const AssignWorkForm: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!workTitle || !targetId) {
-      alert('Please select a recipient and enter a work title.');
+      notify('Please select a recipient and enter a work title.', 'error', 'Missing Information');
       return;
     }
 
     try {
       setSubmitting(true);
+      const targetRole = assignMode === 'admin_to_admin' ? 'admin' : assignMode === 'admin_to_manager' ? 'manager' : 'user';
       await api.createAssignment({
-        memberId: assignMode === 'admin_to_user' ? targetId : undefined,
+        memberId: (assignMode === 'admin_to_user' || assignMode === 'admin_to_manager') ? targetId : undefined,
         teamId: selectedTeam ? selectedTeam.id : 'general',
         departmentId: selectedTeam ? selectedTeam.departmentId : '',
         workTitle,
@@ -102,7 +128,7 @@ export const AssignWorkForm: React.FC = () => {
         assignerEmail: currentUser?.email || 'bgsmchhospitalnagarur@gmail.com',
         assigneeId: targetId,
         assigneeName: targetName,
-        assigneeRole: assignMode === 'admin_to_admin' ? 'admin' : 'user',
+        assigneeRole: targetRole,
         assigneeEmail: email,
         assignmentType: assignMode
       });
@@ -117,10 +143,11 @@ export const AssignWorkForm: React.FC = () => {
       await refreshAll();
       setWorkTitle('');
       setWorkDescription('');
-      alert(`Work successfully assigned (${assignMode === 'admin_to_user' ? 'Admin → User' : 'Admin → Admin'})!`);
-    } catch (err) {
+      const formatLabel = assignMode === 'admin_to_user' ? 'Admin → User' : assignMode === 'admin_to_manager' ? 'Admin → Manager' : 'Admin → Admin';
+      notify(`Work successfully assigned (${formatLabel})!`, 'success', 'Assignment Created');
+    } catch (err: any) {
       console.error(err);
-      alert('Failed to assign work');
+      notify(err?.message || 'Failed to assign work', 'error', 'Assignment Failed');
     } finally {
       setSubmitting(false);
     }
@@ -138,6 +165,8 @@ export const AssignWorkForm: React.FC = () => {
             <p className="text-xs text-slate-500">
               {assignMode === 'admin_to_user'
                 ? `Assign work to team member in ${selectedTeam?.name || 'Department'}.`
+                : assignMode === 'admin_to_manager'
+                ? 'Assign operational initiative to Team Manager.'
                 : 'Delegate executive task to another Administrator.'}
             </p>
           </div>
@@ -162,6 +191,20 @@ export const AssignWorkForm: React.FC = () => {
           <button
             type="button"
             role="radio"
+            aria-checked={assignMode === 'admin_to_manager'}
+            onClick={() => setAssignMode('admin_to_manager')}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_manager'
+              ? 'bg-indigo-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+              }`}
+          >
+            <span>Admin</span>
+            <ArrowRight className="w-3 h-3" />
+            <span>Manager</span>
+          </button>
+          <button
+            type="button"
+            role="radio"
             aria-checked={assignMode === 'admin_to_admin'}
             onClick={() => setAssignMode('admin_to_admin')}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_admin'
@@ -181,7 +224,7 @@ export const AssignWorkForm: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              {assignMode === 'admin_to_user' ? 'Team Member (User)' : 'Assignee Administrator'}{' '}
+              {assignMode === 'admin_to_user' ? 'Team Member (User)' : assignMode === 'admin_to_manager' ? 'Team Manager' : 'Assignee Administrator'}{' '}
               <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -192,13 +235,33 @@ export const AssignWorkForm: React.FC = () => {
                   onChange={(e) => handleMemberChange(e.target.value)}
                   className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
                 >
-                  {members.map((m) => (
+                  {(regularMembers.length > 0 ? regularMembers : members).map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name} ({m.role || 'Member'})
                     </option>
                   ))}
                   {members.length === 0 && (
                     <option value="">No members in team yet</option>
+                  )}
+                </select>
+              ) : assignMode === 'admin_to_manager' ? (
+                <select
+                  value={targetId}
+                  onChange={(e) => handleManagerChange(e.target.value)}
+                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
+                >
+                  {managerUsers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.teamRole || m.title || 'Team Head'}) - {m.email}
+                    </option>
+                  ))}
+                  {managerUsers.length === 0 && members.filter(m => m.role?.toLowerCase().includes('head')).map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} ({m.role}) - {m.email}
+                    </option>
+                  ))}
+                  {managerUsers.length === 0 && (
+                    <option value="usr-1795150363087-258">DR. Sajjan (dynamicsajjan@gmail.com)</option>
                   )}
                 </select>
               ) : (
@@ -280,11 +343,10 @@ export const AssignWorkForm: React.FC = () => {
                     key={rName}
                     aria-pressed={isSelected}
                     onClick={() => handleQuickRole(rName)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
-                      isSelected
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${isSelected
                         ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold ring-1 ring-indigo-600'
                         : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                    }`}
+                      }`}
                   >
                     + {rName}
                   </button>
@@ -382,7 +444,7 @@ export const AssignWorkForm: React.FC = () => {
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500">Format:</span>
             <span className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
-              {assignMode === 'admin_to_user' ? 'Admin → User' : 'Admin → Admin'}
+              {assignMode === 'admin_to_user' ? 'Admin → User' : assignMode === 'admin_to_manager' ? 'Admin → Manager' : 'Admin → Admin'}
             </span>
           </div>
 

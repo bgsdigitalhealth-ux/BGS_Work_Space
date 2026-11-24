@@ -26,14 +26,13 @@ export const getSocket = (): Socket => {
     const socketUrl = getSocketUrl();
     socket = io(socketUrl, {
       autoConnect: true,
-      withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000
-    });
+    } as any);
 
     socket.on('connect', () => {
       console.log('[Socket.IO] Connected to backend server:', socket?.id);

@@ -34,8 +34,7 @@ export const Sidebar: React.FC = () => {
     currentUser,
     logout,
     mobileSidebarOpen,
-    setMobileSidebarOpen,
-    setPortalMode
+    setMobileSidebarOpen
   } = useApp();
 
   const [orgOpen, setOrgOpen] = useState(true);
@@ -57,20 +56,20 @@ export const Sidebar: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-64 bg-[#121139] text-slate-300 flex flex-col shrink-0 min-h-screen transition-transform duration-300 ease-in-out ${mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] lg:max-w-none bg-[#121139] text-slate-300 flex flex-col shrink-0 min-h-screen transition-transform duration-300 ease-in-out ${mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
         }`}>
         {/* Brand Header */}
-        <div className="p-5 flex items-center justify-between border-b border-indigo-950/60">
+        <div className="p-5 flex items-center justify-between border-b border-indigo-950/60 shrink-0">
           <div
-            className="flex items-center gap-3 cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer select-none"
             onClick={() => handleNavAction(() => setAdminNav('dashboard'))}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-900/30">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-900/30 shrink-0">
               <Shield className="w-5 h-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-white font-bold text-base leading-tight">WorkHub</h1>
-              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase">
+            <div className="min-w-0">
+              <h1 className="text-white font-bold text-base leading-tight truncate">WorkHub</h1>
+              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase truncate block">
                 {currentUser?.role === 'manager' ? 'Manager Panel' : 'Admin Panel'}
               </span>
             </div>
@@ -88,72 +87,87 @@ export const Sidebar: React.FC = () => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 px-3.5 py-2 space-y-1.5 overflow-y-auto no-scrollbar">
           {/* Dashboard Link */}
           <button
+            type="button"
             onClick={() => handleNavAction(() => {
               setAdminNav('dashboard');
               setActiveTab('Teams');
               setTeamSubTab('Members');
               scrollToSection('stats-overview');
             })}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${adminNav === 'dashboard'
+            className={`w-full h-11 flex items-center gap-3 px-3.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer group ${adminNav === 'dashboard'
               ? 'text-white bg-indigo-600 shadow-sm'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard</span>
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <LayoutDashboard className="w-4 h-4 shrink-0" />
+            </div>
+            <span className="truncate text-left whitespace-nowrap">Dashboard</span>
           </button>
 
           {/* Organization Group */}
           <div className="pt-2">
             <button
+              type="button"
               onClick={() => setOrgOpen(!orgOpen)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="w-full h-10 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer rounded-xl hover:bg-white/5"
             >
-              <div className="flex items-center gap-2.5">
-                <Building2 className="w-4 h-4 text-slate-400" />
-                <span>Organization</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
+                </div>
+                <span className="truncate text-left">Organization</span>
               </div>
-              {orgOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              {orgOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
             </button>
 
             {orgOpen && (
               <div className="mt-1 ml-4 pl-3 border-l border-indigo-950/70 space-y-1">
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('dashboard');
                     scrollToSection('departments-section');
                   })}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+                  className="w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
                 >
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Departments</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  <span className="truncate">Departments</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('dashboard');
                     setActiveTab('Teams');
                     setTeamSubTab('Members');
                     scrollToSection('department-detail');
                   })}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
+                  className="w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left cursor-pointer"
                 >
-                  <Users className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Teams</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <Users className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  <span className="truncate">Teams</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('dashboard');
                     setActiveTab('Members');
                     scrollToSection('department-detail');
                   })}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${activeTab === 'Members' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  className={`w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm transition-colors text-left cursor-pointer ${activeTab === 'Members' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                 >
-                  <UserCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Members</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <UserCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  <span className="truncate">Members</span>
                 </button>
               </div>
             )}
@@ -162,75 +176,90 @@ export const Sidebar: React.FC = () => {
           {/* Work Management Group */}
           <div className="pt-2">
             <button
+              type="button"
               onClick={() => setWorkOpen(!workOpen)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer"
+              className="w-full h-10 flex items-center justify-between px-3 text-xs font-semibold uppercase tracking-wider text-slate-400 hover:text-white transition-colors cursor-pointer rounded-xl hover:bg-white/5"
             >
-              <div className="flex items-center gap-2.5">
-                <CheckSquare className="w-4 h-4 text-slate-400" />
-                <span>Work Management</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <CheckSquare className="w-4 h-4 text-slate-400 shrink-0" />
+                </div>
+                <span className="truncate text-left">Work Management</span>
               </div>
-              {workOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+              {workOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
             </button>
 
             {workOpen && (
               <div className="mt-1 ml-4 pl-3 border-l border-indigo-950/70 space-y-1">
-                {/* Appointments (Active link matching screenshot!) */}
+                {/* Appointments */}
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('appointments');
                   })}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'appointments' ? 'text-white font-bold bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  className={`w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'appointments' ? 'text-white font-bold bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                 >
-                  <CalendarIcon className="w-3.5 h-3.5" />
-                  <span>Appointments</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
+                  </div>
+                  <span className="truncate">Appointments</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('dashboard');
                     setActiveTab('Teams');
                     setTeamSubTab('Tasks');
                     scrollToSection('department-detail');
                   })}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'dashboard' && teamSubTab === 'Tasks' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  className={`w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'dashboard' && teamSubTab === 'Tasks' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                 >
-                  <CheckSquare className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Today's Tasks</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <CheckSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  <span className="truncate">Today's Tasks</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => handleNavAction(() => {
                     setAdminNav('dashboard');
                     setActiveTab('Teams');
                     setTeamSubTab('WorkDone');
                     scrollToSection('department-detail');
                   })}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'dashboard' && teamSubTab === 'WorkDone' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                  className={`w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'dashboard' && teamSubTab === 'WorkDone' ? 'text-white font-bold bg-white/10' : 'text-slate-300 hover:text-white hover:bg-white/5'
                     }`}
                 >
-                  <ClipboardCheck className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Today's Work Done</span>
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <ClipboardCheck className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  </div>
+                  <span className="truncate">Today's Work Done</span>
                 </button>
               </div>
             )}
           </div>
 
-          {/* Messages Link Matching Screenshot */}
+          {/* Messages Link */}
           <button
+            type="button"
             onClick={() => handleNavAction(() => setAdminNav('messages'))}
-            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-medium text-sm transition-all text-left cursor-pointer ${adminNav === 'messages'
+            className={`w-full h-11 flex items-center justify-between px-3.5 rounded-xl font-medium text-sm transition-all text-left cursor-pointer group ${adminNav === 'messages'
               ? 'text-white bg-[#15803d] shadow-md shadow-emerald-900/30'
               : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
-            <div className="flex items-center gap-3">
-              <MessageSquare className={`w-4 h-4 ${adminNav === 'messages' ? 'text-white' : 'text-slate-400'}`} />
-              <span>Messages</span>
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                <MessageSquare className={`w-4 h-4 shrink-0 ${adminNav === 'messages' ? 'text-white' : 'text-slate-400'}`} />
+              </div>
+              <span className="truncate text-left whitespace-nowrap">Messages</span>
             </div>
             {unreadMessagesCount > 0 && (
-              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+              <span className="w-5 h-5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center shrink-0 ml-2">
                 {unreadMessagesCount}
               </span>
             )}
@@ -238,56 +267,45 @@ export const Sidebar: React.FC = () => {
 
           {/* Daily Timeline */}
           <button
+            type="button"
             onClick={() => handleNavAction(() => setAdminNav('timeline'))}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'timeline' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+            className={`w-full h-11 flex items-center gap-3 px-3.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer group ${adminNav === 'timeline' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
-            <Clock className="w-4 h-4 text-slate-400" />
-            <span>Daily Timeline</span>
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+            <span className="truncate text-left whitespace-nowrap">Daily Timeline</span>
           </button>
 
           {/* Reports */}
           <button
+            type="button"
             onClick={() => handleNavAction(() => {
               setAdminNav('reports');
             })}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'reports' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+            className={`w-full h-11 flex items-center gap-3 px-3.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer group ${adminNav === 'reports' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
-            <FileBarChart className="w-4 h-4 text-slate-400" />
-            <span>Reports</span>
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <FileBarChart className="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+            <span className="truncate text-left whitespace-nowrap">Reports</span>
           </button>
 
           {/* Settings */}
           <button
+            type="button"
             onClick={() => handleNavAction(() => setAdminNav('settings'))}
-            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'settings' ? 'text-white bg-indigo-600/80 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+            className={`w-full h-11 flex items-center gap-3 px-3.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer group ${adminNav === 'settings' ? 'text-white bg-indigo-600/80 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
               }`}
           >
-            <Settings className="w-4 h-4 text-slate-400" />
-            <span>Settings</span>
+            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+              <Settings className="w-4 h-4 text-slate-400 shrink-0" />
+            </div>
+            <span className="truncate text-left whitespace-nowrap">Settings</span>
           </button>
         </nav>
-
-        {/* Switch to Personal Member Workspace */}
-        <div className="px-4 mb-2">
-          <button
-            onClick={() => {
-              setPortalMode('user');
-              setMobileSidebarOpen(false);
-            }}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs bg-white/10 hover:bg-white/15 text-white border border-white/10 transition cursor-pointer"
-            title="Switch to Personal Member Workspace"
-          >
-            <div className="flex items-center gap-2">
-              <UserCheck className="w-4 h-4 text-emerald-400" />
-              <span>My Workspace</span>
-            </div>
-            <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold">
-              {currentUser?.role === 'manager' ? 'Manager Workspace' : 'User Mode'}
-            </span>
-          </button>
-        </div>
 
         {/* Bottom Admin User Card with Sign Out */}
         <div className="p-4 border-t border-indigo-950/60">

@@ -24,7 +24,7 @@ export interface Member {
   avatar: string;
 }
 
-export type AssignmentType = 'admin_to_user' | 'admin_to_admin' | 'user_to_admin' | 'user_to_user' | 'user_to_self';
+export type AssignmentType = 'admin_to_user' | 'admin_to_admin' | 'admin_to_manager' | 'manager_to_user' | 'user_to_admin' | 'user_to_user' | 'user_to_self';
 
 export interface Assignment {
   id: string;
@@ -40,11 +40,11 @@ export interface Assignment {
   // Any-to-Any Metadata
   assignerId?: string;
   assignerName?: string;
-  assignerRole?: 'admin' | 'user';
+  assignerRole?: 'admin' | 'user' | 'manager';
   assignerEmail?: string;
   assigneeId?: string;
   assigneeName?: string;
-  assigneeRole?: 'admin' | 'user';
+  assigneeRole?: 'admin' | 'user' | 'manager';
   assigneeEmail?: string;
   assignmentType?: AssignmentType;
   createdAt?: string;

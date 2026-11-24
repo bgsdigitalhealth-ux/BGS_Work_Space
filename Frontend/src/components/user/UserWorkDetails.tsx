@@ -30,7 +30,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     setUserNav,
     handleAddUserComment,
     handleEditAssignment,
-    handleDeleteAssignment
+    handleDeleteAssignment,
+    notify
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'attachments' | 'activity'>('overview');
@@ -772,7 +773,14 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
 
                   <button
                     type="button"
-                    onClick={() => alert(`Downloading attachment: ${file.name}`)}
+                    onClick={() => {
+                      const fileUrl = (file as any).url;
+                      if (fileUrl) {
+                        window.open(fileUrl, '_blank');
+                      } else {
+                        notify(`Opening attachment: ${file.name}`, 'info', 'Attachment');
+                      }
+                    }}
                     className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-white transition cursor-pointer"
                     title="Download Attachment"
                   >

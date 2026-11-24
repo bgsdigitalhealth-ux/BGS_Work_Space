@@ -8,7 +8,8 @@ import {
   MessageSquare, 
   Search, 
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Calendar
 } from 'lucide-react';
 import { useApp, isUserManager } from '../../context/AppContext';
 
@@ -29,6 +30,16 @@ export const UserTeamView: React.FC = () => {
   const myTeamId = myMember ? myMember.teamId : (currentUser as any)?.teamId;
   const myDeptId = myMember ? myMember.departmentId : (currentUser as any)?.departmentId;
   const isManager = isUserManager(currentUser, myMember);
+
+  // Find Reporting Manager for currentUser
+  const reportingManager = allUsers.find(u => 
+    u.role === 'manager' && (
+      (myTeam && u.team && u.team.toLowerCase() === myTeam.toLowerCase()) ||
+      (myDept && u.department && u.department.toLowerCase() === myDept.toLowerCase()) ||
+      (myTeamId && (u as any).teamId === myTeamId) ||
+      (myDeptId && (u as any).departmentId === myDeptId)
+    )
+  ) || allUsers.find(u => u.role === 'manager') || members.find(m => m.role?.toLowerCase().includes('head') || m.role?.toLowerCase().includes('manager'));
 
   // Filter members who belong to the SAME team as currentUser
   const sameTeamMembers = members.filter(m => {
@@ -169,6 +180,59 @@ export const UserTeamView: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Reporting Manager Card */}
+      {reportingManager && (
+        <div className="bg-gradient-to-r from-purple-900/90 to-indigo-900 text-white rounded-2xl p-5 shadow-sm border border-purple-800/40 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-xs border border-white/20 text-white flex items-center justify-center font-black text-xl shrink-0 shadow-inner">
+              {(reportingManager as any).avatar || (reportingManager.name || 'M').charAt(0).toUpperCase()}
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-400/20 text-purple-200 border border-purple-300/30">
+                  Reporting Manager
+                </span>
+                <span className="text-xs text-purple-200/80 font-medium">
+                  {(reportingManager as any).teamRole || (reportingManager as any).title || 'Team Head'}
+                </span>
+              </div>
+              <h3 className="text-lg font-bold text-white mt-0.5">{reportingManager.name}</h3>
+              <div className="flex items-center gap-3 text-xs text-purple-200/90 mt-1 flex-wrap">
+                <span className="flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-purple-300" />
+                  {reportingManager.email}
+                </span>
+                {(reportingManager as any).phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3.5 h-3.5 text-purple-300" />
+                    {(reportingManager as any).phone}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 self-start md:self-center shrink-0">
+            <button
+              type="button"
+              onClick={() => setUserNav('messages')}
+              className="px-4 py-2 rounded-xl bg-white text-purple-900 font-bold text-xs hover:bg-purple-50 transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Message Manager</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUserNav('appointments')}
+              className="px-4 py-2 rounded-xl bg-purple-800/60 hover:bg-purple-800 text-white font-bold text-xs border border-purple-400/30 transition flex items-center gap-1.5 cursor-pointer"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Schedule</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Teammates Cards Grid */}
       {filteredTeammates.length === 0 ? (

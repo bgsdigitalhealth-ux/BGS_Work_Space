@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight, Shield } from 'lucide-react';
-import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
+import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight } from 'lucide-react';
+import { useApp, isTaskAssignedToUser } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
   const {
     userNav,
     setUserNav,
+    managerNav,
+    setManagerNav,
     currentUser,
     logout,
     unreadNotificationCount,
@@ -14,21 +16,84 @@ export const UserHeader: React.FC = () => {
     userToast,
     setUserToast,
     userWorkspace,
-    members,
-    setPortalMode
+    members
   } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
+
+  const isManagerRole = currentUser?.role === 'manager';
 
   const myMember = (members || []).find(m =>
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
     (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
   );
-  const isManager = isUserManager(currentUser, myMember);
 
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myAssignedCount = rawAssigned.filter(t => isTaskAssignedToUser(t, currentUser, myMember)).length;
-  const displayTaskCount = currentUser?.role === 'user' ? myAssignedCount : (isManager ? rawAssigned.length : myAssignedCount);
+  const displayTaskCount = isManagerRole ? rawAssigned.length : myAssignedCount;
+
+  // Compute Active Title and Subtitle based on active role navigation
+  const getHeaderInfo = () => {
+    if (isManagerRole) {
+      switch (managerNav) {
+        case 'dashboard':
+          return { title: `Hello, ${currentUser?.name || 'Manager'} 👋`, desc: 'Supervise team workload, deadlines, and submissions.' };
+        case 'team':
+          return { title: 'Team Management', desc: 'View and coordinate assigned members in your division.' };
+        case 'assign-work':
+          return { title: 'Assign Team Work', desc: 'Delegate tasks and responsibilities to team members.' };
+        case 'my-work':
+          return { title: 'My Work', desc: 'Tasks assigned to you by administrators.' };
+        case 'review-work':
+          return { title: 'Review Submitted Work', desc: 'Inspect deliverables, approve completions, or request rework.' };
+        case 'appointments':
+        case 'my-schedule':
+          return { title: 'Meetings & Appointments', desc: 'Manage schedule, join calls, and coordinate team sessions.' };
+        case 'messages':
+          return { title: 'Messages & Channels', desc: 'Communicate with administrators and team members.' };
+        case 'timeline':
+          return { title: 'Team Daily Timeline', desc: 'Audit real-time activities and milestones.' };
+        case 'reports':
+          return { title: 'Team Performance Reports', desc: 'Monitor completed and ongoing work statistics.' };
+        case 'settings':
+          return { title: 'Manager Settings', desc: 'Manage your profile and credentials.' };
+        default:
+          return { title: 'Manager Workspace', desc: 'Manage team operations and productivity.' };
+      }
+    } else {
+      switch (userNav) {
+        case 'dashboard':
+          return { title: `Hello, ${currentUser?.name || 'Team Member'} 👋`, desc: 'Here is your assigned work and progress.' };
+        case 'record':
+        case 'records':
+          return { title: 'Work & Attendance Punch', desc: 'Log attendance, track active work time, and review daily punch history.' };
+        case 'messages':
+          return { title: 'Messages & Communications', desc: 'Communicate with team colleagues and management.' };
+        case 'appointments':
+        case 'my-schedule':
+          return { title: 'My Appointments & Schedule', desc: 'View appointments, schedule meetings, and inspect calendar.' };
+        case 'my-work':
+        case 'assigned-work':
+          return { title: 'My Assigned Work', desc: 'Card view of all assigned tasks and work orders.' };
+        case 'assign-work':
+          return { title: 'Delegate Work', desc: 'Assign authorized subtasks to team members.' };
+        case 'work-history':
+          return { title: 'Work & Submission History', desc: 'Inspect past submitted deliverables and approval audit trail.' };
+        case 'team':
+          return { title: 'My Team & Division', desc: 'Connected team members working together in your division.' };
+        case 'timeline':
+          return { title: 'Daily Timeline', desc: 'Review chronological log of today\'s activities.' };
+        case 'reports':
+          return { title: 'My Performance Reports', desc: 'Personal work summaries and attendance statistics.' };
+        case 'settings':
+          return { title: 'Account Settings', desc: 'Manage your profile and preferences.' };
+        default:
+          return { title: 'User Workspace', desc: 'Welcome to your daily workspace.' };
+      }
+    }
+  };
+
+  const headerInfo = getHeaderInfo();
 
   return (
     <>
@@ -98,29 +163,16 @@ export const UserHeader: React.FC = () => {
           </button>
 
           <div className="min-w-0">
-            {userNav === 'dashboard' && (
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-                  Hello, {currentUser?.name || 'Team Member'} <span className="animate-pulse">👋</span>
-                </h1>
-                <p className="text-sm text-[#6b7280] font-medium mt-1">
-                  Here is your assigned work and progress.
-                </p>
-              </div>
-            )}
-
-            {(userNav === 'appointments' || userNav === 'my-schedule') && (
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight">
-                  My Appointments & Schedule
-                </h1>
-                <p className="text-sm text-[#6b7280] font-medium mt-1">
-                  View appointments, schedule meetings, and inspect your calendar timeline.
-                </p>
-              </div>
-            )}
-
-            {(userNav === 'assigned-work' || userNav === 'my-work') && (
+            {(!isManagerRole && userNav === 'details') ? (
+              <button
+                type="button"
+                onClick={() => setUserNav('assigned-work')}
+                className="flex items-center gap-2.5 text-xl lg:text-2xl font-extrabold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer"
+              >
+                <ArrowLeft className="w-5 h-5 text-gray-700" />
+                <span>Assigned Work - Details</span>
+              </button>
+            ) : (!isManagerRole && (userNav === 'assigned-work' || userNav === 'my-work')) ? (
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => setUserNav('dashboard')}
@@ -131,7 +183,7 @@ export const UserHeader: React.FC = () => {
                 </button>
                 <div>
                   <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-                    Assigned Work
+                    {headerInfo.title}
                     {displayTaskCount > 0 ? (
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200">
                         {displayTaskCount} {displayTaskCount === 1 ? 'Task' : 'Tasks'}
@@ -139,39 +191,25 @@ export const UserHeader: React.FC = () => {
                     ) : null}
                   </h1>
                   <p className="text-xs text-[#6b7280] font-medium mt-0.5">
-                    Card view of all assigned tasks and work orders
+                    {headerInfo.desc}
                   </p>
                 </div>
               </div>
-            )}
-
-            {userNav === 'details' && (
-              <button
-                type="button"
-                onClick={() => setUserNav('assigned-work')}
-                className="flex items-center gap-2.5 text-xl lg:text-2xl font-extrabold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
-                <span>Assigned Work - Details</span>
-              </button>
+            ) : (
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
+                  {headerInfo.title}
+                </h1>
+                <p className="text-sm text-[#6b7280] font-medium mt-1">
+                  {headerInfo.desc}
+                </p>
+              </div>
             )}
           </div>
         </div>
 
         {/* Right Controls */}
         <div className="flex items-center gap-3 relative">
-          {/* Manager Panel Switcher (For Managers, Team Heads, and Admins) */}
-          {isManager && (
-            <button
-              type="button"
-              onClick={() => setPortalMode('admin')}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-600/20 transition cursor-pointer"
-              title="Switch to Management Panel (Departments, Teams & Members)"
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Manager Panel</span>
-            </button>
-          )}
 
           {/* Notification Bell */}
           <div className="relative">
@@ -217,21 +255,13 @@ export const UserHeader: React.FC = () => {
                   <p className="text-xs font-bold text-gray-900 truncate">{currentUser?.name || 'Team Member'}</p>
                   <p className="text-[11px] text-gray-500 truncate">{currentUser?.email || ''}</p>
                 </div>
-                {isManager && (
-                  <button
-                    onClick={() => {
-                      setShowDropdown(false);
-                      setPortalMode('admin');
-                    }}
-                    className="w-full text-left px-4 py-2.5 text-xs text-indigo-600 font-bold hover:bg-indigo-50 flex items-center gap-2 transition-colors cursor-pointer"
-                  >
-                    <Shield className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Manager Panel (Depts & Teams)</span>
-                  </button>
-                )}
                 <button
                   onClick={() => {
-                    setUserNav('settings');
+                    if (currentUser?.role === 'manager') {
+                      setManagerNav('settings');
+                    } else {
+                      setUserNav('settings');
+                    }
                     setShowDropdown(false);
                   }}
                   className="w-full text-left px-4 py-2.5 text-xs text-gray-700 hover:bg-purple-50 hover:text-[#5a36e6] flex items-center gap-2 transition-colors cursor-pointer"

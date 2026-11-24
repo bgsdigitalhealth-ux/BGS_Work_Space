@@ -97,6 +97,15 @@ interface AppContextType {
   // User Portal (WorkHub) State
   userNav: string;
   setUserNav: (nav: string) => void;
+
+  // Manager Navigation State
+  managerNav: string;
+  setManagerNav: (nav: string) => void;
+
+  // Unified Non-Blocking Toast Notification System
+  toastNotification: { message: string; type: 'success' | 'error' | 'info'; title?: string } | null;
+  notify: (message: string, type?: 'success' | 'error' | 'info', title?: string) => void;
+  clearNotification: () => void;
   selectedUserTask: UserAssignedWork | null;
   setSelectedUserTask: (task: UserAssignedWork | null) => void;
   selectedHistoryItem: UserWorkHistory | null;
@@ -204,9 +213,9 @@ export const isUserManager = (user?: User | null, member?: Member | null): boole
   ].filter(Boolean).join(' ').toLowerCase();
 
   return roleString.includes('admin') ||
-         roleString.includes('manager') ||
-         roleString.includes('head') ||
-         roleString.includes('lead');
+    roleString.includes('manager') ||
+    roleString.includes('head') ||
+    roleString.includes('lead');
 };
 
 // Helper to format due dates properly, replacing text strings like "Today" with proper formatted date
@@ -227,7 +236,7 @@ export const formatTaskDueDate = (dueDate?: string): string => {
       if (!isNaN(d.getTime())) {
         return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
       }
-    } catch {}
+    } catch { }
   }
   return trimmed;
 };
@@ -308,7 +317,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const saved = localStorage.getItem('workhub_portal_mode');
       if (saved === 'admin' || saved === 'user') return saved;
-    } catch (_) {}
+    } catch (_) { }
     return 'user';
   });
 
@@ -331,7 +340,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setPortalModeState(mode);
     try {
       localStorage.setItem('workhub_portal_mode', mode);
-    } catch (_) {}
+    } catch (_) { }
   };
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -344,6 +353,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // User Portal states
   const [userNav, setUserNav] = useState<string>('dashboard');
+  const [managerNav, setManagerNav] = useState<string>('dashboard');
+  const [toastNotification, setToastNotification] = useState<{ message: string; type: 'success' | 'error' | 'info'; title?: string } | null>(null);
+
+  const notify = (message: string, type: 'success' | 'error' | 'info' = 'success', title?: string) => {
+    setToastNotification({ message, type, title });
+    setTimeout(() => {
+      setToastNotification(prev => (prev?.message === message ? null : prev));
+    }, 4500);
+  };
+
+  const clearNotification = () => setToastNotification(null);
   const [selectedUserTask, setSelectedUserTask] = useState<UserAssignedWork | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<UserWorkHistory | null>(null);
   const [userWorkspace, setUserWorkspace] = useState<UserWorkspaceData | null>(null);
@@ -450,8 +470,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
       setTodayAttendance(rec);
       await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
+      notify('Punch in recorded successfully!', 'success', 'Attendance');
     } catch (e: any) {
-      alert(e.message || 'Failed to punch in');
+      notify(e.message || 'Failed to punch in', 'error', 'Attendance Error');
     }
   };
 
@@ -464,8 +485,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       });
       setTodayAttendance(rec);
       await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
+      notify('Punch out recorded successfully!', 'success', 'Attendance');
     } catch (e: any) {
-      alert(e.message || 'Failed to punch out');
+      notify(e.message || 'Failed to punch out', 'error', 'Attendance Error');
     }
   };
 
@@ -474,8 +496,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.startTaskTimer(taskId, currentUser);
       await refreshUserWorkspace();
+      notify('Task work timer started.', 'info', 'Timer');
     } catch (e: any) {
-      alert(e.message || 'Failed to start timer');
+      notify(e.message || 'Failed to start timer', 'error', 'Timer Error');
     }
   };
 
@@ -484,8 +507,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.pauseTaskTimer(taskId, currentUser, reason);
       await refreshUserWorkspace();
+      notify('Task timer paused.', 'info', 'Timer');
     } catch (e: any) {
-      alert(e.message || 'Failed to pause timer');
+      notify(e.message || 'Failed to pause timer', 'error', 'Timer Error');
     }
   };
 
@@ -494,8 +518,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.resumeTaskTimer(taskId, currentUser);
       await refreshUserWorkspace();
+      notify('Task timer resumed.', 'info', 'Timer');
     } catch (e: any) {
-      alert(e.message || 'Failed to resume timer');
+      notify(e.message || 'Failed to resume timer', 'error', 'Timer Error');
     }
   };
 
@@ -504,8 +529,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       await api.finishTaskTimer(taskId, currentUser);
       await refreshUserWorkspace();
+      notify('Task timer stopped and duration recorded.', 'success', 'Timer Finished');
     } catch (e: any) {
-      alert(e.message || 'Failed to finish timer');
+      notify(e.message || 'Failed to finish timer', 'error', 'Timer Error');
     }
   };
 
@@ -535,8 +561,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshPromises.push(fetchWorkDone(selectedTeam.id));
       }
       await Promise.all(refreshPromises);
+      notify('Assignment updated successfully.', 'success', 'Task Updated');
     } catch (e: any) {
-      alert(e.message || 'Failed to edit assignment');
+      notify(e.message || 'Failed to edit assignment', 'error', 'Update Failed');
       throw e;
     }
   };
@@ -899,9 +926,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await refreshNotifications();
       if (selectedTeam) fetchAssignments(selectedTeam.id);
       fetchStats();
-      alert('Work successfully approved as Completed!');
-    } catch (e) {
+      notify('Work successfully approved as Completed!', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to approve work.', 'error');
     }
   };
 
@@ -912,9 +940,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await refreshNotifications();
       if (selectedTeam) fetchAssignments(selectedTeam.id);
       fetchStats();
-      alert('Rework requested successfully! User notified.');
-    } catch (e) {
+      notify('Rework requested successfully! User notified.', 'info');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to request rework.', 'error');
     }
   };
 
@@ -1140,7 +1169,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       await Promise.all(promises);
     } catch (e: any) {
       console.error('Failed to delete assignment:', e);
-      alert(e.message || 'Failed to delete assignment');
+      notify(e.message || 'Failed to delete assignment', 'error', 'Delete Failed');
     }
   };
 
@@ -1411,6 +1440,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleDeleteTeam,
         userNav,
         setUserNav,
+        managerNav,
+        setManagerNav,
+        toastNotification,
+        notify,
+        clearNotification,
         selectedUserTask,
         setSelectedUserTask,
         selectedHistoryItem,

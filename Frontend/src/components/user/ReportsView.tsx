@@ -17,7 +17,7 @@ import { api } from '../../services/api';
 import { ReportItem } from '../../types';
 
 export const ReportsView: React.FC = () => {
-  const { teams, currentUser, isManagerOrAdmin } = useApp();
+  const { teams, currentUser, isManagerOrAdmin, notify } = useApp();
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -87,8 +87,9 @@ export const ReportsView: React.FC = () => {
       });
       setEditingItem(null);
       await fetchReports();
+      notify('Report entry updated successfully.', 'success', 'Report Updated');
     } catch (e: any) {
-      alert(e.message || 'Failed to update report entry');
+      notify(e.message || 'Failed to update report entry', 'error', 'Update Failed');
     }
   };
 
@@ -100,8 +101,9 @@ export const ReportsView: React.FC = () => {
     try {
       await api.deleteReportEntry(item.id, currentUser?.role);
       await fetchReports();
+      notify('Report entry deleted successfully.', 'success', 'Report Deleted');
     } catch (e: any) {
-      alert(e.message || 'Failed to delete report entry');
+      notify(e.message || 'Failed to delete report entry', 'error', 'Delete Failed');
     }
   };
 

@@ -22,7 +22,8 @@ export const SubmitWorkDrawer: React.FC = () => {
     selectedUserTask,
     handleSubmitWork,
     currentUser,
-    members
+    members,
+    notify
   } = useApp();
 
   const myMember = (members || []).find(m =>
@@ -72,12 +73,12 @@ export const SubmitWorkDrawer: React.FC = () => {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTaskId && !currentTask) {
-      alert('Please select a task to submit work for.');
+      notify('Please select a task to submit work for.', 'error', 'Missing Task');
       return;
     }
     const finalTaskId = selectedTaskId || (currentTask && currentTask.id) || '';
     if (!comment.trim()) {
-      alert('Please enter a brief summary of the work done.');
+      notify('Please enter a brief summary of the work done.', 'error', 'Missing Summary');
       return;
     }
 
@@ -89,10 +90,10 @@ export const SubmitWorkDrawer: React.FC = () => {
         comment: comment.trim()
       });
       setIsSubmitWorkDrawerOpen(false);
-      alert('Work submitted successfully! Task status updated and recorded.');
+      notify('Work submitted successfully! Task status updated and recorded for review.', 'success', 'Work Submitted');
     } catch (err: any) {
       console.error('Submit work error:', err);
-      alert(err.message || 'Failed to submit work. Please try again.');
+      notify(err.message || 'Failed to submit work. Please try again.', 'error', 'Submission Failed');
     } finally {
       setIsSubmitting(false);
     }
