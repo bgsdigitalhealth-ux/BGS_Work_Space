@@ -14,7 +14,7 @@ import {
   Send,
   ChevronDown
 } from 'lucide-react';
-import { useApp, isUserManager, filterTasksForUser } from '../../context/AppContext';
+import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
 export const UserDashboard: React.FC = () => {
@@ -34,16 +34,19 @@ export const UserDashboard: React.FC = () => {
 
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
   const [teamFilter, setTeamFilter] = useState('All Teams');
+  const [managerScope, setManagerScope] = useState<'my' | 'team'>('my');
 
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
   const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === myEmail) || (currentUser?.id && m.id === currentUser.id));
   const isManager = isUserManager(currentUser, myMember);
 
-  // Dynamic Multi-Team Isolation:
-  // - Managers see ALL teams member works.
-  // - Regular team members ONLY see works belonging to their SAME team.
-  const assignedList = filterTasksForUser(rawAssigned, currentUser, myMember);
+  // Strict User Isolation:
+  // - A user's personal dashboard ONLY displays their own assigned work.
+  // - Managers can toggle between "My Work" and "Team Work" (defaults to "My Work").
+  const myAssignedList = rawAssigned.filter(t => isTaskAssignedToUser(t, currentUser, myMember));
+  const isViewingTeam = isManager && managerScope === 'team';
+  const assignedList = isViewingTeam ? rawAssigned : myAssignedList;
   const availableTeams = Array.from(new Set(assignedList.map(t => t.team).filter(Boolean)));
 
   const historyList = userWorkspace?.history || [];
@@ -218,15 +221,51 @@ export const UserDashboard: React.FC = () => {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 transition-all duration-300">
           {/* Table Header Controls */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
-                {isManager ? 'All Teams Member Works' : (currentUser?.team ? `${currentUser.team} Work` : 'My Team Work')}
-                {isManager && (
+                {isViewingTeam
+                  ? 'All Teams Member Works'
+                  : currentUser?.name
+                    ? `${currentUser.name}'s Assigned Work`
+                    : 'My Assigned Work'}
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5a36e6] border border-purple-200">
+                  {stats.totalAssigned} {stats.totalAssigned === 1 ? 'Task' : 'Tasks'}
+                </span>
+                {isViewingTeam && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-100 text-indigo-700">
-                    Manager Access
+                    Team View
                   </span>
                 )}
               </h2>
+
+              {/* Manager Scope Toggle: My Work vs Team Work */}
+              {isManager && (
+                <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/70">
+                  <button
+                    type="button"
+                    onClick={() => setManagerScope('my')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      managerScope === 'my'
+                        ? 'bg-white text-[#5a36e6] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    My Work ({myAssignedList.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setManagerScope('team')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      managerScope === 'team'
+                        ? 'bg-white text-[#5a36e6] shadow-xs'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    Team Work ({rawAssigned.length})
+                  </button>
+                </div>
+              )}
+
               <button
                 onClick={() => setUserNav('assign-work')}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-sm cursor-pointer"

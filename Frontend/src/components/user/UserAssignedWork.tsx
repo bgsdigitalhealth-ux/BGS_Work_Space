@@ -26,7 +26,7 @@ import {
   Edit3,
   CheckSquare
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isTaskAssignedToUser } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { AttendanceWidget } from './AttendanceWidget';
@@ -54,18 +54,15 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   } = useApp();
 
   const rawAssignedList = userWorkspace?.assignedWork || [];
-  const myEmail = (currentUser?.email || '').trim().toLowerCase();
 
   // Strict User Isolation for regular user role: only view tasks belonging to user
-  const assignedList = currentUser?.role === 'user'
-    ? rawAssignedList.filter(t => {
-      const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
-      const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
-      const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
-      const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
-      return Boolean(matchId || matchEmail || matchMember || matchName);
-    })
+  const assignedList = currentUser?.role === 'user' || !isManagerOrAdmin
+    ? rawAssignedList.filter(t => isTaskAssignedToUser(t, currentUser))
     : rawAssignedList;
+
+  const displayTitle = currentUser?.role === 'user' || !isManagerOrAdmin
+    ? (currentUser?.name ? `${currentUser.name}'s Work` : 'My Assigned Work')
+    : title;
 
   // View modes: 'cards' | 'kanban' | 'list' | 'details'
   const [viewMode, setViewMode] = useState<'cards' | 'kanban' | 'list' | 'details'>(() => {
@@ -403,7 +400,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                  {title}
+                  {displayTitle}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-[#5a36e6] border border-purple-200">
                   {totalCount} {totalCount === 1 ? 'Task' : 'Tasks'}

@@ -15,7 +15,7 @@ import {
   Settings,
   X
 } from 'lucide-react';
-import { useApp, isUserManager } from '../../context/AppContext';
+import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
   const { 
@@ -38,7 +38,9 @@ export const UserSidebar: React.FC = () => {
   );
   const isManager = isUserManager(currentUser, myMember);
 
-  const assignedCount = userWorkspace?.assignedWork?.length || 0;
+  const rawAssigned = userWorkspace?.assignedWork || [];
+  const myAssignedCount = rawAssigned.filter(t => isTaskAssignedToUser(t, currentUser, myMember)).length;
+  const assignedCount = currentUser?.role === 'user' ? myAssignedCount : (isManager ? rawAssigned.length : myAssignedCount);
 
   const navItems = [
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },

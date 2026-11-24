@@ -207,48 +207,52 @@ export const isUserManager = (user?: User | null, member?: Member | null): boole
          roleString.includes('lead');
 };
 
-// Dynamic Multi-Team Visibility Isolation:
-// - Managers & Admins can see ALL teams' member works.
-// - Regular team members can ONLY see assigned works belonging to the SAME team (or assigned directly to them).
+// Check if a task is directly assigned to a specific user (by ID, memberId, email, or assignee name)
+export const isTaskAssignedToUser = (
+  task: UserAssignedWork,
+  user: User | null,
+  member?: Member | null
+): boolean => {
+  if (!task || !user) return false;
+  const myId = (user.id || '').trim();
+  const myMemberId = ((user as any).memberId || member?.id || '').trim();
+  const myEmail = (user.email || '').trim().toLowerCase();
+  const myName = (user.name || member?.name || '').trim().toLowerCase();
+
+  // Match by user / assignee ID
+  if (myId && (task.userId === myId || (task as any).assigneeId === myId)) return true;
+  if (myMemberId && ((task as any).memberId === myMemberId || task.userId === myMemberId || (task as any).assigneeId === myMemberId)) return true;
+
+  // Match by email
+  if (myEmail && (task as any).assigneeEmail && (task as any).assigneeEmail.trim().toLowerCase() === myEmail) return true;
+
+  // Match by assigneeName or assignedTo
+  const taskAssignee = ((task as any).assigneeName || (task as any).assignedTo || '').trim().toLowerCase();
+  if (myName && taskAssignee) {
+    if (taskAssignee === myName) return true;
+    const myFirst = myName.split(' ')[0];
+    if (myFirst && myFirst.length >= 2 && taskAssignee.includes(myFirst)) return true;
+    const taskFirst = taskAssignee.split(' ')[0];
+    if (taskFirst && taskFirst.length >= 2 && myName.includes(taskFirst)) return true;
+  }
+
+  return false;
+};
+
+// Visibility Isolation:
+// - Managers & Admins can see ALL teams' member works when managing.
+// - Regular team members can ONLY see works assigned directly to them.
 export const filterTasksForUser = (tasks: UserAssignedWork[], user: User | null, member?: Member | null): UserAssignedWork[] => {
   if (!tasks || !Array.isArray(tasks)) return [];
   if (!user) return [];
 
-  // Managers and Admins can see ALL teams' member works
-  if (isUserManager(user, member)) {
-    return tasks;
+  // For regular team members, strictly isolate to their own assigned tasks
+  if (user.role === 'user' || !isUserManager(user, member)) {
+    return tasks.filter(t => isTaskAssignedToUser(t, user, member));
   }
 
-  // Regular team member: ONLY see tasks belonging to the SAME team (or assigned directly to them)
-  const myTeam = (user.team || '').trim().toLowerCase();
-  const myTeamId = (user as any).teamId || member?.teamId || '';
-  const myEmail = (user.email || '').trim().toLowerCase();
-  const myId = user.id || '';
-
-  return tasks.filter(t => {
-    // 1. Direct assignment to this user
-    const matchId = myId && (t.userId === myId || (t as any).assigneeId === myId);
-    const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
-    const matchMember = (user as any).memberId && (t as any).memberId === (user as any).memberId;
-    const matchName = user.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === user.name.toLowerCase();
-    if (matchId || matchEmail || matchMember || matchName) {
-      return true;
-    }
-
-    // 2. Same team check: task must belong to this user's team
-    const taskTeamId = (t as any).teamId || '';
-    const taskTeamName = (t.team || '').trim().toLowerCase();
-
-    if (myTeamId && taskTeamId && myTeamId === taskTeamId) {
-      return true;
-    }
-    if (myTeam && taskTeamName && myTeam === taskTeamName) {
-      return true;
-    }
-
-    // Different team: NOT visible
-    return false;
-  });
+  // Managers and Admins can see all tasks
+  return tasks;
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {

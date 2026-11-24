@@ -64,9 +64,9 @@ const isManagerOrAdmin = (user, member) => {
   ].filter(Boolean).join(' ').toLowerCase();
 
   return roleStr.includes('admin') ||
-         roleStr.includes('manager') ||
-         roleStr.includes('head') ||
-         roleStr.includes('lead');
+    roleStr.includes('manager') ||
+    roleStr.includes('head') ||
+    roleStr.includes('lead');
 };
 
 // Check if an email is currently registered / active in users or members (memoryStore, initialData, or MongoDB Atlas)
@@ -986,8 +986,8 @@ const updateMember = async (id, data) => {
     const assignedRole = isMgr ? 'admin' : 'user';
     const targetMember = index !== -1 ? memoryStore.members[index] : null;
     const cleanEmail = ((data.email || targetMember?.email) || '').trim().toLowerCase();
-    const targetUser = (memoryStore.users || []).find(u => 
-      (cleanEmail && (u.email || '').toLowerCase() === cleanEmail) || 
+    const targetUser = (memoryStore.users || []).find(u =>
+      (cleanEmail && (u.email || '').toLowerCase() === cleanEmail) ||
       u.memberId === id
     );
     if (targetUser) {
@@ -1008,7 +1008,7 @@ const updateMember = async (id, data) => {
         await User.updateMany(
           { $or: [{ memberId: id }, cleanEmail ? { email: cleanEmail } : null].filter(Boolean) },
           { $set: { role: assignedRole, teamRole: data.role, title: data.role } }
-        ).catch(() => {});
+        ).catch(() => { });
       }
       if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
@@ -1569,6 +1569,7 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
 
   // Check if requesting user is Manager or Administrator
   const isManager = isManagerOrAdmin(user, member);
+  const cleanName = (user?.name || member?.name || '').trim();
 
   const userTeamId = member?.teamId || user?.teamId || user?.team || '';
   let userTeamName = (user?.team || '').trim();
@@ -1583,7 +1584,7 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
       let historyQuery = {};
 
       if (!isManager) {
-        // Regular team member: ONLY see tasks belonging to the SAME team or assigned directly to them
+        // Regular team member: ONLY see tasks directly assigned to this particular user
         const orConditions = [];
         if (cleanId) {
           orConditions.push({ userId: cleanId });
@@ -1593,11 +1594,9 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
         if (cleanEmail) {
           orConditions.push({ assigneeEmail: cleanEmail });
         }
-        if (userTeamId) {
-          orConditions.push({ teamId: userTeamId });
-        }
-        if (userTeamName && userTeamName !== userTeamId) {
-          orConditions.push({ team: { $regex: new RegExp(`^${userTeamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        if (cleanName) {
+          orConditions.push({ assigneeName: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+          orConditions.push({ assignedTo: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
         }
         taskQuery = orConditions.length > 0 ? { $or: orConditions } : { _id: null };
 
@@ -1609,11 +1608,8 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
         if (cleanEmail) {
           histOr.push({ userEmail: cleanEmail });
         }
-        if (userTeamId) {
-          histOr.push({ teamId: userTeamId });
-        }
-        if (userTeamName && userTeamName !== userTeamId) {
-          histOr.push({ team: { $regex: new RegExp(`^${userTeamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        if (cleanName) {
+          histOr.push({ userName: { $regex: new RegExp(`^${cleanName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
         }
         historyQuery = histOr.length > 0 ? { $or: histOr } : { _id: null };
       }
@@ -1648,19 +1644,22 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
       recentActivities = rawActivities;
     } else {
       assigned = rawAssigned.filter(a => {
-        // Direct assignment
+        // Direct assignment to this particular user
         if (cleanId && (a.userId === cleanId || a.assigneeId === cleanId || a.memberId === cleanId)) return true;
         if (cleanEmail && a.assigneeEmail && a.assigneeEmail.toLowerCase() === cleanEmail) return true;
-        // Same team
-        if (userTeamId && a.teamId && a.teamId === userTeamId) return true;
-        if (userTeamName && a.team && a.team.toLowerCase() === userTeamName.toLowerCase()) return true;
+        if (cleanName) {
+          const aName = (a.assigneeName || a.assignedTo || '').toLowerCase();
+          if (aName === cleanName.toLowerCase() || aName.includes(cleanName.toLowerCase())) return true;
+        }
         return false;
       });
       history = rawHistory.filter(h => {
         if (cleanId && (h.userId === cleanId || h.memberId === cleanId)) return true;
         if (cleanEmail && h.userEmail && h.userEmail.toLowerCase() === cleanEmail) return true;
-        if (userTeamId && h.teamId && h.teamId === userTeamId) return true;
-        if (userTeamName && h.team && h.team.toLowerCase() === userTeamName.toLowerCase()) return true;
+        if (cleanName) {
+          const uName = (h.userName || '').toLowerCase();
+          if (uName === cleanName.toLowerCase() || uName.includes(cleanName.toLowerCase())) return true;
+        }
         return false;
       });
       recentActivities = rawActivities.filter(r => !cleanId || r.userId === cleanId);
@@ -1727,7 +1726,7 @@ const submitUserWork = async (data) => {
         task = { ...dbTask, id: dbTask.customId || dbTask._id.toString() };
         ws.assignedWork.unshift(task);
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
   if (task) {
@@ -2974,8 +2973,8 @@ const validateSession = async (id, email) => {
     return { valid: true, user: safeUser };
   }
 
-  const member = (memoryStore.members || []).find(m => 
-    (cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) || 
+  const member = (memoryStore.members || []).find(m =>
+    (cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) ||
     (cleanId && (m.id === cleanId || m.customId === cleanId))
   );
   if (member && !isBannedEmail(member.email)) {
@@ -4642,7 +4641,7 @@ const getTodayAttendance = async (userId, userEmail) => {
   const today = new Date().toISOString().split('T')[0];
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
-  let record = memoryStore.attendance.find(a => 
+  let record = memoryStore.attendance.find(a =>
     a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
   );
 
@@ -4694,7 +4693,7 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
-  let record = memoryStore.attendance.find(a => 
+  let record = memoryStore.attendance.find(a =>
     a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
   );
 
@@ -4746,7 +4745,7 @@ const recordPunchOut = async ({ userId, userEmail }) => {
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
-  let record = memoryStore.attendance.find(a => 
+  let record = memoryStore.attendance.find(a =>
     a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
   );
 
@@ -5188,12 +5187,12 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
             taskTitle: t.title,
             taskId: t.taskId || t.id,
             title: act.type === 'paused' ? `Paused Task: "${act.details?.reason || 'Pause'}"` :
-                   act.type === 'resumed' ? `Resumed Task` :
-                   act.type === 'started' ? `Started Task` :
-                   act.type === 'finished' ? `Completed Task` :
-                   act.type === 'deadline_change' ? `Deadline Changed: ${act.details?.oldDate} → ${act.details?.newDate}` :
-                   act.type === 'assignee_change' ? `Assignee Changed: ${act.details?.oldAssignee} → ${act.details?.newAssignee}` :
-                   `Task Activity`,
+              act.type === 'resumed' ? `Resumed Task` :
+                act.type === 'started' ? `Started Task` :
+                  act.type === 'finished' ? `Completed Task` :
+                    act.type === 'deadline_change' ? `Deadline Changed: ${act.details?.oldDate} → ${act.details?.newDate}` :
+                      act.type === 'assignee_change' ? `Assignee Changed: ${act.details?.oldAssignee} → ${act.details?.newAssignee}` :
+                        `Task Activity`,
             description: act.message || act.type,
             details: act.details,
             badgeColor
@@ -5284,7 +5283,7 @@ const getReports = async ({ period = 'daily', date, teamId }) => {
     const memEmail = (m.email || '').toLowerCase();
 
     // Check if manager deleted this report entry
-    const override = reportOverrides.find(r => 
+    const override = reportOverrides.find(r =>
       r.period === period && r.date === startDate && (r.userId === memId || (r.userEmail && r.userEmail === memEmail))
     );
 

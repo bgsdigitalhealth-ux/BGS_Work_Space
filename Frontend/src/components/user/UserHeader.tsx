@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bell, ChevronDown, ArrowLeft, LogOut, Settings, Menu, X, ArrowRight, Shield } from 'lucide-react';
-import { useApp, isUserManager } from '../../context/AppContext';
+import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
 import { NotificationDropdown } from '../NotificationDropdown';
 
 export const UserHeader: React.FC = () => {
@@ -25,6 +25,10 @@ export const UserHeader: React.FC = () => {
     (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
   );
   const isManager = isUserManager(currentUser, myMember);
+
+  const rawAssigned = userWorkspace?.assignedWork || [];
+  const myAssignedCount = rawAssigned.filter(t => isTaskAssignedToUser(t, currentUser, myMember)).length;
+  const displayTaskCount = currentUser?.role === 'user' ? myAssignedCount : (isManager ? rawAssigned.length : myAssignedCount);
 
   return (
     <>
@@ -128,9 +132,9 @@ export const UserHeader: React.FC = () => {
                 <div>
                   <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
                     Assigned Work
-                    {userWorkspace?.assignedWork?.length ? (
+                    {displayTaskCount > 0 ? (
                       <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200">
-                        {userWorkspace.assignedWork.length} Tasks
+                        {displayTaskCount} {displayTaskCount === 1 ? 'Task' : 'Tasks'}
                       </span>
                     ) : null}
                   </h1>
