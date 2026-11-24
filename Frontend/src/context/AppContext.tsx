@@ -495,13 +495,25 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   const handleEditAssignment = async (id: string, data: any) => {
     try {
-      await api.editAssignment(id, {
+      const res = await api.editAssignment(id, {
         ...data,
         operatorId: currentUser?.id,
         operatorName: currentUser?.name,
         operatorRole: currentUser?.role,
         operatorTeamRole: currentUser?.teamRole
       });
+      if (res?.userTask) {
+        if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id)) {
+          setSelectedUserTask(prev => prev ? { ...prev, ...res.userTask } : res.userTask);
+        }
+        setUserWorkspace(prev => {
+          if (!prev) return prev;
+          const assignedWork = (prev.assignedWork || []).map(t =>
+            (t.id === id || t.taskId === id) ? { ...t, ...res.userTask } : t
+          );
+          return { ...prev, assignedWork };
+        });
+      }
       await Promise.all([refreshUserWorkspace(), fetchAssignments(), fetchTasks()]);
     } catch (e: any) {
       alert(e.message || 'Failed to edit assignment');

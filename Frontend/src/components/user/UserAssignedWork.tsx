@@ -26,7 +26,7 @@ import {
   Edit3,
   CheckSquare
 } from 'lucide-react';
-import { useApp, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
+import { useApp, isTaskAssignedToUser, formatTaskDueDate, isUserManager } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { AttendanceWidget } from './AttendanceWidget';
@@ -50,17 +50,30 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     handleStartTimer,
     handlePauseTimer,
     handleResumeTimer,
-    handleFinishTimer
+    handleFinishTimer,
+    members
   } = useApp();
+
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const isManager = Boolean(
+    isManagerOrAdmin ||
+    currentUser?.role === 'manager' ||
+    currentUser?.role === 'admin' ||
+    isUserManager(currentUser, myMember)
+  );
 
   const rawAssignedList = userWorkspace?.assignedWork || [];
 
   // Strict User Isolation for regular user role: only view tasks belonging to user
-  const assignedList = currentUser?.role === 'user' || !isManagerOrAdmin
-    ? rawAssignedList.filter(t => isTaskAssignedToUser(t, currentUser))
+  const assignedList = currentUser?.role === 'user' || !isManager
+    ? rawAssignedList.filter(t => isTaskAssignedToUser(t, currentUser, myMember))
     : rawAssignedList;
 
-  const displayTitle = currentUser?.role === 'user' || !isManagerOrAdmin
+  const displayTitle = currentUser?.role === 'user' || !isManager
     ? (currentUser?.name ? `${currentUser.name}'s Work` : 'My Assigned Work')
     : title;
 
@@ -304,6 +317,16 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     const isFinished = timer?.status === 'finished';
     const taskId = task.taskId || task.id;
 
+    // Managers have see-only access: do NOT show Start, Pause, Resume, or Finish buttons
+    // Regular users can only control timers on their own assigned tasks
+    const isAssignedToMe = isTaskAssignedToUser(task, currentUser, myMember);
+    const canControlTimer = !isManager && isAssignedToMe;
+
+    const hasStatusIndicator = Boolean((timer && (isRunning || isPaused)) || isFinished);
+    if (!hasStatusIndicator && !canControlTimer) {
+      return null;
+    }
+
     return (
       <div className="flex items-center gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
         {/* Status indicator: only when timer is running or paused */}
@@ -317,8 +340,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
           </div>
         )}
 
-        {/* Buttons */}
-        {!isRunning && !isPaused && !isFinished && (
+        {/* Buttons - only shown for assignees who can control the timer */}
+        {canControlTimer && !isRunning && !isPaused && !isFinished && (
           <button
             type="button"
             onClick={() => handleStartTimer(taskId)}
@@ -330,7 +353,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
           </button>
         )}
 
-        {isRunning && (
+        {canControlTimer && isRunning && (
           <>
             <button
               type="button"
@@ -353,7 +376,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
           </>
         )}
 
-        {isPaused && (
+        {canControlTimer && isPaused && (
           <button
             type="button"
             onClick={() => handleResumeTimer(taskId)}
@@ -836,9 +859,11 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                     </div>
 
                     {/* Interactive Task Timer Controls */}
-                    <div className="pt-2 border-t border-gray-100">
-                      {renderTimerControls(task)}
-                    </div>
+                    {renderTimerControls(task) && (
+                      <div className="pt-2 border-t border-gray-100">
+                        {renderTimerControls(task)}
+                      </div>
+                    )}
                   </div>
 
                   {/* Card Bottom / Footer Actions */}

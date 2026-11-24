@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Image as ImageIcon,
   Calendar,
@@ -11,10 +11,13 @@ import {
   Info,
   MessageSquare,
   Check,
-  ClipboardCheck
+  ClipboardCheck,
+  Edit3,
+  CheckCircle2
 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
+import { EditTaskModal } from './EditTaskModal';
 
 interface UserWorkDetailsProps {
   onBack?: () => void;
@@ -25,15 +28,53 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const {
     selectedUserTask,
     setUserNav,
-    handleAddUserComment
+    handleAddUserComment,
+    handleEditAssignment
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'attachments' | 'activity'>('overview');
   const [isAddingComment, setIsAddingComment] = useState(false);
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentBadge, setNewCommentBadge] = useState('Update');
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
   const task = taskOverride || selectedUserTask;
+
+  const initialProgress = task?.progress !== undefined 
+    ? Number(task.progress) 
+    : (task?.status === 'Completed' || task?.status === 'Under Review' ? 100 : (task?.status === 'Not Started' || (task?.status as any) === 'To Do' ? 0 : 60));
+  const [progressValue, setProgressValue] = useState<number>(initialProgress);
+
+  useEffect(() => {
+    if (task) {
+      const val = task.progress !== undefined 
+        ? Number(task.progress) 
+        : (task.status === 'Completed' || task.status === 'Under Review' ? 100 : (task.status === 'Not Started' || (task.status as any) === 'To Do' ? 0 : 60));
+      setProgressValue(val);
+    }
+  }, [task?.progress, task?.status]);
+
+  const handleQuickProgressUpdate = async (newPct: number) => {
+    if (!task) return;
+    setIsUpdatingProgress(true);
+    try {
+      let newStatus: 'Not Started' | 'In Progress' | 'Under Review' | 'Completed' = task.status;
+      if (newPct === 100) newStatus = 'Completed';
+      else if (newPct === 0) newStatus = 'Not Started';
+      else if (task.status === 'Completed' || task.status === 'Not Started' || (task.status as any) === 'To Do') {
+        newStatus = 'In Progress';
+      }
+      await handleEditAssignment(task.id, {
+        progress: newPct,
+        status: newStatus
+      });
+    } catch (e) {
+      console.error('Failed to update progress:', e);
+    } finally {
+      setIsUpdatingProgress(false);
+    }
+  };
 
   if (!task) {
     return (
@@ -78,7 +119,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const isSubmitted = task.status === 'Under Review';
   const isToDo = task.status === 'Not Started' || (task.status as any) === 'To Do';
   const isInProgress = task.status === 'In Progress' || (!isCompleted && !isSubmitted && !isToDo);
-  const progressPercent = isCompleted || isSubmitted ? 100 : (task.progress || (isInProgress ? 60 : 0));
+  const progressPercent = isCompleted || isSubmitted ? 100 : (progressValue !== undefined ? progressValue : (task.progress !== undefined ? task.progress : (isInProgress ? 60 : 0)));
 
   // Dynamic real date tracking helpers
   const formatDateTime = (val?: string | Date) => {
@@ -212,6 +253,15 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
               {task.status || 'In Progress'}
             </span>
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-[#5a36e6] hover:bg-[#4828c4] text-white transition shadow-sm cursor-pointer ml-auto"
+              title="Edit Work (Full Editable)"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Work</span>
+            </button>
           </div>
         </div>
 
@@ -267,10 +317,20 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           {/* Top Two Cards: Work Description & Timeline */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* Work Description Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 text-[#5a36e6] mb-3">
-                <FileText className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Description</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative group">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-[#5a36e6]">
+                  <FileText className="w-4 h-4" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Description</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-purple-50 transition cursor-pointer"
+                  title="Edit Description"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
               </div>
               <p className="text-xs text-gray-600 leading-relaxed font-normal">
                 {task.description || 'No specific description provided for this work assignment.'}
@@ -278,10 +338,20 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
             </div>
 
             {/* Timeline Card */}
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5">
-              <div className="flex items-center gap-2 text-[#5a36e6] mb-3">
-                <Calendar className="w-4 h-4" />
-                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Timeline</h3>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative group">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2 text-[#5a36e6]">
+                  <Calendar className="w-4 h-4" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Timeline</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsEditModalOpen(true)}
+                  className="p-1.5 rounded-lg text-gray-400 hover:text-[#5a36e6] hover:bg-purple-50 transition cursor-pointer"
+                  title="Edit Due Date / Timeline"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                </button>
               </div>
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
@@ -418,6 +488,62 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 />
               </div>
               <span className="text-xs font-black text-gray-900 shrink-0">{progressPercent}%</span>
+            </div>
+
+            {/* Quick Interactive Progress Controls (User Update Progress) */}
+            <div className="mt-5 pt-4 border-t border-gray-100 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Update Work Progress</span>
+                  {isUpdatingProgress && <span className="text-[11px] text-[#5a36e6] font-medium animate-pulse">(Saving...)</span>}
+                </span>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[0, 25, 50, 75, 100].map(val => (
+                    <button
+                      key={val}
+                      type="button"
+                      disabled={isUpdatingProgress}
+                      onClick={async () => {
+                        setProgressValue(val);
+                        await handleQuickProgressUpdate(val);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
+                        progressValue === val
+                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
+                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                      }`}
+                    >
+                      {val}% {val === 100 ? 'Done' : ''}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setIsEditModalOpen(true)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#5a36e6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>Full Edit</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Slider for smooth percentage adjustment */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  step="5"
+                  value={progressValue}
+                  disabled={isUpdatingProgress}
+                  onChange={(e) => setProgressValue(Number(e.target.value))}
+                  onMouseUp={() => handleQuickProgressUpdate(progressValue)}
+                  onTouchEnd={() => handleQuickProgressUpdate(progressValue)}
+                  className="flex-1 accent-emerald-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
+                />
+                <span className="text-xs font-black text-gray-800 w-10 text-right">{progressValue}%</span>
+              </div>
             </div>
           </div>
 
@@ -623,6 +749,13 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           </div>
         </div>
       </div>
+
+      {/* Edit Task Modal (Full Editable) */}
+      <EditTaskModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        task={task}
+      />
     </div>
   );
 };

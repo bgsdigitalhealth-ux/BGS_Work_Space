@@ -10,7 +10,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isTaskAssignedToUser } from '../../context/AppContext';
 
 export const SubmitWorkDrawer: React.FC = () => {
   const {
@@ -20,10 +20,17 @@ export const SubmitWorkDrawer: React.FC = () => {
     openSubmitWorkDrawer,
     userWorkspace,
     selectedUserTask,
-    handleSubmitWork
+    handleSubmitWork,
+    currentUser,
+    members
   } = useApp();
 
-  const assignedTasks = userWorkspace?.assignedWork || [];
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const assignedTasks = (userWorkspace?.assignedWork || []).filter(t => isTaskAssignedToUser(t, currentUser, myMember));
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [workStatus, setWorkStatus] = useState<'Completed' | 'Under Review' | 'In Progress'>('Completed');
   const [comment, setComment] = useState('');

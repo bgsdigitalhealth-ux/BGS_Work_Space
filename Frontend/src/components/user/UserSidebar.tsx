@@ -36,7 +36,7 @@ export const UserSidebar: React.FC = () => {
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
     (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
   );
-  const isManager = isUserManager(currentUser, myMember);
+  const isManager = isUserManager(currentUser, myMember) || currentUser?.role === 'manager' || currentUser?.role === 'admin';
 
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myAssignedCount = rawAssigned.filter(t => isTaskAssignedToUser(t, currentUser, myMember)).length;
@@ -49,7 +49,7 @@ export const UserSidebar: React.FC = () => {
     { id: 'appointments', label: 'Appointments & Schedule', icon: CalendarCheck },
     { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: assignedCount > 0 ? assignedCount : undefined },
     { id: 'assign-work', label: 'Assign Work', icon: Send },
-    { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
+    ...(!isManager ? [{ id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true }] : []),
     { id: 'work-history', label: 'Work History', icon: History },
     { id: 'team', label: 'Team', icon: Users },
     { id: 'timeline', label: 'Daily Timeline', icon: Clock },

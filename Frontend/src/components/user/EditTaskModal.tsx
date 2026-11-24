@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, ShieldAlert, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users } from 'lucide-react';
+import { X, Edit3, ShieldAlert, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users, Percent } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
@@ -24,6 +24,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [status, setStatus] = useState<string>('In Progress');
+  const [progress, setProgress] = useState<number>(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setDueDate(toISODate(task.dueDate));
       setPriority(task.priority || 'Medium');
       setStatus(task.status || 'In Progress');
+      setProgress(task.progress !== undefined ? task.progress : (task.status === 'Completed' ? 100 : 60));
     }
   }, [task]);
 
@@ -84,7 +86,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         assigneeEmail: selectedMember ? selectedMember.email : task.assigneeEmail,
         dueDate: formatTaskDueDate(dueDate) || dueDate,
         priority,
-        status
+        status,
+        progress: Number(progress)
       });
       onClose();
     } catch (e: any) {
@@ -263,7 +266,12 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               </label>
               <select
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) => {
+                  const newSt = e.target.value;
+                  setStatus(newSt);
+                  if (newSt === 'Completed') setProgress(100);
+                  else if (newSt === 'To Do') setProgress(0);
+                }}
                 className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-bold text-gray-800"
               >
                 <option value="To Do">To Do</option>
@@ -272,6 +280,52 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 <option value="Completed">Completed</option>
               </select>
             </div>
+          </div>
+
+          {/* Progress Slider (Full Editable) */}
+          <div className="bg-purple-50/50 p-3.5 rounded-2xl border border-purple-100 space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                <Percent className="w-3.5 h-3.5 text-[#5a36e6]" />
+                <span>Work Progress: <span className="text-[#5a36e6] font-black">{progress}%</span></span>
+              </label>
+              <div className="flex items-center gap-1">
+                {[0, 25, 50, 75, 100].map(val => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => {
+                      setProgress(val);
+                      if (val === 100) setStatus('Completed');
+                      else if (val === 0) setStatus('To Do');
+                      else if (status === 'To Do' || status === 'Completed') setStatus('In Progress');
+                    }}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer ${
+                      progress === val
+                        ? 'bg-[#5a36e6] text-white border-[#5a36e6]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
+                    }`}
+                  >
+                    {val}%
+                  </button>
+                ))}
+              </div>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={progress}
+              onChange={(e) => {
+                const val = Number(e.target.value);
+                setProgress(val);
+                if (val === 100) setStatus('Completed');
+                else if (val === 0) setStatus('To Do');
+                else if (status === 'To Do' || status === 'Completed') setStatus('In Progress');
+              }}
+              className="w-full accent-[#5a36e6] cursor-pointer"
+            />
           </div>
 
           {/* Footer Actions */}

@@ -4591,6 +4591,22 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     });
   }
 
+  // 4. Progress Change Audit
+  const oldProgress = oldUserTask?.progress !== undefined ? Number(oldUserTask.progress) : (oldStatus === 'Completed' ? 100 : 60);
+  const newProgress = data.progress !== undefined ? Number(data.progress) : (newStatus === 'Completed' ? 100 : oldProgress);
+  if (data.progress !== undefined && newProgress !== oldProgress) {
+    activityLog.push({
+      id: generateId('act'),
+      type: 'progress_update',
+      performedBy: user.name || 'User',
+      performedByRole: user.role || 'user',
+      performedById: user.id || '',
+      timestamp: new Date(),
+      details: { oldProgress, newProgress },
+      message: `Progress updated from ${oldProgress}% to ${newProgress}% by ${user.name || 'User'}`
+    });
+  }
+
   // Preserve comments and time logs intact
   const comments = Array.isArray(oldUserTask?.comments) ? oldUserTask.comments : [];
   const timerState = oldUserTask?.timerState || { status: 'idle', activeSeconds: 0, pausedSeconds: 0, isPaused: false };
@@ -4605,6 +4621,7 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     priority: data.priority || oldAssign?.priority || 'Medium',
     dueDate: newDueDate,
     status: newStatus,
+    progress: newProgress,
     role: data.role || oldAssign?.role || 'Developer',
     teamId: data.teamId !== undefined ? data.teamId : (oldAssign?.teamId || 'general'),
     departmentId: data.departmentId !== undefined ? data.departmentId : (oldAssign?.departmentId || ''),
@@ -4630,6 +4647,7 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     priority: updatedAssign.priority,
     dueDate: updatedAssign.dueDate,
     status: updatedAssign.status,
+    progress: newProgress,
     team: data.team || oldUserTask?.team || 'Team',
     teamId: updatedAssign.teamId,
     department: data.department || oldUserTask?.department || 'General',

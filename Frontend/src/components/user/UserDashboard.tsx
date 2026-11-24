@@ -39,7 +39,11 @@ export const UserDashboard: React.FC = () => {
   const rawAssigned = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
   const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === myEmail) || (currentUser?.id && m.id === currentUser.id));
-  const isManager = isUserManager(currentUser, myMember);
+  const isManager = Boolean(
+    isUserManager(currentUser, myMember) ||
+    currentUser?.role === 'manager' ||
+    currentUser?.role === 'admin'
+  );
 
   // Strict User Isolation:
   // - A user's personal dashboard ONLY displays their own assigned work.
@@ -464,7 +468,7 @@ export const UserDashboard: React.FC = () => {
                           )}
                         </td>
                         <td className="py-4 text-right pr-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          {task.status === 'In Progress' ? (
+                          {!isManager && isTaskAssignedToUser(task, currentUser, myMember) && task.status === 'In Progress' ? (
                             <button
                               onClick={() => openSubmitWorkDrawer(task)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-semibold text-xs transition shadow-sm shadow-indigo-600/20"
@@ -472,7 +476,7 @@ export const UserDashboard: React.FC = () => {
                               <Upload className="w-3.5 h-3.5" />
                               Submit Work
                             </button>
-                          ) : task.status === 'Not Started' ? (
+                          ) : !isManager && isTaskAssignedToUser(task, currentUser, myMember) && task.status === 'Not Started' ? (
                             <button
                               onClick={() => handleStartUserWork(task.id)}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#5a36e6] text-[#5a36e6] hover:bg-indigo-50 font-semibold text-xs transition"

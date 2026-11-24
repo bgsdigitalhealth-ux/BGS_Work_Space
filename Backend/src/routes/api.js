@@ -529,19 +529,15 @@ router.delete('/assignments/:id', requireAdmin, async (req, res) => {
   }
 });
 
-// Edit Assignment (Admin & Manager)
+// Edit Assignment (Admin, Manager, or User updating their own work progress / details)
 router.put('/assignments/:id', async (req, res) => {
   try {
     const user = {
       id: req.body.operatorId || req.body.userId || '',
-      name: req.body.operatorName || req.body.userName || 'Admin',
-      role: req.body.operatorRole || req.body.userRole || 'admin'
+      name: req.body.operatorName || req.body.userName || 'User',
+      role: req.body.operatorRole || req.body.userRole || 'user',
+      teamRole: req.body.operatorTeamRole || ''
     };
-    const opRoleStr = String(req.body.operatorTeamRole || user.teamRole || '').toLowerCase();
-    const isManagerOrAdmin = user.role === 'admin' || user.role === 'manager' || opRoleStr.includes('manager') || opRoleStr.includes('lead') || opRoleStr.includes('head');
-    if (!isManagerOrAdmin) {
-      return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can edit assignments.' });
-    }
     const result = await dataService.editAssignment(req.params.id, req.body, user);
     broadcast('ASSIGNMENT_UPDATED', result);
     broadcast('WORK_CHANGED', { action: 'update', id: req.params.id, ...result });
