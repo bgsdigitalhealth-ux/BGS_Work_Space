@@ -44,6 +44,7 @@ export const UserSidebar: React.FC = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'My Dashboard', icon: LayoutDashboard },
+    { id: 'record', label: 'Record', icon: CalendarCheck },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { id: 'appointments', label: 'Appointments & Schedule', icon: CalendarCheck },

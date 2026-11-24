@@ -25,6 +25,7 @@ import { UserSettings } from './components/user/UserSettings';
 import { SubmitWorkDrawer } from './components/user/SubmitWorkDrawer';
 import { ManagerTimelineView } from './components/user/ManagerTimelineView';
 import { ReportsView } from './components/user/ReportsView';
+import { UserAttendanceRecords } from './components/user/UserAttendanceRecords';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';
@@ -83,6 +84,7 @@ export const App: React.FC = () => {
 
           {/* Conditional View by userNav */}
           {userNav === 'dashboard' && <UserDashboard />}
+          {(userNav === 'record' || userNav === 'records') && <UserAttendanceRecords />}
           {userNav === 'messages' && <MessagesView />}
           {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}

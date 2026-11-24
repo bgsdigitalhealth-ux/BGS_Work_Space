@@ -177,6 +177,15 @@ export const api = {
     if (!res.ok) throw new Error('Failed to fetch today attendance');
     return res.json();
   },
+  getAttendanceRecords: async (userId?: string, userEmail?: string, limit?: number): Promise<AttendanceRecord[]> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (userEmail) params.append('userEmail', userEmail);
+    if (limit) params.append('limit', String(limit));
+    const res = await fetch(`${API_BASE}/attendance/records?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch attendance records');
+    return res.json();
+  },
   punchIn: async (data: { userId: string; userEmail: string; userName?: string; teamId?: string; teamName?: string; departmentId?: string; departmentName?: string }): Promise<AttendanceRecord> => {
     const res = await fetch(`${API_BASE}/attendance/punch-in`, {
       method: 'POST',

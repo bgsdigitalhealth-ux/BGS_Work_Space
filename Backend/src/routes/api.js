@@ -563,6 +563,16 @@ router.get('/attendance/today', async (req, res) => {
   }
 });
 
+router.get('/attendance/records', async (req, res) => {
+  try {
+    const { userId, userEmail, limit } = req.query;
+    const records = await dataService.getAttendanceRecords({ userId, userEmail, limit: limit ? Number(limit) : 60 });
+    res.json(records);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.post('/attendance/punch-in', async (req, res) => {
   try {
     const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName } = req.body;

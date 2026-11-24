@@ -169,13 +169,23 @@ export interface AttendancePunch {
 }
 
 export interface AttendanceRecord {
+  id?: string;
+  customId?: string;
   userId: string;
   userEmail: string;
+  userName?: string;
+  teamId?: string;
+  teamName?: string;
+  departmentId?: string;
+  departmentName?: string;
   date: string;
   status: 'punched_in' | 'punched_out';
   punches: AttendancePunch[];
   totalSeconds: number;
   currentPunchIn?: string | null;
+  firstPunchIn?: string | null;
+  lastPunchOut?: string | null;
+  punchCount?: number;
 }
 
 export interface TimelineEvent {

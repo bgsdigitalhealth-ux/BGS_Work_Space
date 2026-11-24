@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { LogIn, LogOut, Clock, CheckCircle2 } from 'lucide-react';
+import { LogIn, LogOut, Clock, CheckCircle2, CalendarCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const AttendanceWidget: React.FC = () => {
-  const { todayAttendance, handlePunchIn, handlePunchOut } = useApp();
+  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav } = useApp();
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -26,10 +26,7 @@ export const AttendanceWidget: React.FC = () => {
     const hrs = Math.floor(totalSecs / 3600);
     const mins = Math.floor((totalSecs % 3600) / 60);
     const secs = totalSecs % 60;
-    if (hrs > 0) {
-      return `${hrs}h ${mins}m`;
-    }
-    return `${mins}m ${secs}s`;
+    return `${hrs}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
   };
 
   const onPunchIn = async () => {
@@ -68,10 +65,13 @@ export const AttendanceWidget: React.FC = () => {
               {isPunchedIn ? 'Present & Punched In' : 'Punched Out'}
             </span>
           </div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mt-0.5">
+          <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mt-0.5 flex-wrap">
             <span>Today's Time Present:</span>
             <span className={`font-mono text-sm font-black ${isPunchedIn ? 'text-emerald-600' : 'text-gray-900'}`}>
               {formatHoursMins(liveElapsed)}
+            </span>
+            <span className="text-[11px] font-bold text-gray-500">
+              ({(liveElapsed / 3600).toFixed(2)} hrs)
             </span>
             {isPunchedIn && (
               <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping ml-1" />
@@ -80,8 +80,18 @@ export const AttendanceWidget: React.FC = () => {
         </div>
       </div>
 
-      {/* Punch In / Out Actions */}
-      <div className="flex items-center gap-2">
+      {/* Punch In / Out Actions & Record Nav */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <button
+          type="button"
+          onClick={() => setUserNav('record')}
+          className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#5a36e6] border border-purple-200 text-xs font-bold transition shadow-xs cursor-pointer"
+          title="View Day-by-Day Attendance Record"
+        >
+          <CalendarCheck className="w-4 h-4 text-[#5a36e6]" />
+          <span>Record</span>
+        </button>
+
         {isPunchedIn ? (
           <button
             type="button"

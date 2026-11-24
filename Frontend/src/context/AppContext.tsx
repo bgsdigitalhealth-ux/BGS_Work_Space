@@ -162,7 +162,9 @@ interface AppContextType {
 
   // Attendance & Time Tracking
   todayAttendance: AttendanceRecord | null;
+  attendanceRecords: AttendanceRecord[];
   refreshTodayAttendance: () => Promise<void>;
+  refreshAttendanceRecords: () => Promise<void>;
   handlePunchIn: () => Promise<void>;
   handlePunchOut: () => Promise<void>;
   handleStartTimer: (taskId: string) => Promise<void>;
@@ -395,6 +397,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Attendance & Task Time Tracking
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
   const isManagerOrAdmin = Boolean(
     currentUser?.role === 'admin' ||
@@ -418,9 +421,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
+  const refreshAttendanceRecords = async () => {
+    if (!currentUser) return;
+    try {
+      const records = await api.getAttendanceRecords(currentUser.id, currentUser.email);
+      setAttendanceRecords(records || []);
+    } catch (e) {
+      console.warn('Could not fetch attendance records:', e);
+    }
+  };
+
   useEffect(() => {
     if (currentUser) {
       refreshTodayAttendance();
+      refreshAttendanceRecords();
     }
   }, [currentUser?.id, currentUser?.email]);
 
@@ -435,6 +449,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         departmentId: currentUser.department
       });
       setTodayAttendance(rec);
+      await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
     } catch (e: any) {
       alert(e.message || 'Failed to punch in');
     }
@@ -448,6 +463,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         userEmail: currentUser.email
       });
       setTodayAttendance(rec);
+      await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
     } catch (e: any) {
       alert(e.message || 'Failed to punch out');
     }
@@ -1278,7 +1294,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       socket.on('appointment_deleted', handleRealtimeEntityChange);
       socket.on('work_changed', handleRealtimeEntityChange);
       socket.on('work_done_deleted', handleRealtimeEntityChange);
-      socket.on('ATTENDANCE_UPDATED', refreshTodayAttendance);
+      socket.on('ATTENDANCE_UPDATED', () => {
+        refreshTodayAttendance();
+        refreshAttendanceRecords();
+      });
       socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
       socket.on('ASSIGNMENT_UPDATED', () => {
         refreshUserWorkspace();
@@ -1427,7 +1446,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         fetchWppStatus,
         restartWpp,
         todayAttendance,
+        attendanceRecords,
         refreshTodayAttendance,
+        refreshAttendanceRecords,
         handlePunchIn,
         handlePunchOut,
         handleStartTimer,
