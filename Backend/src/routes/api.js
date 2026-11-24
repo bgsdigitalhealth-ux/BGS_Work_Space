@@ -502,6 +502,194 @@ router.delete('/assignments/:id', async (req, res) => {
   }
 });
 
+// Edit Assignment (Admin & Manager)
+router.put('/assignments/:id', async (req, res) => {
+  try {
+    const user = {
+      id: req.body.operatorId || req.body.userId || '',
+      name: req.body.operatorName || req.body.userName || 'Admin',
+      role: req.body.operatorRole || req.body.userRole || 'admin'
+    };
+    const isManagerOrAdmin = user.role === 'admin' || user.role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    if (!isManagerOrAdmin) {
+      return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can edit assignments.' });
+    }
+    const result = await dataService.editAssignment(req.params.id, req.body, user);
+    broadcast('ASSIGNMENT_UPDATED', result);
+    broadcast('WORK_CHANGED', { action: 'update', id: req.params.id, ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Attendance (Punch In / Punch Out) ---
+router.get('/attendance/today', async (req, res) => {
+  try {
+    const { userId, userEmail } = req.query;
+    const result = await dataService.getTodayAttendance(userId, userEmail);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/attendance/punch-in', async (req, res) => {
+  try {
+    const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName } = req.body;
+    if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
+    const result = await dataService.recordPunchIn({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName });
+    broadcast('ATTENDANCE_UPDATED', { type: 'punch_in', ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/attendance/punch-out', async (req, res) => {
+  try {
+    const { userId, userEmail } = req.body;
+    if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
+    const result = await dataService.recordPunchOut({ userId, userEmail });
+    broadcast('ATTENDANCE_UPDATED', { type: 'punch_out', ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Task Time Tracking (Start, Pause, Resume, Finish) ---
+router.post('/tasks/:id/timer/start', async (req, res) => {
+  try {
+    const user = {
+      id: req.body.userId || '',
+      name: req.body.userName || 'Team Member',
+      role: req.body.userRole || 'user',
+      email: req.body.userEmail || ''
+    };
+    const result = await dataService.startTaskTimer(req.params.id, user);
+    broadcast('TASK_TIMER_UPDATED', { action: 'start', taskId: req.params.id, ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/tasks/:id/timer/pause', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ error: 'A pause reason is required' });
+    }
+    const user = {
+      id: req.body.userId || '',
+      name: req.body.userName || 'Team Member',
+      role: req.body.userRole || 'user',
+      email: req.body.userEmail || ''
+    };
+    const result = await dataService.pauseTaskTimer(req.params.id, user, reason);
+    broadcast('TASK_TIMER_UPDATED', { action: 'pause', taskId: req.params.id, ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/tasks/:id/timer/resume', async (req, res) => {
+  try {
+    const user = {
+      id: req.body.userId || '',
+      name: req.body.userName || 'Team Member',
+      role: req.body.userRole || 'user',
+      email: req.body.userEmail || ''
+    };
+    const result = await dataService.resumeTaskTimer(req.params.id, user);
+    broadcast('TASK_TIMER_UPDATED', { action: 'resume', taskId: req.params.id, ...result });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/tasks/:id/timer/finish', async (req, res) => {
+  try {
+    const user = {
+      id: req.body.userId || '',
+      name: req.body.userName || 'Team Member',
+      role: req.body.userRole || 'user',
+      email: req.body.userEmail || ''
+    };
+    const result = await dataService.finishTaskTimer(req.params.id, user);
+    broadcast('TASK_TIMER_UPDATED', { action: 'finish', taskId: req.params.id, ...result });
+    broadcast('WORK_CHANGED', { action: 'completed', taskId: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Manager's Daily Timeline ---
+router.get('/timeline', async (req, res) => {
+  try {
+    const { date, teamId, memberId } = req.query;
+    const result = await dataService.getManagerTimeline({ date, teamId, memberId });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --- Reports (Daily, Weekly, Monthly) ---
+router.get('/reports', async (req, res) => {
+  try {
+    const { period, date, teamId } = req.query;
+    const result = await dataService.getReports({ period, date, teamId });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/reports/:id', async (req, res) => {
+  try {
+    const role = req.body.userRole || req.body.operatorRole || 'user';
+    const isManagerOrAdmin = role === 'admin' || role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    if (!isManagerOrAdmin) {
+      return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can modify reports.' });
+    }
+    const user = {
+      id: req.body.userId || req.body.operatorId || '',
+      name: req.body.userName || req.body.operatorName || 'Manager',
+      role
+    };
+    const result = await dataService.updateReportEntry(req.params.id, req.body, user);
+    broadcast('REPORT_UPDATED', result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/reports/:id', async (req, res) => {
+  try {
+    const role = req.body.userRole || req.body.operatorRole || req.query.userRole || 'user';
+    const isManagerOrAdmin = role === 'admin' || role === 'manager' || req.body.operatorTeamRole === 'Manager' || req.body.operatorTeamRole === 'Team Lead';
+    if (!isManagerOrAdmin) {
+      return res.status(403).json({ error: 'Permission denied: Only Admin and Manager can delete report entries.' });
+    }
+    const user = {
+      id: req.body.userId || req.body.operatorId || '',
+      name: req.body.userName || req.body.operatorName || 'Manager',
+      role
+    };
+    const result = await dataService.deleteReportEntry(req.params.id, user);
+    broadcast('REPORT_DELETED', { id: req.params.id });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Admin Work Review (Approve / Rework) ---
 router.post('/work/:id/approve', async (req, res) => {
   try {

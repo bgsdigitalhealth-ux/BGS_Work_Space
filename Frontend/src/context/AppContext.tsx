@@ -13,7 +13,8 @@ import {
   Appointment,
   AppointmentStats,
   User,
-  type Notification
+  type Notification,
+  AttendanceRecord
 } from '../types';
 import { api, API_BASE } from '../services/api';
 import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
@@ -157,6 +158,18 @@ interface AppContextType {
   wppStatus: any;
   fetchWppStatus: () => Promise<void>;
   restartWpp: (clean?: boolean) => Promise<void>;
+
+  // Attendance & Time Tracking
+  todayAttendance: AttendanceRecord | null;
+  refreshTodayAttendance: () => Promise<void>;
+  handlePunchIn: () => Promise<void>;
+  handlePunchOut: () => Promise<void>;
+  handleStartTimer: (taskId: string) => Promise<void>;
+  handlePauseTimer: (taskId: string, reason: string) => Promise<void>;
+  handleResumeTimer: (taskId: string) => Promise<void>;
+  handleFinishTimer: (taskId: string) => Promise<void>;
+  handleEditAssignment: (id: string, data: any) => Promise<void>;
+  isManagerOrAdmin: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -265,6 +278,117 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  // Attendance & Task Time Tracking
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+
+  const isManagerOrAdmin = Boolean(
+    currentUser?.role === 'admin' ||
+    currentUser?.role === 'manager' ||
+    currentUser?.teamRole === 'Manager' ||
+    currentUser?.teamRole === 'Team Lead'
+  );
+
+  const refreshTodayAttendance = async () => {
+    if (!currentUser) return;
+    try {
+      const rec = await api.getTodayAttendance(currentUser.id, currentUser.email);
+      setTodayAttendance(rec);
+    } catch (e) {
+      console.warn('Could not fetch attendance:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshTodayAttendance();
+    }
+  }, [currentUser?.id, currentUser?.email]);
+
+  const handlePunchIn = async () => {
+    if (!currentUser) return;
+    try {
+      const rec = await api.punchIn({
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userName: currentUser.name,
+        teamId: currentUser.team,
+        departmentId: currentUser.department
+      });
+      setTodayAttendance(rec);
+    } catch (e: any) {
+      alert(e.message || 'Failed to punch in');
+    }
+  };
+
+  const handlePunchOut = async () => {
+    if (!currentUser) return;
+    try {
+      const rec = await api.punchOut({
+        userId: currentUser.id,
+        userEmail: currentUser.email
+      });
+      setTodayAttendance(rec);
+    } catch (e: any) {
+      alert(e.message || 'Failed to punch out');
+    }
+  };
+
+  const handleStartTimer = async (taskId: string) => {
+    if (!currentUser) return;
+    try {
+      await api.startTaskTimer(taskId, currentUser);
+      await refreshUserWorkspace();
+    } catch (e: any) {
+      alert(e.message || 'Failed to start timer');
+    }
+  };
+
+  const handlePauseTimer = async (taskId: string, reason: string) => {
+    if (!currentUser) return;
+    try {
+      await api.pauseTaskTimer(taskId, currentUser, reason);
+      await refreshUserWorkspace();
+    } catch (e: any) {
+      alert(e.message || 'Failed to pause timer');
+    }
+  };
+
+  const handleResumeTimer = async (taskId: string) => {
+    if (!currentUser) return;
+    try {
+      await api.resumeTaskTimer(taskId, currentUser);
+      await refreshUserWorkspace();
+    } catch (e: any) {
+      alert(e.message || 'Failed to resume timer');
+    }
+  };
+
+  const handleFinishTimer = async (taskId: string) => {
+    if (!currentUser) return;
+    try {
+      await api.finishTaskTimer(taskId, currentUser);
+      await refreshUserWorkspace();
+    } catch (e: any) {
+      alert(e.message || 'Failed to finish timer');
+    }
+  };
+
+  const handleEditAssignment = async (id: string, data: any) => {
+    try {
+      await api.editAssignment(id, {
+        ...data,
+        operatorId: currentUser?.id,
+        operatorName: currentUser?.name,
+        operatorRole: currentUser?.role,
+        operatorTeamRole: currentUser?.teamRole
+      });
+      await Promise.all([refreshUserWorkspace(), fetchAssignments(), fetchTasks()]);
+    } catch (e: any) {
+      alert(e.message || 'Failed to edit assignment');
+      throw e;
+    }
+  };
 
   // Modals & Edit States
   const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
@@ -411,7 +535,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const fetchAssignments = async (teamId: string) => {
+  const fetchAssignments = async (teamId: string = '') => {
     try {
       const data = await api.getAssignments(teamId);
       setAssignments(data);
@@ -420,7 +544,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const fetchTasks = async (teamId: string) => {
+  const fetchTasks = async (teamId: string = '') => {
     try {
       const data = await api.getTasks(teamId);
       setTasks(data);
@@ -991,6 +1115,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       socket.on('appointment_deleted', handleRealtimeEntityChange);
       socket.on('work_changed', handleRealtimeEntityChange);
       socket.on('work_done_deleted', handleRealtimeEntityChange);
+      socket.on('ATTENDANCE_UPDATED', refreshTodayAttendance);
+      socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
+      socket.on('ASSIGNMENT_UPDATED', () => {
+        refreshUserWorkspace();
+        fetchAssignments();
+      });
 
       return () => {
         socket.off('admin_notification', handleAdminNotification);
@@ -1131,7 +1261,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setUserToast,
         wppStatus,
         fetchWppStatus,
-        restartWpp
+        restartWpp,
+        todayAttendance,
+        refreshTodayAttendance,
+        handlePunchIn,
+        handlePunchOut,
+        handleStartTimer,
+        handlePauseTimer,
+        handleResumeTimer,
+        handleFinishTimer,
+        handleEditAssignment,
+        isManagerOrAdmin
       }}
     >
       {children}

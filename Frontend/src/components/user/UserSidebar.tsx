@@ -9,6 +9,7 @@ import {
   History, 
   Users, 
   FileText,
+  Clock,
   LogOut,
   MessageSquare,
   Settings,
@@ -41,6 +42,7 @@ export const UserSidebar: React.FC = () => {
     { id: 'submit-work', label: 'Submit Work', icon: Send, isAction: true },
     { id: 'work-history', label: 'Work History', icon: History },
     { id: 'team', label: 'Team', icon: Users },
+    { id: 'timeline', label: 'Daily Timeline', icon: Clock },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

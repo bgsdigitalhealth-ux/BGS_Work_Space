@@ -1,4 +1,4 @@
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage } from '../types';
+import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, TimelineEvent, ReportItem, ReportResponse } from '../types';
 
 // Support production backend on Render via VITE_API_URL or fallback to local proxy /api
 const rawBase = (import.meta.env.VITE_API_URL || '').trim();
@@ -138,6 +138,148 @@ export const api = {
   deleteAssignment: async (id: string): Promise<void> => {
     const res = await fetch(`${API_BASE}/assignments/${id}`, { method: 'DELETE' });
     if (!res.ok) throw new Error('Failed to delete assignment');
+  },
+  editAssignment: async (id: string, data: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/assignments/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to edit assignment');
+    }
+    return res.json();
+  },
+
+  // Attendance (Punch In / Punch Out)
+  getTodayAttendance: async (userId?: string, userEmail?: string): Promise<AttendanceRecord> => {
+    const params = new URLSearchParams();
+    if (userId) params.append('userId', userId);
+    if (userEmail) params.append('userEmail', userEmail);
+    const res = await fetch(`${API_BASE}/attendance/today?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch today attendance');
+    return res.json();
+  },
+  punchIn: async (data: { userId: string; userEmail: string; userName?: string; teamId?: string; teamName?: string; departmentId?: string; departmentName?: string }): Promise<AttendanceRecord> => {
+    const res = await fetch(`${API_BASE}/attendance/punch-in`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to punch in');
+    }
+    return res.json();
+  },
+  punchOut: async (data: { userId: string; userEmail: string }): Promise<AttendanceRecord> => {
+    const res = await fetch(`${API_BASE}/attendance/punch-out`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to punch out');
+    }
+    return res.json();
+  },
+
+  // Task Time Tracking (Start, Pause, Resume, Finish)
+  startTaskTimer: async (taskId: string, user: { id: string; name: string; role: string; email?: string }): Promise<any> => {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/timer/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, userName: user.name, userRole: user.role, userEmail: user.email })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to start task timer');
+    }
+    return res.json();
+  },
+  pauseTaskTimer: async (taskId: string, user: { id: string; name: string; role: string; email?: string }, reason: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/timer/pause`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, userName: user.name, userRole: user.role, userEmail: user.email, reason })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to pause task timer');
+    }
+    return res.json();
+  },
+  resumeTaskTimer: async (taskId: string, user: { id: string; name: string; role: string; email?: string }): Promise<any> => {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/timer/resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, userName: user.name, userRole: user.role, userEmail: user.email })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to resume task timer');
+    }
+    return res.json();
+  },
+  finishTaskTimer: async (taskId: string, user: { id: string; name: string; role: string; email?: string }): Promise<any> => {
+    const res = await fetch(`${API_BASE}/tasks/${taskId}/timer/finish`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id, userName: user.name, userRole: user.role, userEmail: user.email })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to finish task timer');
+    }
+    return res.json();
+  },
+
+  // Manager's Daily Timeline
+  getManagerTimeline: async (params: { date?: string; teamId?: string; memberId?: string }): Promise<{ date: string; teamId: string; memberId: string; events: TimelineEvent[] }> => {
+    const q = new URLSearchParams();
+    if (params.date) q.append('date', params.date);
+    if (params.teamId) q.append('teamId', params.teamId);
+    if (params.memberId) q.append('memberId', params.memberId);
+    const res = await fetch(`${API_BASE}/timeline?${q.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch timeline');
+    return res.json();
+  },
+
+  // Manager Reports
+  getReports: async (params: { period?: string; date?: string; teamId?: string }): Promise<ReportResponse> => {
+    const q = new URLSearchParams();
+    if (params.period) q.append('period', params.period);
+    if (params.date) q.append('date', params.date);
+    if (params.teamId) q.append('teamId', params.teamId);
+    const res = await fetch(`${API_BASE}/reports?${q.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch reports');
+    return res.json();
+  },
+  updateReportEntry: async (id: string, data: any): Promise<ReportItem> => {
+    const res = await fetch(`${API_BASE}/reports/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to update report entry');
+    }
+    return res.json();
+  },
+  deleteReportEntry: async (id: string, userRole?: string): Promise<{ success: boolean; id: string }> => {
+    const res = await fetch(`${API_BASE}/reports/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userRole })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to delete report entry');
+    }
+    return res.json();
   },
 
   // Tasks

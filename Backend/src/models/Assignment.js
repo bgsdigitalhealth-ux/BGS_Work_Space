@@ -58,7 +58,7 @@ const assignmentSchema = new mongoose.Schema({
   },
   assignerRole: {
     type: String,
-    enum: ['admin', 'user'],
+    enum: ['admin', 'manager', 'user'],
     default: 'admin'
   },
   assignerEmail: {
@@ -75,7 +75,7 @@ const assignmentSchema = new mongoose.Schema({
   },
   assigneeRole: {
     type: String,
-    enum: ['admin', 'user'],
+    enum: ['admin', 'manager', 'user'],
     default: 'user'
   },
   assigneeEmail: {

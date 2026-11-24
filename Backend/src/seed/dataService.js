@@ -13,6 +13,9 @@ const WorkHistory = require('../models/WorkHistory');
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Meeting = require('../models/Meeting');
+const Attendance = require('../models/Attendance');
+const TimeLog = require('../models/TimeLog');
+const ReportEntry = require('../models/ReportEntry');
 const initialData = require('./seedData');
 const crypto = require('crypto');
 
@@ -180,6 +183,15 @@ const loadStore = () => {
         }
         if (!memoryStore.meetings) {
           memoryStore.meetings = [];
+        }
+        if (!memoryStore.attendance) {
+          memoryStore.attendance = [];
+        }
+        if (!memoryStore.timeLogs) {
+          memoryStore.timeLogs = [];
+        }
+        if (!memoryStore.reportEntries) {
+          memoryStore.reportEntries = [];
         }
         console.log('[Storage] Persistent database state loaded from disk successfully.');
         return;
@@ -4168,6 +4180,951 @@ const getTurnCredentials = (userId) => {
   };
 };
 
+// =========================================================================
+// ASSIGNMENT EDITING (With Assignee Time Attribution & Audit History)
+// =========================================================================
+const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' }) => {
+  if (!memoryStore.assignments) memoryStore.assignments = [];
+  const assignIndex = memoryStore.assignments.findIndex(a => a.id === id || a.customId === id);
+  const oldAssign = assignIndex >= 0 ? memoryStore.assignments[assignIndex] : null;
+
+  // Find user task in workspace
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  const userTaskIndex = memoryStore.userWorkspace.assignedWork.findIndex(
+    w => w.id === id || w.customId === id || w.assignmentId === id || (oldAssign && (w.title === oldAssign.workTitle || w.taskId === oldAssign.id))
+  );
+  const oldUserTask = userTaskIndex >= 0 ? memoryStore.userWorkspace.assignedWork[userTaskIndex] : null;
+
+  const activityLog = Array.isArray(oldUserTask?.activityLog) ? [...oldUserTask.activityLog] : [];
+
+  // 1. Audit Deadline Change (old date, new date, changed by)
+  const oldDueDate = oldAssign?.dueDate || oldUserTask?.dueDate || '';
+  const newDueDate = data.dueDate || oldDueDate;
+  if (data.dueDate && data.dueDate !== oldDueDate) {
+    activityLog.push({
+      id: generateId('act'),
+      type: 'deadline_change',
+      performedBy: user.name || 'Admin',
+      performedByRole: user.role || 'admin',
+      performedById: user.id || '',
+      timestamp: new Date(),
+      details: { oldDate: oldDueDate, newDate: newDueDate },
+      message: `Deadline updated from "${oldDueDate}" to "${newDueDate}" by ${user.name || 'Admin'}`
+    });
+  }
+
+  // 2. Audit Assignee Change (Preserve earlier hours credited to original performer)
+  const oldAssigneeName = oldAssign?.assigneeName || oldUserTask?.assigneeName || 'Assignee';
+  const newAssigneeName = data.assigneeName || oldAssigneeName;
+  const oldAssigneeId = oldAssign?.assigneeId || oldUserTask?.assigneeId || '';
+  const newAssigneeId = data.assigneeId || oldAssigneeId;
+  if (data.assigneeId && data.assigneeId !== oldAssigneeId) {
+    activityLog.push({
+      id: generateId('act'),
+      type: 'assignee_change',
+      performedBy: user.name || 'Admin',
+      performedByRole: user.role || 'admin',
+      performedById: user.id || '',
+      timestamp: new Date(),
+      details: { oldAssignee: oldAssigneeName, newAssignee: newAssigneeName, oldAssigneeId, newAssigneeId },
+      message: `Task reassigned from ${oldAssigneeName} to ${newAssigneeName} by ${user.name || 'Admin'}`
+    });
+  }
+
+  // 3. Status Change
+  const oldStatus = oldAssign?.status || oldUserTask?.status || 'In Progress';
+  const newStatus = data.status || oldStatus;
+  if (data.status && data.status !== oldStatus) {
+    activityLog.push({
+      id: generateId('act'),
+      type: 'status_change',
+      performedBy: user.name || 'Admin',
+      performedByRole: user.role || 'admin',
+      performedById: user.id || '',
+      timestamp: new Date(),
+      details: { oldStatus, newStatus },
+      message: `Status changed from ${oldStatus} to ${newStatus} by ${user.name || 'Admin'}`
+    });
+  }
+
+  // Preserve comments and time logs intact
+  const comments = Array.isArray(oldUserTask?.comments) ? oldUserTask.comments : [];
+  const timerState = oldUserTask?.timerState || { status: 'idle', activeSeconds: 0, pausedSeconds: 0, isPaused: false };
+
+  // Update Assignment
+  const updatedAssign = {
+    ...(oldAssign || {}),
+    id: oldAssign?.id || id,
+    customId: oldAssign?.customId || id,
+    workTitle: data.title || data.workTitle || oldAssign?.workTitle || 'Assigned Work',
+    workDescription: data.description !== undefined ? data.description : (data.workDescription !== undefined ? data.workDescription : (oldAssign?.workDescription || '')),
+    priority: data.priority || oldAssign?.priority || 'Medium',
+    dueDate: newDueDate,
+    status: newStatus,
+    role: data.role || oldAssign?.role || 'Developer',
+    teamId: data.teamId !== undefined ? data.teamId : (oldAssign?.teamId || 'general'),
+    departmentId: data.departmentId !== undefined ? data.departmentId : (oldAssign?.departmentId || ''),
+    assigneeId: newAssigneeId,
+    assigneeName: newAssigneeName,
+    assigneeEmail: data.assigneeEmail || oldAssign?.assigneeEmail || '',
+    updatedAt: new Date().toISOString()
+  };
+
+  if (assignIndex >= 0) {
+    memoryStore.assignments[assignIndex] = updatedAssign;
+  } else {
+    memoryStore.assignments.unshift(updatedAssign);
+  }
+
+  // Update UserTask
+  const updatedUserTask = {
+    ...(oldUserTask || {}),
+    id: oldUserTask?.id || id,
+    taskId: oldUserTask?.taskId || (oldAssign ? oldAssign.id : id),
+    title: updatedAssign.workTitle,
+    description: updatedAssign.workDescription,
+    priority: updatedAssign.priority,
+    dueDate: updatedAssign.dueDate,
+    status: updatedAssign.status,
+    team: data.team || oldUserTask?.team || 'Team',
+    teamId: updatedAssign.teamId,
+    department: data.department || oldUserTask?.department || 'General',
+    departmentId: updatedAssign.departmentId,
+    userId: newAssigneeId || oldUserTask?.userId || 'usr-user',
+    assigneeId: newAssigneeId,
+    assigneeName: newAssigneeName,
+    assigneeEmail: updatedAssign.assigneeEmail,
+    comments, // PRESERVED
+    timerState, // PRESERVED
+    activityLog, // AUDITED
+    updatedAt: new Date().toISOString()
+  };
+
+  if (userTaskIndex >= 0) {
+    memoryStore.userWorkspace.assignedWork[userTaskIndex] = updatedUserTask;
+  } else {
+    memoryStore.userWorkspace.assignedWork.unshift(updatedUserTask);
+  }
+
+  saveStore();
+
+  // MongoDB Atlas sync
+  if (getStatus()) {
+    try {
+      await Assignment.findOneAndUpdate(
+        buildIdQuery(id),
+        { $set: updatedAssign },
+        { new: true, upsert: true }
+      );
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: id }, { taskId: id }, { _id: mongoose.Types.ObjectId.isValid(id) ? id : null }] },
+        { $set: updatedUserTask },
+        { new: true, upsert: true }
+      );
+    } catch (e) {
+      console.warn('Mongo assignment update error:', e.message);
+    }
+  }
+
+  return { assignment: updatedAssign, userTask: updatedUserTask };
+};
+
+// =========================================================================
+// ATTENDANCE TRACKING (Punch In / Punch Out)
+// =========================================================================
+const getTodayAttendance = async (userId, userEmail) => {
+  const today = new Date().toISOString().split('T')[0];
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+
+  let record = memoryStore.attendance.find(a => 
+    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+  );
+
+  if (getStatus()) {
+    try {
+      const dbRec = await Attendance.findOne({
+        date: today,
+        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+      }).lean();
+      if (dbRec) record = { ...dbRec, id: dbRec.customId || dbRec._id.toString() };
+    } catch (e) {
+      console.warn('Mongo attendance read error:', e.message);
+    }
+  }
+
+  if (!record) {
+    return {
+      userId,
+      userEmail,
+      date: today,
+      status: 'punched_out',
+      punches: [],
+      totalSeconds: 0,
+      currentPunchIn: null
+    };
+  }
+
+  // Calculate live running seconds if currently punched in
+  let liveSeconds = record.totalSeconds || 0;
+  let activePunch = null;
+  if (record.status === 'punched_in' && Array.isArray(record.punches) && record.punches.length > 0) {
+    const lastPunch = record.punches[record.punches.length - 1];
+    if (lastPunch && !lastPunch.punchOut) {
+      activePunch = lastPunch.punchIn;
+      const elapsed = Math.round((Date.now() - new Date(lastPunch.punchIn).getTime()) / 1000);
+      liveSeconds += Math.max(0, elapsed);
+    }
+  }
+
+  return {
+    ...record,
+    totalSeconds: liveSeconds,
+    currentPunchIn: activePunch
+  };
+};
+
+const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName }) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+
+  let record = memoryStore.attendance.find(a => 
+    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+  );
+
+  if (!record) {
+    record = {
+      id: generateId('att'),
+      customId: generateId('att'),
+      userId,
+      userEmail: (userEmail || '').toLowerCase(),
+      userName: userName || 'Team Member',
+      teamId: teamId || '',
+      teamName: teamName || '',
+      departmentId: departmentId || '',
+      departmentName: departmentName || '',
+      date: today,
+      status: 'punched_in',
+      punches: [{ punchIn: now, punchOut: null, durationSeconds: 0 }],
+      totalSeconds: 0
+    };
+    memoryStore.attendance.unshift(record);
+  } else {
+    // If not already punched in, add new punch
+    if (record.status !== 'punched_in') {
+      record.status = 'punched_in';
+      if (!Array.isArray(record.punches)) record.punches = [];
+      record.punches.push({ punchIn: now, punchOut: null, durationSeconds: 0 });
+    }
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Attendance.findOneAndUpdate(
+        { date: today, userId },
+        { $set: record },
+        { upsert: true, new: true }
+      );
+    } catch (e) {
+      console.warn('Mongo punch in error:', e.message);
+    }
+  }
+
+  return getTodayAttendance(userId, userEmail);
+};
+
+const recordPunchOut = async ({ userId, userEmail }) => {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+
+  let record = memoryStore.attendance.find(a => 
+    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+  );
+
+  if (record && record.status === 'punched_in') {
+    record.status = 'punched_out';
+    if (Array.isArray(record.punches) && record.punches.length > 0) {
+      const lastPunch = record.punches[record.punches.length - 1];
+      if (lastPunch && !lastPunch.punchOut) {
+        lastPunch.punchOut = now;
+        const dur = Math.max(0, Math.round((now.getTime() - new Date(lastPunch.punchIn).getTime()) / 1000));
+        lastPunch.durationSeconds = dur;
+        record.totalSeconds = (record.totalSeconds || 0) + dur;
+      }
+    }
+    saveStore();
+
+    if (getStatus()) {
+      try {
+        await Attendance.findOneAndUpdate(
+          { date: today, userId },
+          { $set: record },
+          { new: true }
+        );
+      } catch (e) {
+        console.warn('Mongo punch out error:', e.message);
+      }
+    }
+  }
+
+  return getTodayAttendance(userId, userEmail);
+};
+
+// =========================================================================
+// TASK TIME TRACKING (Start / Pause / Resume / Finish)
+// =========================================================================
+const startTaskTimer = async (taskId, user) => {
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  const task = memoryStore.userWorkspace.assignedWork.find(w => w.id === taskId || w.taskId === taskId);
+  if (!task) throw new Error('Task not found');
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (!task.timerState) {
+    task.timerState = { status: 'idle', activeSeconds: 0, pausedSeconds: 0, isPaused: false };
+  }
+  if (!task.activityLog) task.activityLog = [];
+
+  task.timerState.status = 'running';
+  task.timerState.isPaused = false;
+  task.timerState.activeSessionStart = now;
+  task.timerState.pausedAt = null;
+  task.timerState.pauseReason = '';
+  task.status = 'In Progress';
+
+  if (!memoryStore.timeLogs) memoryStore.timeLogs = [];
+  let log = memoryStore.timeLogs.find(l => l.taskId === taskId && l.userId === user.id && l.date === today);
+  if (!log) {
+    log = {
+      id: generateId('tlog'),
+      customId: generateId('tlog'),
+      taskId,
+      taskTitle: task.title,
+      userId: user.id,
+      userName: user.name,
+      userEmail: user.email,
+      teamId: task.teamId || '',
+      date: today,
+      sessions: [],
+      totalActiveSeconds: task.timerState.activeSeconds || 0,
+      totalPausedSeconds: task.timerState.pausedSeconds || 0,
+      status: 'running'
+    };
+    memoryStore.timeLogs.push(log);
+  }
+  log.status = 'running';
+  log.sessions.push({
+    startTime: now,
+    endTime: null,
+    activeSeconds: 0,
+    pausedSeconds: 0,
+    pauses: [],
+    status: 'running'
+  });
+
+  task.activityLog.push({
+    id: generateId('act'),
+    type: 'started',
+    performedBy: user.name,
+    performedByRole: user.role,
+    performedById: user.id,
+    timestamp: now,
+    message: `${user.name} started working on "${task.title}"`
+  });
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId }] },
+        { $set: { timerState: task.timerState, status: task.status, activityLog: task.activityLog } }
+      );
+      await TimeLog.findOneAndUpdate(
+        { taskId, userId: user.id, date: today },
+        { $set: log },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.warn('Mongo start task timer error:', e.message);
+    }
+  }
+
+  return { task, timeLog: log };
+};
+
+const pauseTaskTimer = async (taskId, user, reason) => {
+  if (!reason || !reason.trim()) {
+    throw new Error('A pause reason is required.');
+  }
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  const task = memoryStore.userWorkspace.assignedWork.find(w => w.id === taskId || w.taskId === taskId);
+  if (!task) throw new Error('Task not found');
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (!task.timerState || task.timerState.status !== 'running') {
+    throw new Error('Task timer is not currently running.');
+  }
+
+  const sessionStart = new Date(task.timerState.activeSessionStart || now);
+  const activeElapsed = Math.max(0, Math.round((now.getTime() - sessionStart.getTime()) / 1000));
+  task.timerState.activeSeconds = (task.timerState.activeSeconds || 0) + activeElapsed;
+  task.timerState.status = 'paused';
+  task.timerState.isPaused = true;
+  task.timerState.pausedAt = now;
+  task.timerState.pauseReason = reason.trim();
+
+  if (!memoryStore.timeLogs) memoryStore.timeLogs = [];
+  let log = memoryStore.timeLogs.find(l => l.taskId === taskId && l.userId === user.id && l.date === today);
+  if (log && log.sessions.length > 0) {
+    const currentSession = log.sessions[log.sessions.length - 1];
+    currentSession.activeSeconds = (currentSession.activeSeconds || 0) + activeElapsed;
+    currentSession.status = 'paused';
+    currentSession.currentPause = { pausedAt: now, reason: reason.trim() };
+    log.totalActiveSeconds = task.timerState.activeSeconds;
+    log.status = 'paused';
+  }
+
+  if (!task.activityLog) task.activityLog = [];
+  task.activityLog.push({
+    id: generateId('act'),
+    type: 'paused',
+    performedBy: user.name,
+    performedByRole: user.role,
+    performedById: user.id,
+    timestamp: now,
+    details: { reason: reason.trim() },
+    message: `${user.name} paused work on "${task.title}": Reason: "${reason.trim()}"`
+  });
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId }] },
+        { $set: { timerState: task.timerState, activityLog: task.activityLog } }
+      );
+      if (log) {
+        await TimeLog.findOneAndUpdate(
+          { taskId, userId: user.id, date: today },
+          { $set: log }
+        );
+      }
+    } catch (e) {
+      console.warn('Mongo pause task timer error:', e.message);
+    }
+  }
+
+  return { task, timeLog: log };
+};
+
+const resumeTaskTimer = async (taskId, user) => {
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  const task = memoryStore.userWorkspace.assignedWork.find(w => w.id === taskId || w.taskId === taskId);
+  if (!task) throw new Error('Task not found');
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (!task.timerState || !task.timerState.isPaused || !task.timerState.pausedAt) {
+    throw new Error('Task is not currently paused.');
+  }
+
+  const pausedAt = new Date(task.timerState.pausedAt);
+  const pauseDuration = Math.max(0, Math.round((now.getTime() - pausedAt.getTime()) / 1000));
+  task.timerState.pausedSeconds = (task.timerState.pausedSeconds || 0) + pauseDuration;
+  task.timerState.status = 'running';
+  task.timerState.isPaused = false;
+  task.timerState.activeSessionStart = now;
+  const pauseReason = task.timerState.pauseReason || 'Pause';
+  task.timerState.pausedAt = null;
+  task.timerState.pauseReason = '';
+
+  if (!memoryStore.timeLogs) memoryStore.timeLogs = [];
+  let log = memoryStore.timeLogs.find(l => l.taskId === taskId && l.userId === user.id && l.date === today);
+  if (log && log.sessions.length > 0) {
+    const currentSession = log.sessions[log.sessions.length - 1];
+    currentSession.pausedSeconds = (currentSession.pausedSeconds || 0) + pauseDuration;
+    currentSession.status = 'running';
+    currentSession.currentPause = null;
+    if (!Array.isArray(currentSession.pauses)) currentSession.pauses = [];
+    currentSession.pauses.push({
+      pausedAt,
+      resumedAt: now,
+      reason: pauseReason,
+      durationSeconds: pauseDuration
+    });
+    log.totalPausedSeconds = task.timerState.pausedSeconds;
+    log.status = 'running';
+  }
+
+  if (!task.activityLog) task.activityLog = [];
+  task.activityLog.push({
+    id: generateId('act'),
+    type: 'resumed',
+    performedBy: user.name,
+    performedByRole: user.role,
+    performedById: user.id,
+    timestamp: now,
+    details: { pauseDurationSeconds: pauseDuration, reason: pauseReason },
+    message: `${user.name} resumed work after ${Math.round(pauseDuration / 60)}m (${pauseReason})`
+  });
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId }] },
+        { $set: { timerState: task.timerState, activityLog: task.activityLog } }
+      );
+      if (log) {
+        await TimeLog.findOneAndUpdate(
+          { taskId, userId: user.id, date: today },
+          { $set: log }
+        );
+      }
+    } catch (e) {
+      console.warn('Mongo resume task timer error:', e.message);
+    }
+  }
+
+  return { task, timeLog: log };
+};
+
+const finishTaskTimer = async (taskId, user) => {
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  const task = memoryStore.userWorkspace.assignedWork.find(w => w.id === taskId || w.taskId === taskId);
+  if (!task) throw new Error('Task not found');
+
+  const now = new Date();
+  const today = now.toISOString().split('T')[0];
+
+  if (!task.timerState) {
+    task.timerState = { status: 'idle', activeSeconds: 0, pausedSeconds: 0, isPaused: false };
+  }
+
+  if (task.timerState.status === 'running' && task.timerState.activeSessionStart) {
+    const sessionStart = new Date(task.timerState.activeSessionStart);
+    const activeElapsed = Math.max(0, Math.round((now.getTime() - sessionStart.getTime()) / 1000));
+    task.timerState.activeSeconds = (task.timerState.activeSeconds || 0) + activeElapsed;
+  }
+  if (task.timerState.isPaused && task.timerState.pausedAt) {
+    const pausedAt = new Date(task.timerState.pausedAt);
+    const pauseDuration = Math.max(0, Math.round((now.getTime() - pausedAt.getTime()) / 1000));
+    task.timerState.pausedSeconds = (task.timerState.pausedSeconds || 0) + pauseDuration;
+  }
+
+  task.timerState.status = 'finished';
+  task.timerState.isPaused = false;
+  task.status = 'Completed';
+  task.progress = 100;
+  task.completedAt = now;
+  task.completedBy = user.name;
+
+  if (!memoryStore.timeLogs) memoryStore.timeLogs = [];
+  let log = memoryStore.timeLogs.find(l => l.taskId === taskId && l.userId === user.id && l.date === today);
+  if (log && log.sessions.length > 0) {
+    const currentSession = log.sessions[log.sessions.length - 1];
+    currentSession.endTime = now;
+    currentSession.status = 'finished';
+    log.totalActiveSeconds = task.timerState.activeSeconds;
+    log.totalPausedSeconds = task.timerState.pausedSeconds;
+    log.status = 'finished';
+  }
+
+  if (!task.activityLog) task.activityLog = [];
+  task.activityLog.push({
+    id: generateId('act'),
+    type: 'finished',
+    performedBy: user.name,
+    performedByRole: user.role,
+    performedById: user.id,
+    timestamp: now,
+    details: {
+      totalActiveSeconds: task.timerState.activeSeconds,
+      totalPausedSeconds: task.timerState.pausedSeconds
+    },
+    message: `${user.name} completed task "${task.title}". Active work: ${Math.round(task.timerState.activeSeconds / 60)}m, Paused: ${Math.round(task.timerState.pausedSeconds / 60)}m`
+  });
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await UserTask.findOneAndUpdate(
+        { $or: [{ customId: taskId }, { taskId }] },
+        { $set: { timerState: task.timerState, status: 'Completed', progress: 100, completedAt: now, completedBy: user.name, activityLog: task.activityLog } }
+      );
+      if (log) {
+        await TimeLog.findOneAndUpdate(
+          { taskId, userId: user.id, date: today },
+          { $set: log }
+        );
+      }
+    } catch (e) {
+      console.warn('Mongo finish task timer error:', e.message);
+    }
+  }
+
+  return { task, timeLog: log };
+};
+
+// =========================================================================
+// MANAGER'S DAILY TIMELINE
+// =========================================================================
+const getManagerTimeline = async ({ date, teamId, memberId }) => {
+  const targetDate = date || new Date().toISOString().split('T')[0];
+  const events = [];
+
+  // 1. Attendance punches
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+  let attendanceList = memoryStore.attendance.filter(a => a.date === targetDate);
+  if (getStatus()) {
+    try {
+      const dbAtt = await Attendance.find({ date: targetDate }).lean();
+      if (dbAtt && dbAtt.length > 0) attendanceList = dbAtt;
+    } catch (e) {
+      console.warn('Mongo timeline attendance error:', e.message);
+    }
+  }
+
+  if (memberId && memberId !== 'All' && memberId !== 'All Members') {
+    attendanceList = attendanceList.filter(a => a.userId === memberId);
+  }
+  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+    attendanceList = attendanceList.filter(a => a.teamId === teamId || a.teamName === teamId);
+  }
+
+  for (const att of attendanceList) {
+    const memberName = att.userName || 'Team Member';
+    if (Array.isArray(att.punches)) {
+      for (const p of att.punches) {
+        if (p.punchIn) {
+          events.push({
+            id: `att-in-${p.punchIn}`,
+            timestamp: new Date(p.punchIn),
+            type: 'punch_in',
+            actorName: memberName,
+            actorRole: 'Member',
+            userId: att.userId,
+            team: att.teamName || 'Team',
+            title: 'Punched In (Attendance)',
+            description: `${memberName} punched in for workspace attendance.`,
+            badgeColor: 'emerald'
+          });
+        }
+        if (p.punchOut) {
+          const durMins = Math.round((p.durationSeconds || 0) / 60);
+          events.push({
+            id: `att-out-${p.punchOut}`,
+            timestamp: new Date(p.punchOut),
+            type: 'punch_out',
+            actorName: memberName,
+            actorRole: 'Member',
+            userId: att.userId,
+            team: att.teamName || 'Team',
+            title: 'Punched Out (Attendance)',
+            description: `${memberName} punched out. Recorded duration: ${durMins}m.`,
+            badgeColor: 'rose'
+          });
+        }
+      }
+    }
+  }
+
+  // 2. Task Activity Logs & Comments
+  if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
+  let allTasks = memoryStore.userWorkspace.assignedWork || [];
+  if (getStatus()) {
+    try {
+      const dbTasks = await UserTask.find().lean();
+      if (dbTasks && dbTasks.length > 0) allTasks = dbTasks;
+    } catch (e) {
+      console.warn('Mongo timeline tasks error:', e.message);
+    }
+  }
+
+  if (memberId && memberId !== 'All' && memberId !== 'All Members') {
+    allTasks = allTasks.filter(t => t.userId === memberId || t.assigneeId === memberId);
+  }
+  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+    allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId);
+  }
+
+  for (const t of allTasks) {
+    if (Array.isArray(t.activityLog)) {
+      for (const act of t.activityLog) {
+        const actDate = new Date(act.timestamp).toISOString().split('T')[0];
+        if (actDate === targetDate) {
+          let badgeColor = 'indigo';
+          if (act.type === 'paused') badgeColor = 'amber';
+          if (act.type === 'resumed') badgeColor = 'blue';
+          if (act.type === 'finished' || act.type === 'completed') badgeColor = 'emerald';
+          if (act.type === 'deadline_change') badgeColor = 'purple';
+          if (act.type === 'assignee_change') badgeColor = 'sky';
+
+          events.push({
+            id: act.id || `act-${act.timestamp}`,
+            timestamp: new Date(act.timestamp),
+            type: act.type,
+            actorName: act.performedBy || 'System',
+            actorRole: act.performedByRole || 'Admin',
+            userId: act.performedById || t.userId,
+            team: t.team || 'Team',
+            taskTitle: t.title,
+            taskId: t.taskId || t.id,
+            title: act.type === 'paused' ? `Paused Task: "${act.details?.reason || 'Pause'}"` :
+                   act.type === 'resumed' ? `Resumed Task` :
+                   act.type === 'started' ? `Started Task` :
+                   act.type === 'finished' ? `Completed Task` :
+                   act.type === 'deadline_change' ? `Deadline Changed: ${act.details?.oldDate} → ${act.details?.newDate}` :
+                   act.type === 'assignee_change' ? `Assignee Changed: ${act.details?.oldAssignee} → ${act.details?.newAssignee}` :
+                   `Task Activity`,
+            description: act.message || act.type,
+            details: act.details,
+            badgeColor
+          });
+        }
+      }
+    }
+
+    if (Array.isArray(t.comments)) {
+      for (const c of t.comments) {
+        events.push({
+          id: `cmt-${c.id || c.date}`,
+          timestamp: new Date(c.timestamp || Date.now()),
+          type: 'comment',
+          actorName: c.author || 'Team Member',
+          actorRole: c.role || 'Member',
+          userId: t.userId,
+          team: t.team || 'Team',
+          taskTitle: t.title,
+          taskId: t.taskId || t.id,
+          title: `Comment Added`,
+          description: `"${c.text}"`,
+          badgeColor: 'blue'
+        });
+      }
+    }
+  }
+
+  events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+  return {
+    date: targetDate,
+    teamId: teamId || 'All',
+    memberId: memberId || 'All',
+    events
+  };
+};
+
+// =========================================================================
+// MANAGER'S REPORTS (Daily, Weekly, Monthly)
+// =========================================================================
+const getReports = async ({ period = 'daily', date, teamId }) => {
+  const refDate = date ? new Date(date) : new Date();
+  const dateStr = refDate.toISOString().split('T')[0];
+
+  let startDate = dateStr;
+  let endDate = dateStr;
+
+  if (period === 'weekly') {
+    const day = refDate.getDay();
+    const diff = refDate.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(refDate);
+    monday.setDate(diff);
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+    startDate = monday.toISOString().split('T')[0];
+    endDate = sunday.toISOString().split('T')[0];
+  } else if (period === 'monthly') {
+    const year = refDate.getFullYear();
+    const month = refDate.getMonth();
+    startDate = new Date(year, month, 1).toISOString().split('T')[0];
+    endDate = new Date(year, month + 1, 0).toISOString().split('T')[0];
+  }
+
+  let members = memoryStore.members || [];
+  if (getStatus()) {
+    try {
+      const dbMem = await Member.find().lean();
+      if (dbMem && dbMem.length > 0) members = dbMem;
+    } catch (e) {
+      console.warn('Mongo reports members error:', e.message);
+    }
+  }
+
+  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+    members = members.filter(m => m.teamId === teamId || m.team === teamId);
+  }
+
+  const allTasks = memoryStore.userWorkspace?.assignedWork || [];
+  const allAttendance = memoryStore.attendance || [];
+  const allTimeLogs = memoryStore.timeLogs || [];
+  const reportOverrides = memoryStore.reportEntries || [];
+
+  const reportItems = [];
+
+  for (const m of members) {
+    const memId = m.id || m.customId || m._id?.toString();
+    const memEmail = (m.email || '').toLowerCase();
+
+    // Check if manager deleted this report entry
+    const override = reportOverrides.find(r => 
+      r.period === period && r.date === startDate && (r.userId === memId || (r.userEmail && r.userEmail === memEmail))
+    );
+
+    if (override && override.status === 'deleted') {
+      continue;
+    }
+
+    // 1. Attendance Seconds in period
+    const memberAttendance = allAttendance.filter(a => {
+      const isUser = a.userId === memId || (a.userEmail && a.userEmail.toLowerCase() === memEmail);
+      return isUser && a.date >= startDate && a.date <= endDate;
+    });
+    const rawAttendanceSeconds = memberAttendance.reduce((acc, curr) => acc + (curr.totalSeconds || 0), 0);
+
+    // 2. Active Task Time & Paused Time in period
+    const memberLogs = allTimeLogs.filter(l => {
+      const isUser = l.userId === memId || (l.userEmail && l.userEmail.toLowerCase() === memEmail);
+      return isUser && l.date >= startDate && l.date <= endDate;
+    });
+    const rawActiveSeconds = memberLogs.reduce((acc, curr) => acc + (curr.totalActiveSeconds || 0), 0);
+    const rawPausedSeconds = memberLogs.reduce((acc, curr) => acc + (curr.totalPausedSeconds || 0), 0);
+
+    // 3. Completed work uses task's completion date within period
+    const memberTasks = allTasks.filter(t => t.userId === memId || t.assigneeId === memId || (t.assigneeEmail && t.assigneeEmail.toLowerCase() === memEmail));
+    const completedTasks = memberTasks.filter(t => {
+      if (t.status !== 'Completed') return false;
+      const compDate = t.completedAt ? new Date(t.completedAt).toISOString().split('T')[0] : (t.dueDate || '');
+      return compDate >= startDate && compDate <= endDate;
+    });
+    const inProgressTasks = memberTasks.filter(t => t.status === 'In Progress' || t.status === 'To Do');
+
+    // Apply manager override if modified
+    const finalAttendance = override && override.attendanceSeconds !== undefined ? override.attendanceSeconds : rawAttendanceSeconds;
+    const finalActive = override && override.activeWorkSeconds !== undefined ? override.activeWorkSeconds : rawActiveSeconds;
+    const finalPaused = override && override.pausedSeconds !== undefined ? override.pausedSeconds : rawPausedSeconds;
+    const finalCompleted = override && override.completedTasksCount !== undefined ? override.completedTasksCount : completedTasks.length;
+
+    reportItems.push({
+      id: override?.id || `rep-${memId}-${startDate}`,
+      userId: memId,
+      userName: m.name,
+      userEmail: memEmail,
+      teamId: m.teamId || '',
+      teamName: m.team || 'Team',
+      period,
+      startDate,
+      endDate,
+      attendanceSeconds: finalAttendance,
+      activeWorkSeconds: finalActive,
+      pausedSeconds: finalPaused,
+      completedTasksCount: finalCompleted,
+      inProgressTasksCount: inProgressTasks.length,
+      managerNotes: override?.managerNotes || '',
+      isModified: override?.status === 'modified',
+      modifiedBy: override?.modifiedBy || '',
+      rawCalculations: {
+        attendanceSeconds: rawAttendanceSeconds,
+        activeWorkSeconds: rawActiveSeconds,
+        pausedSeconds: rawPausedSeconds,
+        completedTasksCount: completedTasks.length
+      }
+    });
+  }
+
+  return {
+    period,
+    startDate,
+    endDate,
+    date: dateStr,
+    teamId: teamId || 'All',
+    items: reportItems
+  };
+};
+
+const updateReportEntry = async (id, data, user) => {
+  if (!memoryStore.reportEntries) memoryStore.reportEntries = [];
+  let entryIndex = memoryStore.reportEntries.findIndex(r => r.id === id || r.customId === id);
+
+  const updated = {
+    ...(entryIndex >= 0 ? memoryStore.reportEntries[entryIndex] : {}),
+    id: id || generateId('rep'),
+    customId: id || generateId('rep'),
+    ...data,
+    status: 'modified',
+    modifiedBy: user.name || 'Manager',
+    modifiedAt: new Date()
+  };
+
+  if (entryIndex >= 0) {
+    memoryStore.reportEntries[entryIndex] = updated;
+  } else {
+    memoryStore.reportEntries.push(updated);
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await ReportEntry.findOneAndUpdate(
+        { $or: [{ customId: id }, { _id: mongoose.Types.ObjectId.isValid(id) ? id : null }] },
+        { $set: updated },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.warn('Mongo report update error:', e.message);
+    }
+  }
+
+  return updated;
+};
+
+const deleteReportEntry = async (id, user) => {
+  if (!memoryStore.reportEntries) memoryStore.reportEntries = [];
+  let entry = memoryStore.reportEntries.find(r => r.id === id || r.customId === id);
+
+  if (entry) {
+    entry.status = 'deleted';
+    entry.modifiedBy = user.name || 'Manager';
+    entry.modifiedAt = new Date();
+  } else {
+    memoryStore.reportEntries.push({
+      id,
+      customId: id,
+      status: 'deleted',
+      modifiedBy: user.name || 'Manager',
+      modifiedAt: new Date()
+    });
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await ReportEntry.findOneAndUpdate(
+        { $or: [{ customId: id }, { _id: mongoose.Types.ObjectId.isValid(id) ? id : null }] },
+        { $set: { status: 'deleted', modifiedBy: user.name || 'Manager', modifiedAt: new Date() } },
+        { upsert: true }
+      );
+    } catch (e) {
+      console.warn('Mongo report delete error:', e.message);
+    }
+  }
+
+  return { success: true, id };
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -4239,5 +5196,19 @@ module.exports = {
   getMeetingById,
   getMeetingsForUser,
   verifyMeetingAccess,
-  getTurnCredentials
+  getTurnCredentials,
+  // Assignment & Task Time Tracking
+  editAssignment,
+  getTodayAttendance,
+  recordPunchIn,
+  recordPunchOut,
+  startTaskTimer,
+  pauseTaskTimer,
+  resumeTaskTimer,
+  finishTaskTimer,
+  // Manager Timeline & Reports
+  getManagerTimeline,
+  getReports,
+  updateReportEntry,
+  deleteReportEntry
 };

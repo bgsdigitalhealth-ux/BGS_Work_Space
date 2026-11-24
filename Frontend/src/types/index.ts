@@ -100,6 +100,27 @@ export interface UserTaskAttachment {
   date: string;
 }
 
+export interface TaskTimerState {
+  status: 'idle' | 'running' | 'paused' | 'finished';
+  activeSeconds: number;
+  pausedSeconds: number;
+  isPaused: boolean;
+  pauseReason?: string;
+  activeSessionStart?: string | null;
+  pausedAt?: string | null;
+}
+
+export interface TaskActivityItem {
+  id: string;
+  type: 'created' | 'deadline_change' | 'assignee_change' | 'status_change' | 'started' | 'paused' | 'resumed' | 'finished' | 'comment' | 'deliverable_submitted';
+  performedBy: string;
+  performedByRole: string;
+  performedById?: string;
+  timestamp: string;
+  details?: Record<string, any>;
+  message?: string;
+}
+
 export interface UserAssignedWork {
   id: string;
   taskId?: string;
@@ -125,6 +146,78 @@ export interface UserAssignedWork {
   memberId?: string;
   teamId?: string;
   departmentId?: string;
+  // Timer & Audit Tracking
+  timerState?: TaskTimerState;
+  activityLog?: TaskActivityItem[];
+  completedAt?: string;
+  completedBy?: string;
+}
+
+export interface AttendancePunch {
+  punchIn: string;
+  punchOut?: string | null;
+  durationSeconds?: number;
+}
+
+export interface AttendanceRecord {
+  userId: string;
+  userEmail: string;
+  date: string;
+  status: 'punched_in' | 'punched_out';
+  punches: AttendancePunch[];
+  totalSeconds: number;
+  currentPunchIn?: string | null;
+}
+
+export interface TimelineEvent {
+  id: string;
+  timestamp: string;
+  type: string;
+  actorName: string;
+  actorRole: string;
+  userId?: string;
+  team?: string;
+  taskTitle?: string;
+  taskId?: string;
+  title: string;
+  description: string;
+  details?: Record<string, any>;
+  badgeColor?: 'emerald' | 'rose' | 'amber' | 'blue' | 'purple' | 'sky' | 'indigo';
+}
+
+export interface ReportItem {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  teamId?: string;
+  teamName: string;
+  period: 'daily' | 'weekly' | 'monthly';
+  startDate: string;
+  endDate: string;
+  attendanceSeconds: number;
+  activeWorkSeconds: number;
+  pausedSeconds: number;
+  completedTasksCount: number;
+  inProgressTasksCount: number;
+  managerNotes?: string;
+  isModified?: boolean;
+  modifiedBy?: string;
+  rawCalculations?: {
+    attendanceSeconds: number;
+    activeWorkSeconds: number;
+    pausedSeconds: number;
+    completedTasksCount: number;
+  };
+}
+
+export interface ReportResponse {
+  period: 'daily' | 'weekly' | 'monthly';
+  startDate: string;
+  endDate: string;
+  date: string;
+  teamId: string;
+  items: ReportItem[];
 }
 
 export interface UserWorkHistory {
@@ -211,7 +304,7 @@ export interface AppointmentStats {
 }
 
 // User & Role System (ONLY TWO ROLES: admin and user)
-export type UserRole = 'admin' | 'user';
+export type UserRole = 'admin' | 'manager' | 'user';
 
 export interface User {
   id: string;

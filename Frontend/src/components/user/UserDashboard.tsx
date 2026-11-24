@@ -139,7 +139,14 @@ export const UserDashboard: React.FC = () => {
       {/* Top 5 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Assigned */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition">
+        <div 
+          onClick={() => setUserFilterTab('All')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setUserFilterTab('All'); } }}
+          title="Click to view all assigned tasks"
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer select-none"
+        >
           <div className="w-12 h-12 rounded-xl bg-[#f5f3ff] text-[#7c3aed] flex items-center justify-center shrink-0">
             <ClipboardList className="w-6 h-6" />
           </div>

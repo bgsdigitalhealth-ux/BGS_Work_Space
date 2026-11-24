@@ -23,7 +23,7 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (e.g. Render health checks, curl, cron)
     if (!origin) return callback(null, true);
-    // Dynamically allow Vercel production/preview deployments and local dev
+    // Dynamically allow Cloudflare production/preview deployments, custom domains, and local dev
     return callback(null, true);
   },
   credentials: true,

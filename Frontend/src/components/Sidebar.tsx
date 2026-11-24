@@ -9,6 +9,7 @@ import {
   Calendar as CalendarIcon,
   ClipboardCheck,
   FileBarChart,
+  Clock,
   ChevronDown,
   ChevronRight,
   Database,
@@ -230,6 +231,16 @@ export const Sidebar: React.FC = () => {
                 {unreadMessagesCount}
               </span>
             )}
+          </button>
+
+          {/* Daily Timeline */}
+          <button
+            onClick={() => handleNavAction(() => setAdminNav('timeline'))}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl font-medium text-sm transition-colors text-left cursor-pointer ${adminNav === 'timeline' ? 'text-white bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            <Clock className="w-4 h-4 text-slate-400" />
+            <span>Daily Timeline</span>
           </button>
 
           {/* Reports */}

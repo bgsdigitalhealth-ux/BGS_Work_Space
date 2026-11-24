@@ -22,13 +22,15 @@ import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
 import { UserSettings } from './components/user/UserSettings';
+import { ManagerTimelineView } from './components/user/ManagerTimelineView';
+import { ReportsView } from './components/user/ReportsView';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';
 import { useApp } from './context/AppContext';
 
 export const App: React.FC = () => {
-  const { currentUser, userNav, adminNav, userWorkspace } = useApp();
+  const { currentUser, userNav, adminNav } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
   // Check if current route is a private video meeting route: /meet/<meeting-id>
@@ -87,14 +89,8 @@ export const App: React.FC = () => {
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'settings' && <UserSettings />}
           {userNav === 'team' && <UserTeamView />}
-          {userNav === 'reports' && (
-            <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm text-center">
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Performance & Work Reports</h3>
-              <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
-                All sprint deliverables tracked against live database records. {userWorkspace?.stats?.completionPercentage ?? 0}% task completion on schedule.
-              </p>
-            </div>
-          )}
+          {userNav === 'timeline' && <ManagerTimelineView />}
+          {userNav === 'reports' && <ReportsView />}
         </main>
       </div>
     );
@@ -119,23 +115,12 @@ export const App: React.FC = () => {
         ) : adminNav === 'settings' ? (
           /* Admin Side - Settings & Personnel Management */
           <AdminSettings />
+        ) : adminNav === 'timeline' ? (
+          /* Admin Side - Manager's Daily Timeline */
+          <ManagerTimelineView />
         ) : adminNav === 'reports' ? (
-          /* Admin Side - Executive Reports & Analytics */
-          <div className="bg-white rounded-2xl border border-slate-200/60 p-6 sm:p-8 shadow-xs max-w-4xl">
-            <h3 className="text-xl font-bold text-slate-900 mb-2">Executive Reports & Deliverables Analytics</h3>
-            <p className="text-sm text-slate-500 mb-6">
-              Consolidated real-time work completion across all departments, teams, and administrator appointments.
-            </p>
-            <StatsOverview />
-            <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-100 text-xs text-slate-600 space-y-2">
-              <p className="font-semibold text-slate-800">Department Status Highlights:</p>
-              <ul className="list-disc list-inside space-y-1 text-slate-500">
-                <li>All user submissions and task completions are actively recorded in persistent database storage.</li>
-                <li>WhatsApp notification deliveries and receiver logs remain synced in real time.</li>
-                <li>Administrator appointments and video meeting invites are operating with live audit tracking.</li>
-              </ul>
-            </div>
-          </div>
+          /* Admin Side - Activity & Completion Reports */
+          <ReportsView />
         ) : (
           <>
             {/* Top 5 KPI Stats Cards */}
