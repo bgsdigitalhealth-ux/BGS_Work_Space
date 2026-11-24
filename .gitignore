@@ -29,4 +29,7 @@ Backend/data/wpp_messages.json
 *.backup.json
 .cache/
 
+# Deployment
+.vercel
+
 

@@ -30,7 +30,7 @@ const DEFAULT_SETTINGS = {
       enabled: true
     }
   },
-  appUrl: process.env.APP_URL || 'https://bgsworkspace.vercel.app/',
+  appUrl: process.env.APP_URL || process.env.FRONTEND_URL || 'https://acu-workspace.pages.dev/',
   lastAlertIncidentId: null,
   lastAlertSentAt: null,
   alertHistory: []
@@ -135,7 +135,7 @@ const deliverEmail = async (recipient, subject, text, html) => {
       },
       body: JSON.stringify({
         personalizations: [{ to: [{ email: recipient.trim() }] }],
-        from: { email: process.env.SMTP_FROM || 'alerts@bgsworkspace.vercel.app', name: 'BGS WorkHub Alerts' },
+        from: { email: process.env.SMTP_FROM || 'alerts@bgsmedicalcollege.com', name: 'BGS WorkHub Alerts' },
         subject,
         content: [{ type: 'text/html', value: html || `<p>${text.replace(/\n/g, '<br/>')}</p>` }]
       })
@@ -284,7 +284,7 @@ const onDisconnect = async ({ incidentDetails = {} } = {}) => {
 
   console.log(`[WPPAlert] New disconnection incident detected: ${activeIncidentId}. Dispatching alerts...`);
 
-  const dashboardUrl = alertSettings.appUrl || 'https://bgsworkspace.vercel.app/';
+  const dashboardUrl = alertSettings.appUrl || process.env.APP_URL || process.env.FRONTEND_URL || 'https://acu-workspace.pages.dev/';
   const subject = '⚠️ Alert: WhatsApp Notification Service Disconnected - BGS WorkHub';
   const alertText = 
     `WhatsApp Notification Service Alert\n\n` +
@@ -416,7 +416,7 @@ const onActionRequired = async ({ reason = 'QR code scan required' } = {}) => {
 
 // Send a test alert to verify settings and configuration
 const sendTestAlert = async (channel = 'all') => {
-  const dashboardUrl = alertSettings.appUrl || 'https://bgsworkspace.vercel.app/';
+  const dashboardUrl = alertSettings.appUrl || process.env.APP_URL || process.env.FRONTEND_URL || 'https://acu-workspace.pages.dev/';
   const provConfig = getProviderConfig();
   const testResults = {};
 
