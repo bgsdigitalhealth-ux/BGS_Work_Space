@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
+import { AttendanceWidget } from './AttendanceWidget';
 
 export const UserDashboard: React.FC = () => {
   const { 
@@ -126,6 +127,9 @@ export const UserDashboard: React.FC = () => {
 
   return (
     <div className="space-y-6 relative pb-10">
+      {/* Workspace Attendance Punch Widget */}
+      <AttendanceWidget />
+
       {/* Top 5 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Assigned */}
