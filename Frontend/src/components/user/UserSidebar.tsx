@@ -15,7 +15,7 @@ import {
   Settings,
   X
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager } from '../../context/AppContext';
 
 export const UserSidebar: React.FC = () => {
   const { 
@@ -27,8 +27,16 @@ export const UserSidebar: React.FC = () => {
     currentUser, 
     unreadMessagesCount,
     mobileSidebarOpen,
-    setMobileSidebarOpen
+    setMobileSidebarOpen,
+    members,
+    setPortalMode
   } = useApp();
+
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+  const isManager = isUserManager(currentUser, myMember);
 
   const assignedCount = userWorkspace?.assignedWork?.length || 0;
 
@@ -134,6 +142,25 @@ export const UserSidebar: React.FC = () => {
           })}
         </nav>
       </div>
+
+      {/* Manager Panel Switcher (Only visible for managers/heads/leads) */}
+      {isManager && (
+        <div className="px-5 mb-2 relative z-10">
+          <button
+            onClick={() => {
+              setPortalMode('admin');
+              setMobileSidebarOpen(false);
+            }}
+            className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-950/40 hover:from-indigo-500 hover:to-purple-500 transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <Shield className="w-4 h-4 text-white" />
+              <span>Manager Panel</span>
+            </div>
+            <span className="px-1.5 py-0.5 rounded text-[9px] bg-white/20 uppercase tracking-wider font-extrabold">Switch</span>
+          </button>
+        </div>
+      )}
 
       {/* Bottom User Card */}
       <div className="p-5 relative z-10">

@@ -30,6 +30,7 @@ interface AppContextType {
 
   // Portal ('admin' | 'user') derived from logged-in user role
   portalMode: 'admin' | 'user';
+  setPortalMode: (mode: 'admin' | 'user') => void;
 
   // Admin Navigation: 'dashboard' | 'appointments'
   adminNav: string;
@@ -175,8 +176,6 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const BANNED_EMAILS = [
-  'dynamicsajjan@gmail.com',
-  'dynamicsajjan@gamil.com',
   'admin@company.com',
   'user@company.com',
   'rahul@company.com',
@@ -188,8 +187,68 @@ export const BANNED_EMAILS = [
 export const isBannedEmail = (email?: string): boolean => {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  if (clean.includes('dynamicsajjan')) return true;
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
+};
+
+// Check if a user holds a Manager, Head, Lead, or Administrator role
+export const isUserManager = (user?: User | null, member?: Member | null): boolean => {
+  if (!user && !member) return false;
+  if (user && (user.role === 'admin' || (user.role as any) === 'manager')) return true;
+  const roleString = [
+    user?.role,
+    user?.teamRole,
+    user?.title,
+    member?.role
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return roleString.includes('admin') ||
+         roleString.includes('manager') ||
+         roleString.includes('head') ||
+         roleString.includes('lead');
+};
+
+// Dynamic Multi-Team Visibility Isolation:
+// - Managers & Admins can see ALL teams' member works.
+// - Regular team members can ONLY see assigned works belonging to the SAME team (or assigned directly to them).
+export const filterTasksForUser = (tasks: UserAssignedWork[], user: User | null, member?: Member | null): UserAssignedWork[] => {
+  if (!tasks || !Array.isArray(tasks)) return [];
+  if (!user) return [];
+
+  // Managers and Admins can see ALL teams' member works
+  if (isUserManager(user, member)) {
+    return tasks;
+  }
+
+  // Regular team member: ONLY see tasks belonging to the SAME team (or assigned directly to them)
+  const myTeam = (user.team || '').trim().toLowerCase();
+  const myTeamId = (user as any).teamId || member?.teamId || '';
+  const myEmail = (user.email || '').trim().toLowerCase();
+  const myId = user.id || '';
+
+  return tasks.filter(t => {
+    // 1. Direct assignment to this user
+    const matchId = myId && (t.userId === myId || (t as any).assigneeId === myId);
+    const matchEmail = myEmail && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === myEmail;
+    const matchMember = (user as any).memberId && (t as any).memberId === (user as any).memberId;
+    const matchName = user.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === user.name.toLowerCase();
+    if (matchId || matchEmail || matchMember || matchName) {
+      return true;
+    }
+
+    // 2. Same team check: task must belong to this user's team
+    const taskTeamId = (t as any).teamId || '';
+    const taskTeamName = (t.team || '').trim().toLowerCase();
+
+    if (myTeamId && taskTeamId && myTeamId === taskTeamId) {
+      return true;
+    }
+    if (myTeam && taskTeamName && myTeam === taskTeamName) {
+      return true;
+    }
+
+    // Different team: NOT visible
+    return false;
+  });
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -204,9 +263,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return null;
   });
 
-  // Portal mode strictly derived from logged in user's role: 'admin' or 'user'
-  const portalMode: 'admin' | 'user' = currentUser?.role === 'user' ? 'user' : 'admin';
-
   // Admin navigation
   const [adminNav, setAdminNav] = useState<string>('dashboard');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
@@ -217,6 +273,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
+
+  // Modifiable portal mode for managers/admins (toggle between 'admin' Panel and 'user' Workspace)
+  const [portalModeState, setPortalModeState] = useState<'admin' | 'user'>('admin');
+
+  // Find member corresponding to current user to check manager role accurately
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+
+  const isMgr = isUserManager(currentUser, myMember);
+  // Non-managers are strictly locked to 'user' mode.
+  // Managers default to 'admin' (Management Panel) and can toggle to 'user' (My Workspace).
+  const portalMode: 'admin' | 'user' = !currentUser ? 'admin' : (!isMgr ? 'user' : portalModeState);
+
+  const setPortalMode = (mode: 'admin' | 'user') => {
+    if (mode === 'admin' && !isUserManager(currentUser, myMember)) {
+      setPortalModeState('user');
+      return;
+    }
+    setPortalModeState(mode);
+  };
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workDone, setWorkDone] = useState<WorkDone[]>([]);
@@ -643,21 +721,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       const data = await api.getUserWorkspace(currentUser?.id, currentUser?.email);
 
-      // Strict User Isolation: Regular users can NEVER see other users' assigned work
+      // Dynamic Multi-Team Isolation:
+      // Managers & Admins see ALL teams member works.
+      // Regular team members ONLY see assigned works of the SAME team.
       if (currentUser && currentUser.role === 'user') {
-        const myTasks = (data.assignedWork || []).filter(t => {
-          const matchId = currentUser.id && (t.userId === currentUser.id || (t as any).assigneeId === currentUser.id);
-          const matchEmail = currentUser.email && (t as any).assigneeEmail && (t as any).assigneeEmail.toLowerCase() === currentUser.email.toLowerCase();
-          const matchMember = (currentUser as any).memberId && (t as any).memberId === (currentUser as any).memberId;
-          const matchName = currentUser.name && (t as any).assigneeName && (t as any).assigneeName.toLowerCase() === currentUser.name.toLowerCase();
-          return Boolean(matchId || matchEmail || matchMember || matchName);
-        });
+        const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === (currentUser.email || '').toLowerCase()) || m.id === currentUser.id);
+        const visibleTasks = filterTasksForUser(data.assignedWork || [], currentUser, myMember);
 
-        data.assignedWork = myTasks;
-        data.stats.totalAssigned = myTasks.length;
-        data.stats.inProgress = myTasks.filter(t => t.status === 'In Progress').length;
-        data.stats.upcomingWork = myTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
-        data.stats.completedWork = myTasks.filter(t => t.status === 'Completed').length;
+        data.assignedWork = visibleTasks;
+        data.stats.totalAssigned = visibleTasks.length;
+        data.stats.inProgress = visibleTasks.filter(t => t.status === 'In Progress').length;
+        data.stats.upcomingWork = visibleTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
+        data.stats.completedWork = visibleTasks.filter(t => t.status === 'Completed').length;
+        data.stats.completionPercentage = visibleTasks.length > 0
+          ? Math.round((data.stats.completedWork / visibleTasks.length) * 100)
+          : 0;
+        data.stats.completedFractionText = `${data.stats.completedWork} of ${visibleTasks.length} Tasks`;
       }
 
       setUserWorkspace(data);
@@ -683,6 +762,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const openSubmitWorkDrawer = (task?: UserAssignedWork) => {
     if (task) {
       setDrawerSelectedTask(task);
+    } else if (selectedUserTask) {
+      setDrawerSelectedTask(selectedUserTask);
     } else if (userWorkspace?.assignedWork?.length) {
       setDrawerSelectedTask(userWorkspace.assignedWork[0]);
     }
@@ -692,11 +773,44 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const handleSubmitWork = async (payload: { taskId: string; workStatus: string; comment: string }) => {
     try {
       await api.submitUserWork(payload);
+
+      // Immediately update selectedUserTask locally for responsive UI in UserWorkDetails
+      if (selectedUserTask && (selectedUserTask.id === payload.taskId || selectedUserTask.taskId === payload.taskId)) {
+        const now = new Date();
+        const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
+        const updatedComments = [
+          ...(selectedUserTask.comments || []),
+          {
+            id: `c-${Date.now()}`,
+            author: currentUser?.name || 'Team Member',
+            role: 'Team Member',
+            date: fullDateTime,
+            badge: 'Submission',
+            text: payload.comment || 'Work deliverables submitted for review.'
+          }
+        ];
+
+        setSelectedUserTask({
+          ...selectedUserTask,
+          status: payload.workStatus === 'Completed' ? 'Completed' : 'Under Review',
+          progress: 100,
+          submittedDate: fullDateTime,
+          submittedAt: now.toISOString(),
+          completedDate: payload.workStatus === 'Completed' ? fullDateTime : undefined,
+          completedAt: payload.workStatus === 'Completed' ? now.toISOString() : undefined,
+          comments: updatedComments
+        });
+      }
+
       await refreshUserWorkspace();
       await refreshNotifications();
       setIsSubmitWorkDrawerOpen(false);
     } catch (e) {
-      console.error(e);
+      console.error('Submit work error:', e);
+      throw e;
     }
   };
 
@@ -758,20 +872,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const u = await api.getUsers();
       const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
       setAllUsers(sanitized);
-      // Strictly protect active administrators from unwarranted session termination.
-      // If a regular user account was genuinely deleted from the system, revoke access.
-      if (currentUser && currentUser.role !== 'admin' && Array.isArray(sanitized) && sanitized.length > 0) {
-        const stillExists = sanitized.some(x =>
-          (currentUser.id && x.id === currentUser.id) ||
-          (x.email && x.email.toLowerCase() === (currentUser.email || '').toLowerCase())
-        );
-        if (!stillExists) {
-          console.warn('[Session] Current user account no longer active. Terminating session.');
-          logout();
-          alert('Your account has been deleted by an administrator. Access to the dashboard has been revoked.');
-          window.location.href = '/';
-        }
-      }
     } catch (e) {
       console.error(e);
     }
@@ -812,8 +912,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let isMounted = true;
     api.validateSession(currentUser.id, currentUser.email).then((res) => {
       if (!isMounted) return;
-      if (!res.valid) {
-        console.warn('[Session] Session verification failed on startup:', res.error);
+      // Only revoke session if backend explicitly confirmed deletion in MongoDB Atlas (never on cold start / network blip)
+      if (!res.valid && res.deleted) {
+        console.warn('[Session] Session verification confirmed account deleted by admin:', res.error);
         logout();
         alert('Your account has been deleted by an administrator. Access denied.');
         window.location.href = '/';
@@ -1161,6 +1262,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         logout,
         updateUserProfile,
         portalMode,
+        setPortalMode,
         adminNav,
         setAdminNav,
         mobileSidebarOpen,

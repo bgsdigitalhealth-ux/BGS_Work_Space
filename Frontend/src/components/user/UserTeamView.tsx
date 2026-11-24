@@ -10,11 +10,12 @@ import {
   ShieldCheck,
   Briefcase
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager } from '../../context/AppContext';
 
 export const UserTeamView: React.FC = () => {
-  const { currentUser, members, allUsers, setUserNav } = useApp();
+  const { currentUser, members, teams, allUsers, setUserNav } = useApp();
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedTeamFilter, setSelectedTeamFilter] = useState('All');
 
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
   const myTeam = (currentUser?.team || '').trim();
@@ -27,6 +28,7 @@ export const UserTeamView: React.FC = () => {
   );
   const myTeamId = myMember ? myMember.teamId : (currentUser as any)?.teamId;
   const myDeptId = myMember ? myMember.departmentId : (currentUser as any)?.departmentId;
+  const isManager = isUserManager(currentUser, myMember);
 
   // Filter members who belong to the SAME team as currentUser
   const sameTeamMembers = members.filter(m => {
@@ -54,14 +56,29 @@ export const UserTeamView: React.FC = () => {
     return false;
   });
 
-  // If no members in members table match, check allUsers for users in same team
-  let displayList: any[] = sameTeamMembers;
-  if (displayList.length === 0) {
+  // Managers can see ALL teams' members. Regular members only see the SAME team.
+  let displayList: any[] = isManager
+    ? (members.length > 0 ? members : allUsers.filter(u => u.role === 'user'))
+    : sameTeamMembers;
+
+  if (!isManager && displayList.length === 0) {
     displayList = allUsers.filter(u => {
       if (u.role !== 'user') return false;
       if (myTeam && u.team && u.team.toLowerCase() === myTeam.toLowerCase()) return true;
       if (myDept && u.department && u.department.toLowerCase() === myDept.toLowerCase()) return true;
       if (u.email && u.email.toLowerCase() === myEmail) return true;
+      return false;
+    });
+  }
+
+  // Filter by Team selector (if Manager)
+  if (isManager && selectedTeamFilter !== 'All') {
+    displayList = displayList.filter(m => {
+      if (m.teamId && m.teamId === selectedTeamFilter) return true;
+      const foundT = teams.find(t => t.id === selectedTeamFilter || t.name.toLowerCase() === selectedTeamFilter.toLowerCase());
+      if (foundT && m.teamId === foundT.id) return true;
+      const u = allUsers.find(x => x.email?.toLowerCase() === m.email?.toLowerCase());
+      if (foundT && u?.team && u.team.toLowerCase() === foundT.name.toLowerCase()) return true;
       return false;
     });
   }
@@ -113,16 +130,33 @@ export const UserTeamView: React.FC = () => {
         </div>
 
         {/* Search bar */}
-        <div className="pt-4 flex items-center justify-between gap-4">
-          <div className="relative w-full sm:w-72">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5 pointer-events-none" />
-            <input
-              type="text"
-              placeholder="Search teammates by name or role..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
-            />
+        <div className="pt-4 flex items-center justify-between gap-4 flex-wrap">
+          <div className="flex items-center gap-3 flex-1 flex-wrap">
+            <div className="relative w-full sm:w-72">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5 pointer-events-none" />
+              <input
+                type="text"
+                placeholder="Search teammates by name or role..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6]"
+              />
+            </div>
+
+            {isManager && teams.length > 0 && (
+              <div className="relative">
+                <select
+                  value={selectedTeamFilter}
+                  onChange={(e) => setSelectedTeamFilter(e.target.value)}
+                  className="appearance-none bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 py-2 pl-3 pr-8 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] cursor-pointer"
+                >
+                  <option value="All">All Teams ({members.length})</option>
+                  {teams.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
 
           <button

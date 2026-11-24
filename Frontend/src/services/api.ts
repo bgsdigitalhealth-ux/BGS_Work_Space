@@ -1,8 +1,24 @@
 import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, TimelineEvent, ReportItem, ReportResponse } from '../types';
 
-// Support production backend on Render via VITE_API_URL or fallback to local proxy /api
-const rawBase = (import.meta.env.VITE_API_URL || '').trim();
-export const API_BASE = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/+$/, '')}/api`) : '/api';
+// Support production backend on Render via VITE_API_URL (Cloudflare Pages) or fallback to local proxy /api
+const rawBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
+export const API_BASE = rawBase ? (rawBase.endsWith('/api') ? rawBase : `${rawBase}/api`) : '/api';
+
+export const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const raw = localStorage.getItem('workhub_user');
+    if (raw) {
+      const u = JSON.parse(raw);
+      if (u.role) headers['x-user-role'] = u.role;
+      if (u.email) headers['x-user-email'] = u.email;
+      if (u.id) headers['x-user-id'] = u.id;
+    }
+  } catch (e) {
+    // ignore storage read error
+  }
+  return headers;
+};
 
 export const api = {
   // Stats
@@ -21,7 +37,7 @@ export const api = {
   createDepartment: async (data: Partial<Department>): Promise<Department> => {
     const res = await fetch(`${API_BASE}/departments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create department');
@@ -30,14 +46,14 @@ export const api = {
   updateDepartment: async (id: string, data: Partial<Department>): Promise<Department> => {
     const res = await fetch(`${API_BASE}/departments/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to update department');
     return res.json();
   },
   deleteDepartment: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/departments/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/departments/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete department');
   },
 
@@ -51,7 +67,7 @@ export const api = {
   createTeam: async (data: Partial<Team>): Promise<Team> => {
     const res = await fetch(`${API_BASE}/teams`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create team');
@@ -60,14 +76,14 @@ export const api = {
   updateTeam: async (id: string, data: Partial<Team>): Promise<Team> => {
     const res = await fetch(`${API_BASE}/teams/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to update team');
     return res.json();
   },
   deleteTeam: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/teams/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/teams/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete team');
   },
 
@@ -83,7 +99,7 @@ export const api = {
   createMember: async (data: Partial<Member>): Promise<Member> => {
     const res = await fetch(`${API_BASE}/members`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -95,7 +111,7 @@ export const api = {
   updateMember: async (id: string, data: Partial<Member>): Promise<Member> => {
     const res = await fetch(`${API_BASE}/members/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -105,7 +121,7 @@ export const api = {
     return res.json();
   },
   deleteMember: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/members/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/members/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete member');
   },
 
@@ -129,14 +145,14 @@ export const api = {
   createAssignment: async (data: Partial<Assignment>): Promise<Assignment> => {
     const res = await fetch(`${API_BASE}/assignments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create assignment');
     return res.json();
   },
   deleteAssignment: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/assignments/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/assignments/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete assignment');
   },
   editAssignment: async (id: string, data: any): Promise<any> => {
@@ -292,7 +308,7 @@ export const api = {
   createTask: async (data: Partial<Task>): Promise<Task> => {
     const res = await fetch(`${API_BASE}/tasks`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create task');
@@ -301,19 +317,19 @@ export const api = {
   updateTask: async (id: string, data: Partial<Task>): Promise<Task> => {
     const res = await fetch(`${API_BASE}/tasks/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to update task');
     return res.json();
   },
   toggleTask: async (id: string): Promise<Task> => {
-    const res = await fetch(`${API_BASE}/tasks/${id}/toggle`, { method: 'PATCH' });
+    const res = await fetch(`${API_BASE}/tasks/${id}/toggle`, { method: 'PATCH', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to toggle task');
     return res.json();
   },
   deleteTask: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/tasks/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete task');
   },
 
@@ -327,14 +343,14 @@ export const api = {
   createWorkDone: async (data: Partial<WorkDone>): Promise<WorkDone> => {
     const res = await fetch(`${API_BASE}/work-done`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) throw new Error('Failed to create work done');
     return res.json();
   },
   deleteWorkDone: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/work-done/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/work-done/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete work done');
   },
 
@@ -416,7 +432,7 @@ export const api = {
     return res.json();
   },
   deleteAppointment: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/appointments/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/appointments/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to delete appointment');
   },
 
@@ -453,19 +469,26 @@ export const api = {
     }
     return res.json();
   },
-  validateSession: async (id?: string, email?: string): Promise<{ valid: boolean; user?: import('../types').User; error?: string }> => {
+  validateSession: async (id?: string, email?: string): Promise<{ valid: boolean; deleted?: boolean; pendingDb?: boolean; user?: import('../types').User; error?: string }> => {
     try {
       const res = await fetch(`${API_BASE}/auth/validate-session`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ id, email })
       });
+      // Only treat explicit 401 from backend (when Atlas confirmed deletion) as revoked session.
+      // Transient 5xx / Render wake-up errors must NEVER falsely log out an active user!
+      if (res.status === 401) {
+        const body = await res.json().catch(() => ({ valid: false, deleted: true }));
+        return { valid: false, deleted: body.deleted !== false, error: body.message || 'User account has been deleted' };
+      }
       if (!res.ok) {
-        return { valid: false, error: 'User account has been deleted' };
+        return { valid: true, pendingDb: true };
       }
       return res.json();
     } catch (e: any) {
-      return { valid: false, error: e.message || 'Validation failed' };
+      // Network blip or Render cold start — keep session intact
+      return { valid: true, pendingDb: true };
     }
   },
   getUsers: async (): Promise<import('../types').User[]> => {
@@ -476,7 +499,7 @@ export const api = {
   updateUser: async (id: string, data: { name?: string; email?: string; role?: 'admin' | 'user'; password?: string; avatar?: string }): Promise<{ success: boolean; user: import('../types').User }> => {
     const res = await fetch(`${API_BASE}/auth/users/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -487,7 +510,8 @@ export const api = {
   },
   deleteUser: async (id: string): Promise<{ success: boolean; message: string }> => {
     const res = await fetch(`${API_BASE}/auth/users/${id}`, {
-      method: 'DELETE'
+      method: 'DELETE',
+      headers: getAuthHeaders()
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Failed to delete user' }));
@@ -533,7 +557,7 @@ export const api = {
   createAdmin: async (data: { name: string; email: string; password: string }): Promise<{ success: boolean; user: import('../types').User }> => {
     const res = await fetch(`${API_BASE}/auth/admins`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(data)
     });
     if (!res.ok) {
@@ -543,7 +567,7 @@ export const api = {
     return res.json();
   },
   deleteAdmin: async (id: string): Promise<void> => {
-    const res = await fetch(`${API_BASE}/auth/admins/${id}`, { method: 'DELETE' });
+    const res = await fetch(`${API_BASE}/auth/admins/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ error: 'Failed to delete administrator' }));
       throw new Error(err.error || 'Failed to delete administrator');
@@ -577,7 +601,7 @@ export const api = {
   approveWork: async (taskId: string, comment?: string) => {
     const res = await fetch(`${API_BASE}/work/${taskId}/approve`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ comment })
     });
     if (!res.ok) throw new Error('Failed to approve work');
@@ -586,7 +610,7 @@ export const api = {
   requestRework: async (taskId: string, feedback: string) => {
     const res = await fetch(`${API_BASE}/work/${taskId}/rework`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify({ feedback })
     });
     if (!res.ok) throw new Error('Failed to request rework');

@@ -14,7 +14,7 @@ import {
   Users,
   UserCheck
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Assignment } from '../../types';
 
@@ -49,13 +49,18 @@ export const UserAssignWork: React.FC = () => {
   );
   const myTeamId = myMember ? myMember.teamId : (currentUser as any)?.teamId;
   const myDeptId = myMember ? myMember.departmentId : (currentUser as any)?.departmentId;
+  const isManager = isUserManager(currentUser, myMember);
 
-  // Filter candidates who are regular users in the SAME team
+  // Filter candidates who are regular users in the SAME team (or all users if Manager)
   const teamMembers = allUsers.filter(u => {
     if (u.role !== 'user') return false;
     // Exclude myself
     if (u.id === currentUser?.id || (u.email && u.email.toLowerCase() === myEmail)) return false;
 
+    // Managers can assign to ANY team member across ALL teams!
+    if (isManager) return true;
+
+    // Regular members can ONLY assign to candidates in the SAME team:
     // 1. Direct team name match (e.g. "Digital team")
     if (myTeam && u.team && u.team.toLowerCase() === myTeam) return true;
 

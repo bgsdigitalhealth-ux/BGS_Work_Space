@@ -38,8 +38,6 @@ const buildIdQuery = (id) => {
 let memoryStore = JSON.parse(JSON.stringify(initialData));
 
 const BANNED_EMAILS = [
-  'dynamicsajjan@gmail.com',
-  'dynamicsajjan@gamil.com',
   'admin@company.com',
   'user@company.com',
   'rahul@company.com',
@@ -51,8 +49,24 @@ const BANNED_EMAILS = [
 const isBannedEmail = (email) => {
   if (!email) return false;
   const clean = String(email).trim().toLowerCase();
-  if (clean.includes('dynamicsajjan')) return true;
   return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
+};
+
+// Check if a user/member holds a manager, head, lead, or administrator role
+const isManagerOrAdmin = (user, member) => {
+  if (!user && !member) return false;
+  if (user && (user.role === 'admin' || user.role === 'manager')) return true;
+  const roleStr = [
+    user?.role,
+    user?.teamRole,
+    user?.title,
+    member?.role
+  ].filter(Boolean).join(' ').toLowerCase();
+
+  return roleStr.includes('admin') ||
+         roleStr.includes('manager') ||
+         roleStr.includes('head') ||
+         roleStr.includes('lead');
 };
 
 // Check if an email is currently registered / active in users or members (memoryStore, initialData, or MongoDB Atlas)
@@ -140,8 +154,6 @@ const loadStore = () => {
       if (parsed) {
         memoryStore = { ...initialData, ...parsed };
         const bannedEmails = [
-          'dynamicsajjan@gmail.com',
-          'dynamicsajjan@gamil.com',
           'admin@company.com',
           'user@company.com',
           'rahul@company.com',
@@ -202,8 +214,6 @@ const loadStore = () => {
   }
   memoryStore = JSON.parse(JSON.stringify(initialData));
   memoryStore.deletedEmails = [
-    'dynamicsajjan@gmail.com',
-    'dynamicsajjan@gamil.com',
     'admin@company.com',
     'user@company.com',
     'rahul@company.com',
@@ -269,7 +279,6 @@ const clearAllData = async () => {
       await User.deleteMany({ email: { $nin: ['bgsmchhospitalnagarur@gmail.com'] } });
       await User.deleteMany({ email: { $in: BANNED_EMAILS } });
       await User.deleteMany({ email: { $regex: /@company\.com$/i } });
-      await User.deleteMany({ email: { $regex: /dynamicsajjan/i } });
       console.log('[Storage] All dummy data wiped from MongoDB Atlas collections.');
     } catch (e) {
       console.warn('[Storage] Mongo wipe error:', e.message);
@@ -305,11 +314,12 @@ const loadFromMongo = async () => {
     if (mems && mems.length > 0) {
       for (const m of mems) {
         const cleanEmail = (m.email || '').toLowerCase();
-        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail)) || !m.name || m.name.trim() === '' || !m.email || m.email.trim() === '') {
-          // Permanently purge from MongoDB Atlas
+        // Only purge explicitly banned dummy accounts or malformed empty rows; Atlas is source of truth for real members
+        if (isBannedEmail(cleanEmail) || !m.name || m.name.trim() === '' || !m.email || m.email.trim() === '') {
           await Member.deleteOne({ _id: m._id }).catch(() => { });
           continue;
         }
+        unmarkDeletedEmail(cleanEmail);
         const id = m.customId || m._id.toString();
         if (!memoryStore.members.some(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id)) {
           memoryStore.members.push({ ...m, id });
@@ -320,11 +330,12 @@ const loadFromMongo = async () => {
     if (usrs && usrs.length > 0) {
       for (const u of usrs) {
         const cleanEmail = (u.email || '').toLowerCase();
-        if (isBannedEmail(cleanEmail) || (memoryStore.deletedEmails && memoryStore.deletedEmails.includes(cleanEmail))) {
-          // Permanently purge from MongoDB Atlas
+        // Only purge explicitly banned dummy accounts; never auto-delete real Atlas users from local cache
+        if (isBannedEmail(cleanEmail)) {
           await User.deleteOne({ _id: u._id }).catch(() => { });
           continue;
         }
+        unmarkDeletedEmail(cleanEmail);
         const id = u.customId || u._id.toString();
         const idx = memoryStore.users.findIndex(x => (x.email || '').toLowerCase() === cleanEmail || x.id === id);
         if (idx === -1) {
@@ -432,8 +443,6 @@ const initMongoSeed = async () => {
     }
     await User.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
     await Member.deleteMany({ email: { $regex: /@company\.com$/i } }).catch(() => { });
-    await User.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
-    await Member.deleteMany({ email: { $regex: /dynamicsajjan/i } }).catch(() => { });
     await Member.deleteMany({
       $or: [
         { name: '' }, { email: '' }, { name: null }, { email: null },
@@ -441,21 +450,7 @@ const initMongoSeed = async () => {
       ]
     }).catch(() => { });
 
-    // Purge emails in deletedEmails that are truly deleted (not active in users/members)
-    if (Array.isArray(memoryStore.deletedEmails) && memoryStore.deletedEmails.length > 0) {
-      const trulyDeleted = [];
-      for (const dEmail of memoryStore.deletedEmails) {
-        if (!isEmailCurrentlyActive(dEmail)) {
-          trulyDeleted.push(dEmail);
-        }
-      }
-      if (trulyDeleted.length > 0) {
-        await User.deleteMany({ email: { $in: trulyDeleted } }).catch(() => { });
-        await Member.deleteMany({ email: { $in: trulyDeleted } }).catch(() => { });
-      }
-    }
-
-    // 1. Merge any existing cloud records from MongoDB Atlas into memoryStore
+    // 1. Load authoritative cloud records from MongoDB Atlas into memoryStore (never wipe real Atlas accounts from local cache)
     await loadFromMongo();
 
     // 2. Ensure base login accounts (initialData.users) exist and are verified with active credentials
@@ -671,37 +666,46 @@ const updateDepartment = async (id, data) => {
 };
 
 const deleteDepartment = async (id) => {
-  // Find members and users belonging to this department
-  const deptMembers = memoryStore.members.filter(m => m.departmentId === id);
-  const deletedEmails = deptMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
+  // IMPORTANT: Never auto-delete User or Member accounts when deleting a department!
+  // Only an admin explicitly deleting a User/Member should remove user accounts.
+  // Unbind affected members and users so their accounts remain permanently preserved.
+  const deptTeams = (memoryStore.teams || []).filter(t => t.departmentId === id).map(t => t.id);
 
-  // Remove users associated with those members
-  if (deletedEmails.length > 0) {
-    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
-  }
+  memoryStore.members = (memoryStore.members || []).map(m => {
+    if (m.departmentId === id || deptTeams.includes(m.teamId)) {
+      return { ...m, departmentId: '', teamId: '' };
+    }
+    return m;
+  });
 
-  // Remove assignments in this department
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.departmentId !== id);
-  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
-    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.departmentId !== id);
-  }
+  memoryStore.users = (memoryStore.users || []).map(u => {
+    if (u.department === id || deptTeams.includes(u.team)) {
+      return { ...u, department: '', team: '' };
+    }
+    return u;
+  });
 
   memoryStore.departments = memoryStore.departments.filter(d => d.id !== id && d.customId !== id);
   memoryStore.teams = memoryStore.teams.filter(t => t.departmentId !== id);
-  memoryStore.members = memoryStore.members.filter(m => m.departmentId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
       await Department.findOneAndDelete(buildIdQuery(id));
       await Team.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
-      await Member.deleteMany({ $or: [{ departmentId: id }, { 'departmentId.customId': id }] });
-      await Assignment.deleteMany({ departmentId: id });
-      if (deletedEmails.length > 0) {
-        await User.deleteMany({ email: { $in: deletedEmails } });
-      }
+      // Unbind members & users in MongoDB Atlas without deleting their accounts
+      const teamOr = deptTeams.length > 0 ? [{ teamId: { $in: deptTeams } }] : [];
+      await Member.updateMany(
+        { $or: [{ departmentId: id }, { 'departmentId.customId': id }, ...teamOr] },
+        { $set: { departmentId: '', teamId: '' } }
+      );
+      const userTeamOr = deptTeams.length > 0 ? [{ team: { $in: deptTeams } }] : [];
+      await User.updateMany(
+        { $or: [{ department: id }, ...userTeamOr] },
+        { $set: { department: '', team: '' } }
+      );
     } catch (e) {
-      console.warn('Mongo delete error:', e.message);
+      console.warn('Mongo deleteDepartment error:', e.message);
     }
   }
   return true;
@@ -769,36 +773,31 @@ const updateTeam = async (id, data) => {
 };
 
 const deleteTeam = async (id) => {
-  // Find members and users belonging to this team
-  const teamMembers = memoryStore.members.filter(m => m.teamId === id);
-  const deletedEmails = teamMembers.map(m => (m.email || '').toLowerCase()).filter(Boolean);
-
-  if (deletedEmails.length > 0) {
-    memoryStore.users = memoryStore.users.filter(u => !deletedEmails.includes((u.email || '').toLowerCase()));
-  }
-
-  // Remove assignments and tasks in this team
-  memoryStore.assignments = (memoryStore.assignments || []).filter(a => a.teamId !== id);
-  memoryStore.tasks = (memoryStore.tasks || []).filter(t => t.teamId !== id);
-  if (memoryStore.userWorkspace && memoryStore.userWorkspace.assignedWork) {
-    memoryStore.userWorkspace.assignedWork = memoryStore.userWorkspace.assignedWork.filter(w => w.teamId !== id);
-  }
+  // IMPORTANT: Never auto-delete User or Member accounts when deleting a team!
+  // Unbind affected members & users so their accounts remain permanently preserved.
+  memoryStore.members = (memoryStore.members || []).map(m =>
+    m.teamId === id ? { ...m, teamId: '' } : m
+  );
+  memoryStore.users = (memoryStore.users || []).map(u =>
+    u.team === id ? { ...u, team: '' } : u
+  );
 
   memoryStore.teams = memoryStore.teams.filter(t => t.id !== id && t.customId !== id);
-  memoryStore.members = memoryStore.members.filter(m => m.teamId !== id);
   saveStore();
 
   if (getStatus()) {
     try {
       await Team.findOneAndDelete(buildIdQuery(id));
-      await Member.deleteMany({ $or: [{ teamId: id }, { 'teamId.customId': id }] });
-      await Assignment.deleteMany({ teamId: id });
-      await Task.deleteMany({ teamId: id });
-      if (deletedEmails.length > 0) {
-        await User.deleteMany({ email: { $in: deletedEmails } });
-      }
+      await Member.updateMany(
+        { $or: [{ teamId: id }, { 'teamId.customId': id }] },
+        { $set: { teamId: '' } }
+      );
+      await User.updateMany(
+        { team: id },
+        { $set: { team: '' } }
+      );
     } catch (e) {
-      console.warn('Mongo delete error:', e.message);
+      console.warn('Mongo deleteTeam error:', e.message);
     }
   }
   return true;
@@ -887,6 +886,9 @@ const createMember = async (data) => {
   // If this email was previously marked as deleted, re-entry by admin verifies and restores it to valid
   unmarkDeletedEmail(cleanEmail);
 
+  const isMgr = isManagerOrAdmin(null, { role: data.role });
+  const assignedRole = isMgr ? 'admin' : 'user';
+
   let existingUser = (memoryStore.users || []).find(u => (u.email || '').toLowerCase() === cleanEmail);
   if (!existingUser) {
     existingUser = {
@@ -895,17 +897,22 @@ const createMember = async (data) => {
       email: cleanEmail,
       password: '',
       hasPassword: false,
-      role: 'user',
+      role: assignedRole,
       memberId: newMember.id,
-      department: data.departmentId,
-      team: data.teamId,
-      teamRole: data.role || 'Team Member',
+      department: data.departmentId || '',
+      team: data.teamId || '',
+      teamRole: data.role || (isMgr ? 'Manager' : 'Team Member'),
       avatar: newMember.avatar,
-      title: data.role || 'Team Member'
+      title: data.role || (isMgr ? 'Manager' : 'Team Member')
     };
     memoryStore.users.push(existingUser);
-  } else if (!existingUser.memberId) {
+  } else {
     existingUser.memberId = newMember.id;
+    existingUser.role = assignedRole;
+    existingUser.teamRole = data.role || existingUser.teamRole || (isMgr ? 'Manager' : 'Team Member');
+    existingUser.title = data.role || existingUser.title || (isMgr ? 'Manager' : 'Team Member');
+    if (data.departmentId) existingUser.department = data.departmentId;
+    if (data.teamId) existingUser.team = data.teamId;
   }
   saveStore();
 
@@ -922,23 +929,28 @@ const createMember = async (data) => {
         departmentId: newMember.departmentId,
         avatar: newMember.avatar
       });
-      const dbUser = await User.findOne({ email: cleanEmail });
-      if (!dbUser) {
-        await User.create({
-          customId: existingUser.id,
-          name: newMember.name,
-          email: cleanEmail,
-          password: '',
-          hasPassword: false,
-          role: 'user',
-          memberId: newMember.id,
-          department: data.departmentId,
-          team: data.teamId,
-          teamRole: data.role || 'Team Member',
-          avatar: newMember.avatar,
-          title: data.role || 'Team Member'
-        });
-      }
+      await User.findOneAndUpdate(
+        { email: cleanEmail },
+        {
+          $setOnInsert: {
+            customId: existingUser.id,
+            name: newMember.name,
+            email: cleanEmail,
+            password: '',
+            hasPassword: false,
+            avatar: newMember.avatar
+          },
+          $set: {
+            role: assignedRole,
+            memberId: newMember.id,
+            department: data.departmentId || '',
+            team: data.teamId || '',
+            teamRole: data.role || (isMgr ? 'Manager' : 'Team Member'),
+            title: data.role || (isMgr ? 'Manager' : 'Team Member')
+          }
+        },
+        { upsert: true, new: true }
+      );
       return { ...created.toObject(), id: newMember.id };
     } catch (e) {
       console.warn('Mongo create member error:', e.message);
@@ -963,9 +975,36 @@ const updateMember = async (id, data) => {
     saveStore();
   }
 
+  // If role is updated, synchronize user role and hierarchy permissions
+  if (data && data.role) {
+    const isMgr = isManagerOrAdmin(null, { role: data.role });
+    const assignedRole = isMgr ? 'admin' : 'user';
+    const targetMember = index !== -1 ? memoryStore.members[index] : null;
+    const cleanEmail = ((data.email || targetMember?.email) || '').trim().toLowerCase();
+    const targetUser = (memoryStore.users || []).find(u => 
+      (cleanEmail && (u.email || '').toLowerCase() === cleanEmail) || 
+      u.memberId === id
+    );
+    if (targetUser) {
+      targetUser.role = assignedRole;
+      targetUser.teamRole = data.role;
+      targetUser.title = data.role;
+      saveStore();
+    }
+  }
+
   if (getStatus()) {
     try {
       const updated = await Member.findOneAndUpdate(buildIdQuery(id), data, { new: true }).lean();
+      if (data && data.role) {
+        const isMgr = isManagerOrAdmin(null, { role: data.role });
+        const assignedRole = isMgr ? 'admin' : 'user';
+        const cleanEmail = (data.email || updated?.email || '').trim().toLowerCase();
+        await User.updateMany(
+          { $or: [{ memberId: id }, cleanEmail ? { email: cleanEmail } : null].filter(Boolean) },
+          { $set: { role: assignedRole, teamRole: data.role, title: data.role } }
+        ).catch(() => {});
+      }
       if (updated) return { ...updated, id: updated.customId || updated._id.toString() };
     } catch (e) {
       console.warn('Mongo update member error:', e.message);
@@ -1189,12 +1228,18 @@ const createAssignment = async (data) => {
     assignerId: data.assignerId || '',
     assignmentType: assignmentType,
     assignedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+    assignedTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    assignedAt: new Date().toISOString(),
+    workStartedAt: (data.status === 'In Progress' || !data.status) ? new Date().toISOString() : undefined,
+    workStartedTime: (data.status === 'In Progress' || !data.status) ? new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : undefined,
     description: data.workDescription || '',
     progress: 0,
     comments: [],
     userId: targetUserId || (dbMember ? dbMember._id.toString() : 'usr-user'),
     assigneeId: targetUserId || '',
     assigneeEmail: assigneeEmail || '',
+    assigneeName: assigneeName || 'Assignee',
+    assignedTo: assigneeName || 'Assignee',
     teamId: data.teamId || '',
     departmentId: data.departmentId || ''
   };
@@ -1290,6 +1335,7 @@ const createAssignment = async (data) => {
         userId: userTask.userId,
         assigneeId: userTask.assigneeId,
         assigneeEmail: userTask.assigneeEmail,
+        assigneeName: userTask.assigneeName,
         teamId: userTask.teamId,
         departmentId: userTask.departmentId
       });
@@ -1487,38 +1533,88 @@ const deleteWorkDone = async (id) => {
   return true;
 };
 
-// --- User Portal Workspace (Strict User Isolation) ---
+// --- User Portal Workspace (Dynamic Multi-Team Isolation & Manager Access) ---
 const getUserWorkspace = async (userId = null, userEmail = null) => {
   let assigned = [];
   let history = [];
   let recentActivities = [];
 
   const cleanEmail = (userEmail || '').trim().toLowerCase();
+  const cleanId = (userId || '').trim();
+
+  // 1. Resolve User and Member info to identify team and manager privileges
+  let user = (memoryStore.users || []).find(u =>
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (u.id === cleanId || u.customId === cleanId || String(u._id) === cleanId))
+  );
+  let member = (memoryStore.members || []).find(m =>
+    (cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (m.id === cleanId || m.customId === cleanId || String(m._id) === cleanId)) ||
+    (user?.memberId && (m.id === user.memberId || m.customId === user.memberId))
+  );
+
+  if (getStatus()) {
+    try {
+      if (!user && cleanEmail) user = await User.findOne({ email: cleanEmail }).lean();
+      if (!user && cleanId) user = await User.findOne(buildIdQuery(cleanId)).lean();
+      if (!member && cleanEmail) member = await Member.findOne({ email: cleanEmail }).lean();
+      if (!member && cleanId) member = await Member.findOne(buildIdQuery(cleanId)).lean();
+    } catch (_) { }
+  }
+
+  // Check if requesting user is Manager or Administrator
+  const isManager = isManagerOrAdmin(user, member);
+
+  const userTeamId = member?.teamId || user?.teamId || user?.team || '';
+  let userTeamName = (user?.team || '').trim();
+  if (userTeamId && (!userTeamName || userTeamName === userTeamId)) {
+    const foundTeam = (memoryStore.teams || []).find(t => t.id === userTeamId || t.customId === userTeamId || String(t._id) === userTeamId);
+    if (foundTeam) userTeamName = foundTeam.name;
+  }
 
   if (getStatus()) {
     try {
       let taskQuery = {};
       let historyQuery = {};
-      if (userId || cleanEmail) {
+
+      if (!isManager) {
+        // Regular team member: ONLY see tasks belonging to the SAME team or assigned directly to them
         const orConditions = [];
-        if (userId) {
-          orConditions.push({ userId: userId });
-          orConditions.push({ assigneeId: userId });
-          orConditions.push({ memberId: userId });
+        if (cleanId) {
+          orConditions.push({ userId: cleanId });
+          orConditions.push({ assigneeId: cleanId });
+          orConditions.push({ memberId: cleanId });
         }
         if (cleanEmail) {
           orConditions.push({ assigneeEmail: cleanEmail });
         }
-        taskQuery = { $or: orConditions };
-        historyQuery = {
-          $or: [
-            ...(userId ? [{ userId: userId }, { memberId: userId }] : []),
-            ...(cleanEmail ? [{ userEmail: cleanEmail }] : [])
-          ]
-        };
-      }
+        if (userTeamId) {
+          orConditions.push({ teamId: userTeamId });
+        }
+        if (userTeamName && userTeamName !== userTeamId) {
+          orConditions.push({ team: { $regex: new RegExp(`^${userTeamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        }
+        taskQuery = orConditions.length > 0 ? { $or: orConditions } : { _id: null };
 
-      const dbTasks = await UserTask.find(taskQuery).lean();
+        const histOr = [];
+        if (cleanId) {
+          histOr.push({ userId: cleanId });
+          histOr.push({ memberId: cleanId });
+        }
+        if (cleanEmail) {
+          histOr.push({ userEmail: cleanEmail });
+        }
+        if (userTeamId) {
+          histOr.push({ teamId: userTeamId });
+        }
+        if (userTeamName && userTeamName !== userTeamId) {
+          histOr.push({ team: { $regex: new RegExp(`^${userTeamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+        }
+        historyQuery = histOr.length > 0 ? { $or: histOr } : { _id: null };
+      }
+      // If isManager is true: taskQuery is {}, so manager sees all teams' member works!
+
+      const dbTasks = await UserTask.find(taskQuery).sort({ createdAt: -1 }).lean();
       const dbHistory = await WorkHistory.find(historyQuery).sort({ createdAt: -1 }).lean();
       assigned = dbTasks.map(t => ({ ...t, id: t.customId || t._id.toString() }));
       history = dbHistory.map(h => ({ ...h, id: h.customId || h._id.toString() }));
@@ -1541,22 +1637,28 @@ const getUserWorkspace = async (userId = null, userEmail = null) => {
     const rawHistory = memoryStore.userWorkspace.history || [];
     const rawActivities = memoryStore.userWorkspace.recentActivities || [];
 
-    if (userId || cleanEmail) {
-      assigned = rawAssigned.filter(a => {
-        if (userId && (a.userId === userId || a.assigneeId === userId || a.memberId === userId)) return true;
-        if (cleanEmail && a.assigneeEmail && a.assigneeEmail.toLowerCase() === cleanEmail) return true;
-        return false;
-      });
-      history = rawHistory.filter(h => {
-        if (userId && (h.userId === userId || h.memberId === userId)) return true;
-        if (cleanEmail && h.userEmail && h.userEmail.toLowerCase() === cleanEmail) return true;
-        return false;
-      });
-      recentActivities = rawActivities.filter(r => !userId || r.userId === userId);
-    } else {
+    if (isManager) {
       assigned = rawAssigned;
       history = rawHistory;
       recentActivities = rawActivities;
+    } else {
+      assigned = rawAssigned.filter(a => {
+        // Direct assignment
+        if (cleanId && (a.userId === cleanId || a.assigneeId === cleanId || a.memberId === cleanId)) return true;
+        if (cleanEmail && a.assigneeEmail && a.assigneeEmail.toLowerCase() === cleanEmail) return true;
+        // Same team
+        if (userTeamId && a.teamId && a.teamId === userTeamId) return true;
+        if (userTeamName && a.team && a.team.toLowerCase() === userTeamName.toLowerCase()) return true;
+        return false;
+      });
+      history = rawHistory.filter(h => {
+        if (cleanId && (h.userId === cleanId || h.memberId === cleanId)) return true;
+        if (cleanEmail && h.userEmail && h.userEmail.toLowerCase() === cleanEmail) return true;
+        if (userTeamId && h.teamId && h.teamId === userTeamId) return true;
+        if (userTeamName && h.team && h.team.toLowerCase() === userTeamName.toLowerCase()) return true;
+        return false;
+      });
+      recentActivities = rawActivities.filter(r => !cleanId || r.userId === cleanId);
     }
   }
 
@@ -1598,12 +1700,49 @@ const submitUserWork = async (data) => {
   const ws = memoryStore.userWorkspace;
   const { taskId, workStatus, comment, userId } = data;
 
-  const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId);
+  const now = new Date();
+  const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+  const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
+  const taskIndex = ws.assignedWork.findIndex(t => t.id === taskId || t.taskId === taskId || String(t._id) === taskId);
   let task = taskIndex >= 0 ? ws.assignedWork[taskIndex] : null;
+
+  // If not found in memoryStore, try fetching from MongoDB Atlas
+  if (!task && getStatus()) {
+    try {
+      const dbTask = await UserTask.findOne({
+        $or: [
+          { customId: taskId },
+          { taskId: taskId },
+          ...(mongoose.Types.ObjectId.isValid(taskId) ? [{ _id: taskId }] : [])
+        ]
+      }).lean();
+      if (dbTask) {
+        task = { ...dbTask, id: dbTask.customId || dbTask._id.toString() };
+        ws.assignedWork.unshift(task);
+      }
+    } catch (_) {}
+  }
 
   if (task) {
     task.status = workStatus === 'Completed' ? 'Completed' : 'Under Review';
     task.progress = 100;
+    task.submittedAt = now.toISOString();
+    task.submittedDate = fullDateTime;
+    if (workStatus === 'Completed') {
+      task.completedAt = now.toISOString();
+      task.completedDate = fullDateTime;
+    }
+    if (!task.comments) task.comments = [];
+    task.comments.push({
+      id: generateId('c'),
+      author: (task && (task.assigneeName || task.userName)) || 'Team Member',
+      role: 'Team Member',
+      date: fullDateTime,
+      badge: 'Submission',
+      text: comment || 'Work deliverables submitted for review.'
+    });
   }
 
   const newHistoryItem = {
@@ -1612,9 +1751,9 @@ const submitUserWork = async (data) => {
     taskId: task && task.taskId ? task.taskId : `TSK-${Date.now().toString().slice(-4)}`,
     department: task ? task.department : 'General',
     team: task ? task.team : 'Team',
-    submittedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-    status: 'Under Review',
-    reviewerFeedback: 'Submitted. Pending review by Admin / Team Lead.',
+    submittedDate: fullDateTime,
+    status: workStatus === 'Completed' ? 'Completed' : 'Under Review',
+    reviewerFeedback: workStatus === 'Completed' ? 'Work completed and verified.' : 'Submitted. Pending review by Admin / Team Lead.',
     assignedBy: task ? task.assignedBy : 'Admin',
     dueDate: task ? task.dueDate : 'Today',
     submittedComment: comment || 'Work completed and submitted for review.',
@@ -1679,8 +1818,16 @@ const submitUserWork = async (data) => {
     try {
       if (task) {
         await UserTask.findOneAndUpdate(
-          { $or: [{ customId: taskId }, { taskId: taskId }] },
-          { status: task.status, progress: 100 }
+          { $or: [{ customId: taskId }, { taskId: taskId }, ...(mongoose.Types.ObjectId.isValid(taskId) ? [{ _id: taskId }] : [])] },
+          {
+            status: task.status,
+            progress: 100,
+            submittedAt: task.submittedAt,
+            submittedDate: task.submittedDate,
+            completedAt: task.completedAt,
+            completedDate: task.completedDate,
+            comments: task.comments
+          }
         );
       }
       if (taskTitle) {
@@ -1931,20 +2078,22 @@ const checkEmail = async (email) => {
     try {
       const dbUser = await User.findOne({ email: cleanEmail }).lean();
       if (dbUser) {
+        const isMgr = isManagerOrAdmin(dbUser);
         return {
           exists: true,
           hasPassword: Boolean(dbUser.hasPassword && dbUser.password),
           name: dbUser.name,
-          role: dbUser.role
+          role: isMgr ? 'admin' : (dbUser.role || 'user')
         };
       }
       const dbMember = await Member.findOne({ email: cleanEmail }).lean();
       if (dbMember) {
+        const isMgr = isManagerOrAdmin(null, dbMember);
         return {
           exists: true,
           hasPassword: false,
           name: dbMember.name,
-          role: 'user'
+          role: isMgr ? 'admin' : 'user'
         };
       }
     } catch (e) {
@@ -1955,21 +2104,23 @@ const checkEmail = async (email) => {
   // 2. Check memoryStore
   const user = (memoryStore.users || []).find(u => u.email.toLowerCase() === cleanEmail);
   if (user) {
+    const isMgr = isManagerOrAdmin(user);
     return {
       exists: true,
       hasPassword: Boolean(user.hasPassword && user.password),
       name: user.name,
-      role: user.role
+      role: isMgr ? 'admin' : (user.role || 'user')
     };
   }
 
   const member = (memoryStore.members || []).find(m => m.email.toLowerCase() === cleanEmail);
   if (member) {
+    const isMgr = isManagerOrAdmin(null, member);
     return {
       exists: true,
       hasPassword: false,
       name: member.name,
-      role: 'user'
+      role: isMgr ? 'admin' : 'user'
     };
   }
 
@@ -2169,12 +2320,19 @@ const createPassword = async (email, password) => {
     safeUser.department = d ? d.name : (safeUser.department || 'General');
     safeUser.teamId = m.teamId;
     safeUser.departmentId = m.departmentId;
+    safeUser.teamRole = m.role || safeUser.teamRole || safeUser.title || 'Team Member';
+    safeUser.title = m.role || safeUser.title || safeUser.teamRole || 'Team Member';
+  }
+
+  const isMgr = isManagerOrAdmin(safeUser, m);
+  if (isMgr) {
+    safeUser.role = 'admin';
   }
 
   return {
     success: true,
     user: safeUser,
-    token: `token-${user.role}-${Date.now()}`
+    token: `token-${safeUser.role}-${Date.now()}`
   };
 };
 
@@ -2237,17 +2395,32 @@ const loginUser = async (email, password) => {
           }
         } catch (_) { }
 
+        if (!enrichedTeam || enrichedTeam === enrichedTeamId) {
+          const memTeam = (memoryStore.teams || []).find(t => t.id === enrichedTeamId || t.customId === enrichedTeamId || String(t._id) === enrichedTeamId);
+          if (memTeam) enrichedTeam = memTeam.name;
+        }
+        if (!enrichedDept || enrichedDept === enrichedDeptId) {
+          const memDept = (memoryStore.departments || []).find(d => d.id === enrichedDeptId || d.customId === enrichedDeptId || String(d._id) === enrichedDeptId);
+          if (memDept) enrichedDept = memDept.name;
+        }
+
+        const isMgr = isManagerOrAdmin(safeUser, dbMemberInfo);
+        const resolvedRole = isMgr ? 'admin' : (safeUser.role || 'user');
+
         return {
           success: true,
           user: {
             ...safeUser,
+            role: resolvedRole,
             id: dbUser.customId || dbUser._id.toString(),
             team: enrichedTeam,
             department: enrichedDept,
             teamId: enrichedTeamId,
-            departmentId: enrichedDeptId
+            departmentId: enrichedDeptId,
+            teamRole: dbMemberInfo?.role || safeUser.teamRole || safeUser.title || (isMgr ? 'Manager' : 'Team Member'),
+            title: dbMemberInfo?.role || safeUser.title || safeUser.teamRole || (isMgr ? 'Manager' : 'Team Member')
           },
-          token: `token-${dbUser.role}-${Date.now()}`
+          token: `token-${resolvedRole}-${Date.now()}`
         };
       }
 
@@ -2312,12 +2485,19 @@ const loginUser = async (email, password) => {
     safeUser.department = d ? d.name : (safeUser.department || 'General');
     safeUser.teamId = m.teamId;
     safeUser.departmentId = m.departmentId;
+    safeUser.teamRole = m.role || safeUser.teamRole || safeUser.title || 'Team Member';
+    safeUser.title = m.role || safeUser.title || safeUser.teamRole || 'Team Member';
+  }
+
+  const isMgr = isManagerOrAdmin(safeUser, m);
+  if (isMgr) {
+    safeUser.role = 'admin';
   }
 
   return {
     success: true,
     user: safeUser,
-    token: `token-${user.role}-${Date.now()}`
+    token: `token-${safeUser.role}-${Date.now()}`
   };
 };
 
@@ -2361,6 +2541,25 @@ const getUsers = async () => {
       console.warn('Mongo read error in getUsers:', e.message);
     }
   }
+
+  // 4. Enrich users with corresponding Member role & Team names
+  const allMembers = memoryStore.members || [];
+  const allTeams = memoryStore.teams || [];
+  const allDepts = memoryStore.departments || [];
+  usersMap.forEach((userObj, em) => {
+    const mem = allMembers.find(m => m.email && m.email.toLowerCase() === em);
+    if (mem) {
+      const tm = allTeams.find(t => t.id === mem.teamId || t.customId === mem.teamId || String(t._id) === mem.teamId);
+      const dp = allDepts.find(d => d.id === mem.departmentId || d.customId === mem.departmentId || String(d._id) === mem.departmentId);
+      if (tm && (!userObj.team || userObj.team === mem.teamId)) userObj.team = tm.name;
+      if (dp && (!userObj.department || userObj.department === mem.departmentId)) userObj.department = dp.name;
+      userObj.teamId = mem.teamId;
+      userObj.departmentId = mem.departmentId;
+      userObj.teamRole = mem.role || userObj.teamRole || userObj.title || 'Team Member';
+      userObj.title = mem.role || userObj.title || userObj.teamRole || 'Team Member';
+      userObj.memberId = mem.id || mem.customId || mem._id;
+    }
+  });
 
   return Array.from(usersMap.values());
 };
@@ -2596,15 +2795,14 @@ const createAdmin = async ({ name, email, password }) => {
 const deleteAdmin = async (id) => {
   const targetAdmin = (memoryStore.users || []).find(u => u.id === id || (u.email && u.email.toLowerCase() === String(id).toLowerCase()));
   const adminEmail = (targetAdmin ? targetAdmin.email : String(id || '')).toLowerCase();
-  const isDynamics = adminEmail.includes('dynamicsajjan');
 
   // Prevent deleting primary super admin
   if (adminEmail === 'bgsmchhospitalnagarur@gmail.com') {
     return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
   }
 
-  const remainingAdmins = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan'));
-  if (!isDynamics && remainingAdmins.length <= 1) {
+  const remainingAdmins = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email));
+  if (remainingAdmins.length <= 1) {
     return { success: false, error: 'Cannot delete the only administrator account' };
   }
 
@@ -2620,9 +2818,6 @@ const deleteAdmin = async (id) => {
     try {
       const mongoose = require('mongoose');
       const orConditions = [{ email: adminEmail }];
-      if (isDynamics) {
-        orConditions.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (id) orConditions.push({ customId: id });
       if (mongoose.Types.ObjectId.isValid(id)) orConditions.push({ _id: id });
       await User.deleteMany({ $or: orConditions }).catch(() => { });
@@ -2635,16 +2830,70 @@ const deleteAdmin = async (id) => {
   return { success: true, message: 'Administrator removed successfully', deletedUser: targetAdmin };
 };
 
+// Strictly verify that the requesting account is an active administrator or manager (cannot be spoofed by role header alone)
+const verifyAdminAccess = async ({ role, email, id } = {}) => {
+  const cleanEmail = (email || '').trim().toLowerCase();
+  const cleanId = (id || '').trim();
+
+  if (!cleanEmail && !cleanId) {
+    return false;
+  }
+
+  // 1. Check initialData base administrators
+  const inInitial = (initialData.users || []).find(u =>
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (u.id === cleanId || u.customId === cleanId))
+  );
+  if (inInitial && isManagerOrAdmin(inInitial) && !isBannedEmail(inInitial.email)) {
+    return true;
+  }
+
+  // 2. Check MongoDB Atlas as authoritative source of truth
+  if (getStatus()) {
+    try {
+      const orConditions = [];
+      if (cleanEmail) orConditions.push({ email: cleanEmail });
+      if (cleanId) {
+        orConditions.push({ customId: cleanId });
+        if (mongoose.Types.ObjectId.isValid(cleanId) && cleanId.length === 24) {
+          orConditions.push({ _id: cleanId });
+        }
+      }
+      if (orConditions.length > 0) {
+        const dbUser = await User.findOne({ $or: orConditions }).lean();
+        const dbMember = cleanEmail ? await Member.findOne({ email: cleanEmail }).lean() : null;
+        if (dbUser || dbMember) {
+          return isManagerOrAdmin(dbUser, dbMember) && !isBannedEmail(dbUser?.email || dbMember?.email);
+        }
+      }
+    } catch (e) {
+      console.warn('Mongo verifyAdminAccess notice:', e.message);
+    }
+  }
+
+  // 3. Fallback to memoryStore
+  const memUser = (memoryStore.users || []).find(u =>
+    (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail) ||
+    (cleanId && (u.id === cleanId || u.customId === cleanId))
+  );
+  const memMember = cleanEmail ? (memoryStore.members || []).find(m => (m.email || '').toLowerCase() === cleanEmail) : null;
+  if (memUser || memMember) {
+    return isManagerOrAdmin(memUser, memMember) && !isBannedEmail(memUser?.email || memMember?.email);
+  }
+
+  return false;
+};
+
 // Validate that an active user/admin session still exists in the system
 const validateSession = async (id, email) => {
   const cleanEmail = (email || '').trim().toLowerCase();
   const cleanId = (id || '').trim();
 
-  if (cleanEmail && (await isEmailDeleted(cleanEmail))) {
-    return { valid: false, message: 'User account has been deleted by an administrator. Access revoked.' };
+  if (cleanEmail && isBannedEmail(cleanEmail)) {
+    return { valid: false, deleted: true, message: 'User account has been deleted by an administrator. Access revoked.' };
   }
 
-  // 1. Check initialData.users (System admins are always valid unless banned/deleted)
+  // 1. Check initialData.users (System admins are always valid unless banned)
   const initialUser = (initialData.users || []).find(u =>
     (cleanId && (u.id === cleanId || u.customId === cleanId)) ||
     (cleanEmail && u.email && u.email.toLowerCase() === cleanEmail)
@@ -2654,7 +2903,44 @@ const validateSession = async (id, email) => {
     return { valid: true, user: safeUser };
   }
 
-  // 2. Check memoryStore.users
+  // 2. Check MongoDB Atlas as authoritative source of truth when connected
+  if (getStatus()) {
+    try {
+      const orConditions = [];
+      if (cleanEmail) orConditions.push({ email: cleanEmail });
+      if (cleanId) {
+        orConditions.push({ customId: cleanId });
+        if (mongoose.Types.ObjectId.isValid(cleanId) && cleanId.length === 24) {
+          orConditions.push({ _id: cleanId });
+        }
+      }
+      if (orConditions.length > 0) {
+        const dbUser = await User.findOne({ $or: orConditions }).select('-password').lean();
+        if (dbUser && !isBannedEmail(dbUser.email)) {
+          const isMgr = isManagerOrAdmin(dbUser);
+          const resolvedRole = isMgr ? 'admin' : (dbUser.role || 'user');
+          return { valid: true, user: { ...dbUser, role: resolvedRole, id: dbUser.customId || dbUser._id.toString() } };
+        }
+        // Also check Member collection in case user was registered as member and session uses memberId/email
+        if (cleanEmail) {
+          const dbMember = await Member.findOne({ email: cleanEmail }).lean();
+          if (dbMember && !isBannedEmail(dbMember.email)) {
+            const isMgr = isManagerOrAdmin(null, dbMember);
+            return { valid: true, user: { id: dbMember.customId || dbMember._id.toString(), name: dbMember.name, email: dbMember.email, role: isMgr ? 'admin' : 'user' } };
+          }
+        }
+      }
+      // Atlas IS connected and definitively confirmed this account does not exist
+      return { valid: false, deleted: true, message: 'User account has been deleted by an administrator.' };
+    } catch (e) {
+      console.warn('Mongo validateSession notice:', e.message);
+      // Transient Atlas query error: do NOT falsely kick out the user
+      return { valid: true, pendingDb: true };
+    }
+  }
+
+  // 3. MongoDB Atlas is not yet connected (e.g. Render cold start) — check memoryStore,
+  // and if absent, DO NOT falsely report "deleted" while Atlas is still connecting!
   const users = memoryStore.users || [];
   let user = null;
   if (cleanId) {
@@ -2663,36 +2949,24 @@ const validateSession = async (id, email) => {
   if (!user && cleanEmail) {
     user = users.find(u => u.email && u.email.toLowerCase() === cleanEmail);
   }
-
   if (user && !isBannedEmail(user.email)) {
     const { password, ...safeUser } = user;
+    const m = (memoryStore.members || []).find(mem => mem.email && mem.email.toLowerCase() === cleanEmail);
+    const isMgr = isManagerOrAdmin(safeUser, m);
+    if (isMgr) safeUser.role = 'admin';
     return { valid: true, user: safeUser };
   }
 
-  // 3. Check MongoDB if connected
-  if (getStatus()) {
-    try {
-      const mongoose = require('mongoose');
-      const orConditions = [];
-      if (cleanEmail) orConditions.push({ email: cleanEmail });
-      if (cleanId) {
-        orConditions.push({ customId: cleanId });
-        if (mongoose.Types.ObjectId.isValid(cleanId)) {
-          orConditions.push({ _id: cleanId });
-        }
-      }
-      if (orConditions.length > 0) {
-        const dbUser = await User.findOne({ $or: orConditions }).select('-password').lean();
-        if (dbUser && !isBannedEmail(dbUser.email)) {
-          return { valid: true, user: { ...dbUser, id: dbUser.customId || dbUser._id.toString() } };
-        }
-      }
-    } catch (e) {
-      console.warn('Mongo validateSession notice:', e.message);
-    }
+  const member = (memoryStore.members || []).find(m => 
+    (cleanEmail && m.email && m.email.toLowerCase() === cleanEmail) || 
+    (cleanId && (m.id === cleanId || m.customId === cleanId))
+  );
+  if (member && !isBannedEmail(member.email)) {
+    const isMgr = isManagerOrAdmin(null, member);
+    return { valid: true, user: { id: member.id, name: member.name, email: member.email, role: isMgr ? 'admin' : 'user' } };
   }
 
-  return { valid: false, message: 'User account has been deleted by an administrator.' };
+  return { valid: true, pendingDb: true };
 };
 
 // Update existing user from Admin Settings (Name, Email, Role, Password)
@@ -2700,10 +2974,22 @@ const updateUser = async (id, { name, email, role, password, avatar }) => {
   const cleanId = (id || '').trim();
   const cleanEmail = (email || '').trim().toLowerCase();
 
-  const user = (memoryStore.users || []).find(u =>
+  let user = (memoryStore.users || []).find(u =>
     u.id === cleanId ||
+    u.customId === cleanId ||
+    (u._id && String(u._id) === cleanId) ||
     (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
   );
+
+  if (!user && getStatus()) {
+    try {
+      const dbUser = await User.findOne(buildIdQuery(cleanId)).lean();
+      if (dbUser) {
+        user = { ...dbUser, id: dbUser.customId || dbUser._id.toString() };
+        memoryStore.users.push(user);
+      }
+    } catch (e) { }
+  }
 
   if (!user) {
     return { success: false, error: 'User account not found' };
@@ -2775,17 +3061,26 @@ const updateUser = async (id, { name, email, role, password, avatar }) => {
 // Permanently delete user from Admin Settings and ensure email is completely unregistered
 const deleteUser = async (id) => {
   const cleanId = (id || '').trim();
-  const user = (memoryStore.users || []).find(u =>
+  let user = (memoryStore.users || []).find(u =>
     u.id === cleanId ||
+    u.customId === cleanId ||
+    (u._id && String(u._id) === cleanId) ||
     (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
   );
 
+  if (!user && getStatus()) {
+    try {
+      const dbUser = await User.findOne(buildIdQuery(cleanId)).lean();
+      if (dbUser) {
+        user = { ...dbUser, id: dbUser.customId || dbUser._id.toString() };
+      }
+    } catch (e) { }
+  }
+
   const targetEmail = (user ? user.email : cleanId).toLowerCase();
   const targetId = user ? user.id : cleanId;
-  const isDynamics = targetEmail.includes('dynamicsajjan');
 
-  // If user not in memoryStore, but target is dynamicsajjan, proceed to delete from MongoDB Atlas
-  if (!user && !isDynamics) {
+  if (!user) {
     return { success: false, error: 'User not found' };
   }
 
@@ -2794,9 +3089,9 @@ const deleteUser = async (id) => {
     return { success: false, error: 'Cannot delete primary administrator account (bgsmchhospitalnagarur@gmail.com)' };
   }
 
-  // Prevent deleting the only administrator (unless dynamicsajjan)
-  if (user && user.role === 'admin' && !isDynamics) {
-    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email) && !u.email.toLowerCase().includes('dynamicsajjan')).length;
+  // Prevent deleting the only administrator
+  if (user && user.role === 'admin') {
+    const adminCount = (memoryStore.users || []).filter(u => u.role === 'admin' && !isBannedEmail(u.email)).length;
     if (adminCount <= 1) {
       return { success: false, error: 'Cannot delete the only administrator account' };
     }
@@ -2841,17 +3136,11 @@ const deleteUser = async (id) => {
     try {
       const mongoose = require('mongoose');
       const userOr = [{ email: targetEmail }];
-      if (isDynamics) {
-        userOr.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (targetId) userOr.push({ customId: targetId });
       if (mongoose.Types.ObjectId.isValid(targetId)) userOr.push({ _id: targetId });
       await User.deleteMany({ $or: userOr }).catch(() => { });
 
       const memberOr = [{ email: targetEmail }];
-      if (isDynamics) {
-        memberOr.push({ email: { $regex: /dynamicsajjan/i } });
-      }
       if (user?.memberId) memberOr.push({ customId: user.memberId });
       if (mongoose.Types.ObjectId.isValid(user?.memberId)) memberOr.push({ _id: user.memberId });
       await Member.deleteMany({ $or: memberOr }).catch(() => { });
@@ -2859,7 +3148,6 @@ const deleteUser = async (id) => {
       const assignOr = [{ assigneeEmail: targetEmail }];
       if (user?.memberId) assignOr.push({ memberId: user.memberId });
       if (targetId) assignOr.push({ assigneeId: targetId });
-      if (isDynamics) assignOr.push({ assigneeEmail: { $regex: /dynamicsajjan/i } });
       await Assignment.deleteMany({ $or: assignOr }).catch(() => { });
 
       if (targetId) {
@@ -5172,6 +5460,7 @@ module.exports = {
   getAdmins,
   createAdmin,
   deleteAdmin,
+  verifyAdminAccess,
   getNotifications,
   createNotification,
   markNotificationRead,

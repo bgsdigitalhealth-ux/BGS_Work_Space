@@ -8,10 +8,7 @@ import {
   Download,
   MoreHorizontal,
   Paperclip,
-  Settings,
   Info,
-  HelpCircle,
-  CalendarPlus,
   MessageSquare,
   Check,
   ClipboardCheck
@@ -28,7 +25,6 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const {
     selectedUserTask,
     setUserNav,
-    openSubmitWorkDrawer,
     handleAddUserComment
   } = useApp();
 
@@ -79,8 +75,74 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   };
 
   const isCompleted = task.status === 'Completed';
-  const isInProgress = task.status === 'In Progress' || !task.status;
-  const progressPercent = isCompleted ? 100 : (task.progress || 60);
+  const isSubmitted = task.status === 'Under Review';
+  const isToDo = task.status === 'Not Started' || (task.status as any) === 'To Do';
+  const isInProgress = task.status === 'In Progress' || (!isCompleted && !isSubmitted && !isToDo);
+  const progressPercent = isCompleted || isSubmitted ? 100 : (task.progress || (isInProgress ? 60 : 0));
+
+  // Dynamic real date tracking helpers
+  const formatDateTime = (val?: string | Date) => {
+    if (!val) return '';
+    try {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        const timeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return `${dateStr}, ${timeStr}`;
+      }
+    } catch (_) {}
+    return String(val);
+  };
+
+  const calculateDynamicTimeLeft = (dueDateStr?: string, status?: string) => {
+    if (status === 'Completed') return 'Completed';
+    if (!dueDateStr) return 'Scheduled';
+    try {
+      if (dueDateStr.toLowerCase() === 'today') return 'Due Today';
+      if (dueDateStr.toLowerCase() === 'tomorrow') return '1 Day Left';
+      let due: Date | null = null;
+      if (dueDateStr.includes('-')) {
+        const parts = dueDateStr.split('-');
+        if (parts[0].length === 4) {
+          due = new Date(dueDateStr);
+        } else {
+          due = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        }
+      } else {
+        due = new Date(dueDateStr);
+      }
+      if (due && !isNaN(due.getTime())) {
+        const now = new Date();
+        now.setHours(0, 0, 0, 0);
+        due.setHours(0, 0, 0, 0);
+        const diffMs = due.getTime() - now.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+        if (diffDays < 0) return `Overdue by ${Math.abs(diffDays)} ${Math.abs(diffDays) === 1 ? 'Day' : 'Days'}`;
+        if (diffDays === 0) return 'Due Today';
+        if (diffDays === 1) return '1 Day Left';
+        return `${diffDays} Days Left`;
+      }
+    } catch (_) {}
+    return 'Scheduled';
+  };
+
+  const assignedDateLabel = (task as any).assignedTime && task.assignedOn
+    ? `${task.assignedOn}, ${(task as any).assignedTime}`
+    : (task.createdAt ? formatDateTime(task.createdAt) : (task.assignedOn || 'Today'));
+
+  const startedDateLabel = (task as any).workStartedTime && task.assignedOn
+    ? `${task.assignedOn}, ${(task as any).workStartedTime}`
+    : ((task as any).workStartedAt ? formatDateTime((task as any).workStartedAt) : (!isToDo ? assignedDateLabel : 'Pending Start'));
+
+  const submittedDateLabel = (task as any).submittedDate
+    ? (task as any).submittedDate
+    : ((task as any).submittedAt ? formatDateTime((task as any).submittedAt) : (isSubmitted || isCompleted ? 'Submitted' : '—'));
+
+  const completedDateLabel = (task as any).completedDate
+    ? (task as any).completedDate
+    : ((task as any).completedAt ? formatDateTime((task as any).completedAt) : (isCompleted ? 'Completed' : '—'));
+
+  const timeLeftLabel = (task as any).timeLeft || calculateDynamicTimeLeft(task.dueDate, task.status);
 
   return (
     <div className="space-y-6 pb-12">
@@ -200,16 +262,20 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               <div className="space-y-2.5 text-xs">
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Assigned On</span>
-                  <span className="font-semibold text-gray-900">: {task.assignedOn || (task as any).date || 'Recently'}</span>
+                  <span className="font-semibold text-gray-900">: {assignedDateLabel}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Due Date</span>
-                  <span className="font-semibold text-gray-900">: {task.dueDate || (task as any).date || 'Scheduled'}</span>
+                  <span className="font-semibold text-gray-900">: {task.dueDate || 'Scheduled'}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1">
                   <span className="text-gray-500">Time Left</span>
-                  <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-[#5a36e6] border border-purple-200">
-                    : {(task as any).timeLeft || (isCompleted ? 'Completed' : '2 Days')}
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
+                    timeLeftLabel.includes('Overdue') ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                    timeLeftLabel === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                    'bg-purple-50 text-[#5a36e6] border-purple-200'
+                  }`}>
+                    : {timeLeftLabel}
                   </span>
                 </div>
               </div>
@@ -231,49 +297,15 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
                 <span className="text-xs font-bold text-gray-900 mt-2">Assigned</span>
-                <span className="text-[11px] text-gray-400 font-medium">03 Nov, 10:30 AM</span>
+                <span className="text-[11px] text-gray-500 font-medium">{assignedDateLabel}</span>
               </div>
 
               {/* Connector 1-2 */}
-              <div className="flex-1 h-0.5 bg-emerald-500 mx-2 -mt-7" />
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${!isToDo ? 'bg-emerald-500' : 'bg-gray-200'}`} />
 
               {/* Step 2: Work Started */}
               <div className="flex flex-col items-center text-center relative z-10">
-                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
-                  <Check className="w-4 h-4 stroke-[3]" />
-                </div>
-                <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
-                <span className="text-[11px] text-gray-400 font-medium">03 Nov, 11:10 AM</span>
-              </div>
-
-              {/* Connector 2-3 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isInProgress ? 'bg-[#5a36e6]' : 'bg-emerald-500'}`} />
-
-              {/* Step 3: In Progress (Current) */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {isCompleted ? (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </div>
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-purple-100">
-                    <span className="tracking-tighter font-black text-sm leading-none pb-1">•••</span>
-                  </div>
-                )}
-                <span className={`text-xs font-bold mt-2 ${isCompleted ? 'text-gray-900' : 'text-[#5a36e6]'}`}>
-                  In Progress
-                </span>
-                <span className="text-[11px] text-gray-500 font-medium">
-                  {isCompleted ? 'Done' : '(Current)'}
-                </span>
-              </div>
-
-              {/* Connector 3-4 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isCompleted ? 'bg-emerald-500' : 'bg-gray-200'}`} />
-
-              {/* Step 4: Submitted */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {isCompleted ? (
+                {!isToDo ? (
                   <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
                     <Check className="w-4 h-4 stroke-[3]" />
                   </div>
@@ -282,10 +314,54 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                     <span className="w-2 h-2 rounded-full bg-gray-200" />
                   </div>
                 )}
-                <span className={`text-xs font-semibold mt-2 ${isCompleted ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
+                <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
+                <span className="text-[11px] text-gray-500 font-medium">{startedDateLabel}</span>
+              </div>
+
+              {/* Connector 2-3 */}
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isSubmitted || isCompleted ? 'bg-emerald-500' : isInProgress ? 'bg-[#5a36e6]' : 'bg-gray-200'}`} />
+
+              {/* Step 3: In Progress (Current) */}
+              <div className="flex flex-col items-center text-center relative z-10">
+                {isSubmitted || isCompleted ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  </div>
+                ) : isInProgress ? (
+                  <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-purple-100">
+                    <span className="tracking-tighter font-black text-sm leading-none pb-1">•••</span>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
+                    <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  </div>
+                )}
+                <span className={`text-xs font-bold mt-2 ${isSubmitted || isCompleted ? 'text-gray-900' : isInProgress ? 'text-[#5a36e6]' : 'text-gray-400'}`}>
+                  In Progress
+                </span>
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {isCompleted ? 'Done' : isSubmitted ? 'Under Review' : isInProgress ? '(Current)' : 'Upcoming'}
+                </span>
+              </div>
+
+              {/* Connector 3-4 */}
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isSubmitted || isCompleted ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+
+              {/* Step 4: Submitted */}
+              <div className="flex flex-col items-center text-center relative z-10">
+                {isSubmitted || isCompleted ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
+                    <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  </div>
+                )}
+                <span className={`text-xs font-semibold mt-2 ${isSubmitted || isCompleted ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
                   Submitted
                 </span>
-                <span className="text-[11px] text-gray-300 font-medium">—</span>
+                <span className="text-[11px] text-gray-500 font-medium">{submittedDateLabel}</span>
               </div>
 
               {/* Connector 4-5 */}
@@ -305,7 +381,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 <span className={`text-xs font-semibold mt-2 ${isCompleted ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
                   Completed
                 </span>
-                <span className="text-[11px] text-gray-300 font-medium">—</span>
+                <span className="text-[11px] text-gray-500 font-medium">{completedDateLabel}</span>
               </div>
             </div>
 
@@ -431,43 +507,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           </div>
         </div>
 
-        {/* Right Column: Actions, Task Information, Attachments (4 cols) */}
+        {/* Right Column: Task Information & Attachments (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* Actions Card */}
-          <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
-            <div className="flex items-center gap-2 text-gray-900 mb-2 font-bold text-xs uppercase tracking-wider">
-              <Settings className="w-4 h-4 text-[#5a36e6]" />
-              <span>Actions</span>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => openSubmitWorkDrawer(task)}
-              className="w-full py-3 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-indigo-600/30 cursor-pointer"
-            >
-              <Send className="w-4 h-4" />
-              Submit Work (Mark as Completed)
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alert('Extension request submitted to Team Lead for review.')}
-              className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <CalendarPlus className="w-4 h-4 text-[#5a36e6]" />
-              Request Extension
-            </button>
-
-            <button
-              type="button"
-              onClick={() => alert('Support query sent to Team Lead.')}
-              className="w-full py-2.5 rounded-xl border border-gray-200 text-gray-700 hover:bg-gray-50 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
-            >
-              <HelpCircle className="w-4 h-4 text-[#5a36e6]" />
-              Raise a Query
-            </button>
-          </div>
-
           {/* Task Information Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-3">
             <div className="flex items-center gap-2 text-gray-900 mb-2 font-bold text-xs uppercase tracking-wider">
@@ -478,7 +519,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
             <div className="divide-y divide-gray-100 text-xs">
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Task ID</span>
-                <span className="font-bold text-gray-900 font-mono">: {task.taskId || 'TSK-2026-0487'}</span>
+                <span className="font-bold text-gray-900 font-mono">: {task.taskId || task.id}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Priority</span>
@@ -486,29 +527,33 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Status</span>
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-600">
+                <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                  task.status === 'Completed' ? 'bg-emerald-50 text-emerald-700' :
+                  task.status === 'Under Review' ? 'bg-amber-50 text-amber-700' :
+                  'bg-blue-50 text-blue-600'
+                }`}>
                   : ● {task.status || 'In Progress'}
                 </span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Assigned On</span>
-                <span className="font-semibold text-gray-800">: {task.assignedOn || '03 Nov 2026, 10:30 AM'}</span>
+                <span className="font-semibold text-gray-800">: {assignedDateLabel}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Due Date</span>
-                <span className="font-semibold text-gray-800">: {task.dueDate || '06 Nov 2026'}</span>
+                <span className="font-semibold text-gray-800">: {task.dueDate || 'Scheduled'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Assigned By</span>
-                <span className="font-semibold text-gray-800">: {task.assignedBy || 'Priya Verma'}</span>
+                <span className="font-semibold text-gray-800">: {task.assignedBy || 'Manager'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Department</span>
-                <span className="font-semibold text-gray-800">: {task.department || 'Events'}</span>
+                <span className="font-semibold text-gray-800">: {task.department || 'Hospital Workspace'}</span>
               </div>
               <div className="flex justify-between py-2">
                 <span className="text-gray-400 font-medium">Team</span>
-                <span className="font-semibold text-gray-800">: {task.team || 'Design'}</span>
+                <span className="font-semibold text-gray-800">: {task.team || 'General'}</span>
               </div>
             </div>
           </div>
@@ -536,7 +581,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs font-bold text-gray-800 truncate">{file.name}</p>
-                      <p className="text-[11px] text-gray-400">{file.size || '1.2 MB | 03 Nov 2026'}</p>
+                      <p className="text-[11px] text-gray-400">{file.size || `Attachment | ${assignedDateLabel}`}</p>
                     </div>
                   </div>
 

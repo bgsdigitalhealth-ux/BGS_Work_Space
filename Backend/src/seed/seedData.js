@@ -1,128 +1,30 @@
 const initialData = {
-  "departments": [
-    {
-      "id": "dept-eng",
-      "name": "Engineering",
-      "icon": "code",
-      "description": "Manage teams, members, roles and work."
-    },
-    {
-      "id": "dept-design",
-      "name": "Design",
-      "icon": "palette",
-      "description": "UI/UX and creative design division."
-    },
-    {
-      "id": "dept-mktg",
-      "name": "Marketing",
-      "icon": "megaphone",
-      "description": "Branding, campaigns and digital media outreach."
-    },
-    {
-      "id": "dept-ops",
-      "name": "Operations",
-      "icon": "layers",
-      "description": "Hospital IT, clinical informatics, and support logistics."
-    }
-  ],
-  "teams": [
-    {
-      "id": "team-backend",
-      "name": "Backend Team",
-      "departmentId": "dept-eng",
-      "description": "Core backend services, microservices, and database architecture."
-    },
-    {
-      "id": "team-frontend",
-      "name": "Frontend Team",
-      "departmentId": "dept-eng",
-      "description": "Web dashboards, responsive interfaces, and client components."
-    },
-    {
-      "id": "team-qa",
-      "name": "QA Team",
-      "departmentId": "dept-eng",
-      "description": "Quality assurance, automated regression, and security testing."
-    },
-    {
-      "id": "team-uiux",
-      "name": "UI/UX Team",
-      "departmentId": "dept-design",
-      "description": "User journeys, wireframes, and design system governance."
-    },
-    {
-      "id": "team-graphics",
-      "name": "Graphic Design Team",
-      "departmentId": "dept-design",
-      "description": "Digital assets, institutional media, posters, and illustrations."
-    },
-    {
-      "id": "team-digital",
-      "name": "Digital Media Team",
-      "departmentId": "dept-mktg",
-      "description": "Social campaigns, website publications, and public relations."
-    },
-    {
-      "id": "team-content",
-      "name": "Content Team",
-      "departmentId": "dept-mktg",
-      "description": "Medical copywriting, awareness articles, and press briefings."
-    },
-    {
-      "id": "team-branding",
-      "name": "Branding Team",
-      "departmentId": "dept-mktg",
-      "description": "Brand identity, hospital collateral, and event publicity."
-    },
-    {
-      "id": "team-support",
-      "name": "Support Team",
-      "departmentId": "dept-ops",
-      "description": "Technical assistance, helpdesk, and staff operational support."
-    },
-    {
-      "id": "team-infra",
-      "name": "Infrastructure Team",
-      "departmentId": "dept-ops",
-      "description": "Cloud servers, networks, hospital IoT, and data security."
-    },
-    {
-      "id": "team-logistics",
-      "name": "Logistics Team",
-      "departmentId": "dept-ops",
-      "description": "Resource procurement, equipment tracking, and vendor coordination."
-    },
-    {
-      "id": "team-facilities",
-      "name": "Facilities Team",
-      "departmentId": "dept-ops",
-      "description": "Center infrastructure, maintenance, and auditorium management."
-    }
-  ],
-  "members": [],
-  "assignments": [],
-  "tasks": [],
-  "workDone": [],
-  "appointments": [],
-  "notifications": [],
-  "conversations": [],
-  "messages": [],
-  "userWorkspace": {
-    "stats": {},
-    "assignedWork": [],
-    "history": [],
-    "recentActivities": []
+  departments: [],
+  teams: [],
+  members: [],
+  assignments: [],
+  tasks: [],
+  workDone: [],
+  appointments: [],
+  notifications: [],
+  conversations: [],
+  messages: [],
+  userWorkspace: {
+    stats: {},
+    assignedWork: [],
+    history: [],
+    recentActivities: []
   },
-  "users": [
+  users: [
     {
-      "id": "usr-bgsmch-admin",
-      "name": "BGS MCH",
-      "email": "bgsmchhospitalnagarur@gmail.com",
-      "password": "Apple2026?",
-      "hasPassword": true,
-      "role": "admin",
-      "avatar": "B",
-      "title": "Administrator"
+      id: "usr-bgsmch-admin",
+      name: "BGS MCH",
+      email: "bgsmchhospitalnagarur@gmail.com",
+      password: "Apple2026?",
+      hasPassword: true,
+      role: "admin",
+      avatar: "B",
+      title: "Administrator"
     }
   ]
 };

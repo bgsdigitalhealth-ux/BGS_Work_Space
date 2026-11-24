@@ -26,7 +26,7 @@ import {
   Edit3,
   CheckSquare
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, isUserManager, filterTasksForUser } from '../../context/AppContext';
 import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { AttendanceWidget } from './AttendanceWidget';
@@ -42,6 +42,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   const {
     currentUser,
     userWorkspace,
+    members,
     selectedUserTask,
     setSelectedUserTask,
     userNav,
@@ -55,6 +56,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
   const rawAssignedList = userWorkspace?.assignedWork || [];
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
+  const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === myEmail) || (currentUser?.id && m.id === currentUser.id));
+  const isManager = isUserManager(currentUser, myMember);
 
   // Strict User Isolation for regular user role: only view tasks belonging to user
   const assignedList = currentUser?.role === 'user'
@@ -93,6 +96,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   const [statusFilter, setStatusFilter] = useState<'All' | 'To Do' | 'In Progress' | 'Under Review' | 'Completed'>('All');
   const [priorityFilter, setPriorityFilter] = useState<'All' | 'High' | 'Medium' | 'Low'>('All');
   const [departmentFilter, setDepartmentFilter] = useState<string>('All');
+  const [teamFilter, setTeamFilter] = useState<string>('All');
 
   // Modals state
   const [pauseModalTask, setPauseModalTask] = useState<UserAssignedWorkType | null>(null);
@@ -128,6 +132,9 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
     // Priority filter
     if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
+
+    // Team filter for Managers
+    if (isManager && teamFilter !== 'All' && task.team.toLowerCase() !== teamFilter.toLowerCase()) return false;
 
     // Department filter
     if (departmentFilter !== 'All' && task.department !== departmentFilter) return false;

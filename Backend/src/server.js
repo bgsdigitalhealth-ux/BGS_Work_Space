@@ -8,7 +8,7 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const express = require('express');
 const cors = require('cors');
-const { connectDB } = require('./config/db');
+const { connectDB, getStatus } = require('./config/db');
 const { initMongoSeed } = require('./seed/dataService');
 const apiRoutes = require('./routes/api');
 const { initSocket } = require('./socket');
@@ -18,7 +18,15 @@ const server = http.createServer(app);
 const PORT = process.env.PORT || 5000;
 const HOST = '0.0.0.0';
 
-// Production & Development CORS Configuration
+// Trust Render / Cloudflare reverse proxy headers
+app.set('trust proxy', 1);
+
+// Production & Development CORS Configuration (Cloudflare Pages, custom domains, local dev)
+const allowedOrigins = (process.env.FRONTEND_URL || process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(o => o.trim().replace(/\/+$/, ''))
+  .filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
     // Allow non-browser requests (e.g. Render health checks, curl, cron)
@@ -28,7 +36,17 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'Cache-Control',
+    'x-user-id',
+    'x-user-email',
+    'x-user-role'
+  ]
 }));
 
 app.use(express.json({ limit: '15mb' }));
@@ -42,6 +60,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
     service: 'Worker Space API',
+    database: getStatus() ? 'connected' : 'fallback',
     uptime: process.uptime(),
     timestamp: new Date().toISOString()
   });

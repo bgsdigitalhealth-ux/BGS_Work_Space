@@ -70,7 +70,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (currentUser.role === 'user') {
+  if (portalMode === 'user') {
     return (
       <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
         {/* WorkHub Sidebar */}
@@ -92,6 +92,9 @@ export const App: React.FC = () => {
           {userNav === 'timeline' && <ManagerTimelineView />}
           {userNav === 'reports' && <ReportsView />}
         </main>
+
+        {/* Global Submit Work Drawer for Worker Mode */}
+        <SubmitWorkDrawer />
       </div>
     );
   }
