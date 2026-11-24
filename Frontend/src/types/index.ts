@@ -146,6 +146,10 @@ export interface UserAssignedWork {
   memberId?: string;
   teamId?: string;
   departmentId?: string;
+  submittedDate?: string;
+  submittedAt?: string;
+  completedDate?: string;
+  createdAt?: string;
   // Timer & Audit Tracking
   timerState?: TaskTimerState;
   activityLog?: TaskActivityItem[];

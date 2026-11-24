@@ -22,6 +22,7 @@ import { UserWorkHistory } from './components/user/UserWorkHistory';
 import { UserAppointments } from './components/user/UserAppointments';
 import { UserAssignWork } from './components/user/UserAssignWork';
 import { UserSettings } from './components/user/UserSettings';
+import { SubmitWorkDrawer } from './components/user/SubmitWorkDrawer';
 import { ManagerTimelineView } from './components/user/ManagerTimelineView';
 import { ReportsView } from './components/user/ReportsView';
 import { LoginPage } from './components/auth/LoginPage';
@@ -70,7 +71,7 @@ export const App: React.FC = () => {
     );
   }
 
-  if (portalMode === 'user') {
+  if (currentUser.role === 'user') {
     return (
       <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
         {/* WorkHub Sidebar */}
