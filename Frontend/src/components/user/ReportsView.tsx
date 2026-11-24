@@ -10,14 +10,16 @@ import {
   Trash2,
   ShieldCheck,
   RefreshCw,
-  X
+  X,
+  Lock,
+  Building2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { ReportItem } from '../../types';
 
 export const ReportsView: React.FC = () => {
-  const { teams, currentUser, isManagerOrAdmin, notify } = useApp();
+  const { teams, currentUser, members, notify } = useApp();
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -32,13 +34,39 @@ export const ReportsView: React.FC = () => {
   const [editPausedHours, setEditPausedHours] = useState<string>('0');
   const [editNotes, setEditNotes] = useState<string>('');
 
+  // Role Access Evaluation:
+  // - Admin: can view all members, can change/edit/delete
+  // - Manager: can view team members, can change/edit/delete
+  // - User: can ONLY view own particular record, CANNOT change/edit/delete
+  const isAdmin = currentUser?.role === 'admin';
+  const isManager = currentUser?.role === 'manager' || Boolean(
+    currentUser?.teamRole && (
+      currentUser.teamRole.toLowerCase().includes('head') ||
+      currentUser.teamRole.toLowerCase().includes('manager')
+    )
+  );
+  const isRegularUser = !isAdmin && !isManager;
+  const canChangeReport = isAdmin || isManager;
+
+  const userEmail = (currentUser?.email || '').trim().toLowerCase();
+  const userId = currentUser?.id || '';
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (userEmail && m.email && m.email.toLowerCase() === userEmail)
+  );
+  const myMemberId = myMember?.id || '';
+  const myTeamName = currentUser?.team || myMember?.role || 'Assigned Division';
+
   const fetchReports = async () => {
     setLoading(true);
     try {
       const res = await api.getReports({
         period,
         date: selectedDate,
-        teamId: selectedTeam
+        teamId: isRegularUser ? undefined : selectedTeam,
+        userId: currentUser?.id,
+        userRole: currentUser?.role,
+        userEmail: currentUser?.email
       });
       setReportItems(res.items || []);
     } catch (e) {
@@ -57,8 +85,62 @@ export const ReportsView: React.FC = () => {
     return `${hrs}h`;
   };
 
-  // Open Edit Modal
+  // Filter breakdown items strictly based on role:
+  // 1. Regular User: ONLY particular user's own record (never expose other employees)
+  // 2. Manager: their assigned team members / division
+  // 3. Admin: all members across the organization
+  const filteredForUser = reportItems.filter(item => {
+    const itemEmail = (item.userEmail || '').trim().toLowerCase();
+    const itemId = String(item.userId || '').trim();
+    const itemName = (item.userName || '').trim().toLowerCase();
+    const myName = (currentUser?.name || '').trim().toLowerCase();
+    return (
+      (userEmail && itemEmail === userEmail) ||
+      (userId && itemId === userId) ||
+      (myMemberId && itemId === myMemberId) ||
+      (myName && itemName === myName)
+    );
+  });
+
+  const displayedItems: ReportItem[] = isRegularUser
+    ? (filteredForUser.length > 0
+        ? filteredForUser
+        : currentUser
+        ? [{
+            id: `rep-self-${userId || 'usr'}`,
+            userId: userId || 'usr',
+            userName: currentUser.name || 'Member',
+            userEmail: currentUser.email || '',
+            teamName: myTeamName,
+            period,
+            startDate: selectedDate,
+            endDate: selectedDate,
+            attendanceSeconds: 0,
+            activeWorkSeconds: 0,
+            pausedSeconds: 0,
+            completedTasksCount: 0,
+            inProgressTasksCount: 0,
+            managerNotes: 'Active registered account'
+          }]
+        : [])
+    : isManager && selectedTeam !== 'All'
+    ? reportItems.filter(item => item.teamName === selectedTeam || (item as any).teamId === selectedTeam)
+    : reportItems;
+
+  // Aggregated totals strictly calculated for the displayed scope:
+  // - For user: only their own attendance, active work, paused time, and completed tasks
+  // - For admin: full organization totals
+  const totalAttendanceSecs = displayedItems.reduce((acc, curr) => acc + (curr.attendanceSeconds || 0), 0);
+  const totalActiveSecs = displayedItems.reduce((acc, curr) => acc + (curr.activeWorkSeconds || 0), 0);
+  const totalPausedSecs = displayedItems.reduce((acc, curr) => acc + (curr.pausedSeconds || 0), 0);
+  const totalCompleted = displayedItems.reduce((acc, curr) => acc + (curr.completedTasksCount || 0), 0);
+
+  // Open Edit Modal (Strictly Admin and Manager)
   const onOpenEdit = (item: ReportItem) => {
+    if (!canChangeReport) {
+      notify('Access denied: Only Administrators and Managers have access to modify work reports.', 'error', 'Permission Denied');
+      return;
+    }
     setEditingItem(item);
     setEditAttendanceHours((item.attendanceSeconds / 3600).toFixed(1));
     setEditActiveHours((item.activeWorkSeconds / 3600).toFixed(1));
@@ -68,6 +150,10 @@ export const ReportsView: React.FC = () => {
 
   const onSaveEdit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canChangeReport) {
+      notify('Access denied: Only Administrators and Managers have access to modify work reports.', 'error', 'Permission Denied');
+      return;
+    }
     if (!editingItem) return;
 
     try {
@@ -94,6 +180,10 @@ export const ReportsView: React.FC = () => {
   };
 
   const onDeleteReport = async (item: ReportItem) => {
+    if (!canChangeReport) {
+      notify('Access denied: Only Administrators and Managers have access to delete report records.', 'error', 'Permission Denied');
+      return;
+    }
     if (!window.confirm(`Are you sure you want to remove the report entry for ${item.userName}? Underlying tasks, attendance punches, and audit history will remain permanently safe.`)) {
       return;
     }
@@ -107,11 +197,22 @@ export const ReportsView: React.FC = () => {
     }
   };
 
-  // Aggregated totals
-  const totalAttendanceSecs = reportItems.reduce((acc, curr) => acc + (curr.attendanceSeconds || 0), 0);
-  const totalActiveSecs = reportItems.reduce((acc, curr) => acc + (curr.activeWorkSeconds || 0), 0);
-  const totalPausedSecs = reportItems.reduce((acc, curr) => acc + (curr.pausedSeconds || 0), 0);
-  const totalCompleted = reportItems.reduce((acc, curr) => acc + (curr.completedTasksCount || 0), 0);
+  // Header Titles & Badge Labels
+  const pageTitle = isAdmin
+    ? 'Executive Work & Attendance Reports'
+    : isManager
+    ? 'Manager Work & Attendance Reports'
+    : 'My Work & Attendance Report';
+
+  const breakdownHeading = isAdmin
+    ? 'Member Performance & Activity Breakdown'
+    : isManager
+    ? 'Team Member Performance & Activity Breakdown'
+    : 'My Performance & Activity Breakdown';
+
+  const memberCountBadge = isRegularUser
+    ? `${displayedItems.length} Member Listed (Your Personal Record)`
+    : `${displayedItems.length} ${displayedItems.length === 1 ? 'Member' : 'Members'} Listed`;
 
   return (
     <div className="space-y-6 pb-12">
@@ -125,14 +226,16 @@ export const ReportsView: React.FC = () => {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-xl sm:text-2xl font-black text-gray-900 tracking-tight">
-                  Manager Work & Attendance Reports
+                  {pageTitle}
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                   {period.toUpperCase()}
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                Consolidated attendance present, active task time, pause durations, and completed deliverables.
+                {canChangeReport 
+                  ? 'Consolidated attendance present, active task time, pause durations, and completed deliverables.' 
+                  : 'Your individual attendance present, active task duration, and deliverable metrics.'}
               </p>
             </div>
           </div>
@@ -150,12 +253,21 @@ export const ReportsView: React.FC = () => {
         </div>
 
         {/* Protection Notice */}
-        <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl px-4 py-2.5 my-4 flex items-center gap-2.5 text-xs text-emerald-800">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>
-            <strong className="font-bold">Manager Integrity Standard:</strong> Any report correction or deletion applies only to the reporting view. The underlying tasks, attendance punches, and change history remain permanently intact.
-          </span>
-        </div>
+        {canChangeReport ? (
+          <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl px-4 py-2.5 my-4 flex items-center gap-2.5 text-xs text-emerald-800">
+            <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+            <span>
+              <strong className="font-bold">Manager & Admin Control:</strong> Only Admin and Manager have access to modify work hours, record adjustments, and save management notes. Underlying attendance punches and change history remain permanently intact.
+            </span>
+          </div>
+        ) : (
+          <div className="bg-purple-50/60 border border-purple-100 rounded-xl px-4 py-2.5 my-4 flex items-center gap-2.5 text-xs text-purple-900">
+            <Lock className="w-4 h-4 text-[#5a36e6] shrink-0" />
+            <span>
+              <strong className="font-bold">Personal Performance Record:</strong> This report strictly displays your particular attendance present, active task duration, and deliverables. Records are read-only and visible only to you, your manager, and administrators.
+            </span>
+          </div>
+        )}
 
         {/* Period, Date, Team Filters */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
@@ -196,23 +308,38 @@ export const ReportsView: React.FC = () => {
             />
           </div>
 
-          {/* Team Dropdown */}
-          <div>
-            <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
-              <Users className="w-3.5 h-3.5 text-[#5a36e6]" />
-              <span>3. Team Filter</span>
-            </label>
-            <select
-              value={selectedTeam}
-              onChange={(e) => setSelectedTeam(e.target.value)}
-              className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-bold text-gray-800 cursor-pointer"
-            >
-              <option value="All">All Teams</option>
-              {teams.map((t) => (
-                <option key={t.id} value={t.id}>{t.name}</option>
-              ))}
-            </select>
-          </div>
+          {/* Team Dropdown (Admin & Manager) vs Assigned Team Badge (User) */}
+          {canChangeReport ? (
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <Users className="w-3.5 h-3.5 text-[#5a36e6]" />
+                <span>3. Team Filter</span>
+              </label>
+              <select
+                value={selectedTeam}
+                onChange={(e) => setSelectedTeam(e.target.value)}
+                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-bold text-gray-800 cursor-pointer"
+              >
+                <option value="All">All Teams ({reportItems.length} records)</option>
+                {teams.map((t) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1.5 flex items-center gap-1.5">
+                <Building2 className="w-3.5 h-3.5 text-[#5a36e6]" />
+                <span>3. Assigned Team</span>
+              </label>
+              <div className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 flex items-center justify-between">
+                <span className="truncate">{myTeamName}</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200 shrink-0">
+                  Your Team
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* KPI Summary Cards */}
@@ -262,9 +389,9 @@ export const ReportsView: React.FC = () => {
       {/* Member Breakdown Table */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-900">Member Performance & Activity Breakdown</h3>
+          <h3 className="text-base font-bold text-gray-900">{breakdownHeading}</h3>
           <span className="text-xs text-gray-500 font-medium">
-            {reportItems.length} {reportItems.length === 1 ? 'Member' : 'Members'} Listed
+            {memberCountBadge}
           </span>
         </div>
 
@@ -280,18 +407,20 @@ export const ReportsView: React.FC = () => {
                 <th className="py-3 px-4">Completed</th>
                 <th className="py-3 px-4">In Progress</th>
                 <th className="py-3 px-4">Manager Notes</th>
-                {isManagerOrAdmin && <th className="py-3 px-4 text-right">Actions</th>}
+                {canChangeReport && <th className="py-3 px-4 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-medium text-gray-700">
-              {reportItems.length === 0 ? (
+              {displayedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={isManagerOrAdmin ? 9 : 8} className="text-center py-12 text-gray-400 text-xs">
-                    No member records found for the selected period and team.
+                  <td colSpan={canChangeReport ? 9 : 8} className="text-center py-12 text-gray-400 text-xs">
+                    {isRegularUser 
+                      ? 'No recorded work metrics found for your profile on this reference date.' 
+                      : 'No member records found for the selected period and team.'}
                   </td>
                 </tr>
               ) : (
-                reportItems.map((item) => (
+                displayedItems.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/70 transition">
                     <td className="py-3.5 px-4">
                       <div className="font-bold text-gray-900">{item.userName}</div>
@@ -330,13 +459,13 @@ export const ReportsView: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    {isManagerOrAdmin && (
+                    {canChangeReport && (
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
                             onClick={() => onOpenEdit(item)}
-                            title="Edit Report Entry (Underlying records remain safe)"
+                            title="Edit Report Entry (Admin/Manager exclusive)"
                             className="p-1.5 rounded-lg text-slate-500 hover:text-[#5a36e6] hover:bg-indigo-50 transition cursor-pointer"
                           >
                             <Edit2 className="w-3.5 h-3.5" />
@@ -344,7 +473,7 @@ export const ReportsView: React.FC = () => {
                           <button
                             type="button"
                             onClick={() => onDeleteReport(item)}
-                            title="Delete Report Entry (Underlying records remain safe)"
+                            title="Delete Report Entry (Admin/Manager exclusive)"
                             className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -360,8 +489,8 @@ export const ReportsView: React.FC = () => {
         </div>
       </div>
 
-      {/* Edit Report Entry Modal */}
-      {editingItem && (
+      {/* Edit Report Entry Modal (Strictly Admin and Manager) */}
+      {canChangeReport && editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
           <div 
             className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden"

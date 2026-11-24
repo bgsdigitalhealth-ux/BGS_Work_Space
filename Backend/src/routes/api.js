@@ -684,8 +684,21 @@ router.get('/timeline', async (req, res) => {
 // --- Reports (Daily, Weekly, Monthly) ---
 router.get('/reports', async (req, res) => {
   try {
-    const { period, date, teamId } = req.query;
-    const result = await dataService.getReports({ period, date, teamId });
+    const { period, date, teamId, userId, userRole, userEmail } = req.query;
+    const headerRole = req.headers['x-user-role'];
+    const headerEmail = req.headers['x-user-email'];
+    const headerId = req.headers['x-user-id'];
+    const effectiveRole = userRole || headerRole;
+    const effectiveEmail = userEmail || headerEmail;
+    const effectiveId = userId || headerId;
+    const result = await dataService.getReports({
+      period,
+      date,
+      teamId,
+      userId: effectiveId,
+      userRole: effectiveRole,
+      userEmail: effectiveEmail
+    });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

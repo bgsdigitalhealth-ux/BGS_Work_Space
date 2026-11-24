@@ -272,12 +272,15 @@ export const api = {
     return res.json();
   },
 
-  // Manager Reports
-  getReports: async (params: { period?: string; date?: string; teamId?: string }): Promise<ReportResponse> => {
+  // Reports
+  getReports: async (params: { period?: string; date?: string; teamId?: string; userId?: string; userRole?: string; userEmail?: string }): Promise<ReportResponse> => {
     const q = new URLSearchParams();
     if (params.period) q.append('period', params.period);
     if (params.date) q.append('date', params.date);
     if (params.teamId) q.append('teamId', params.teamId);
+    if (params.userId) q.append('userId', params.userId);
+    if (params.userRole) q.append('userRole', params.userRole);
+    if (params.userEmail) q.append('userEmail', params.userEmail);
     const res = await fetch(`${API_BASE}/reports?${q.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch reports');
     return res.json();

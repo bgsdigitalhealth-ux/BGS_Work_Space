@@ -5563,7 +5563,7 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
 // =========================================================================
 // MANAGER'S REPORTS (Daily, Weekly, Monthly)
 // =========================================================================
-const getReports = async ({ period = 'daily', date, teamId }) => {
+const getReports = async ({ period = 'daily', date, teamId, userId, userRole, userEmail }) => {
   const refDate = date ? new Date(date) : new Date();
   const dateStr = refDate.toISOString().split('T')[0];
 
@@ -5596,7 +5596,21 @@ const getReports = async ({ period = 'daily', date, teamId }) => {
     }
   }
 
-  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+  // Role-Based Member Isolation:
+  // - If userRole is 'user': ONLY return that particular user's breakdown
+  // - If userRole is 'admin': return all members (admin can see all)
+  // - If userRole is 'manager': return members in their team/division
+  if (userRole === 'user' && (userEmail || userId)) {
+    const targetEmail = (userEmail || '').trim().toLowerCase();
+    const targetId = userId ? String(userId).trim() : '';
+    members = members.filter(m => {
+      const mId = String(m.id || m.customId || m._id?.toString() || m.userId || '').trim();
+      const mEmail = (m.email || '').trim().toLowerCase();
+      if (targetEmail && mEmail === targetEmail) return true;
+      if (targetId && mId === targetId) return true;
+      return false;
+    });
+  } else if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
     members = members.filter(m => m.teamId === teamId || m.team === teamId);
   }
 
