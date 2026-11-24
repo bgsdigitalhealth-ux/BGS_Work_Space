@@ -146,7 +146,7 @@ export const UserDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Assigned</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.totalAssigned}</h3>
+            <h3 className="text-2xl font-black text-gray-900 mt-0.5 font-number">{stats.totalAssigned}</h3>
           </div>
         </div>
 
@@ -160,7 +160,7 @@ export const UserDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Recent Work</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.inProgress}</h3>
+            <h3 className="text-2xl font-black text-gray-900 mt-0.5 font-number">{stats.inProgress}</h3>
           </div>
         </div>
 
@@ -174,7 +174,7 @@ export const UserDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Upcoming Work</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.upcomingWork}</h3>
+            <h3 className="text-2xl font-black text-gray-900 mt-0.5 font-number">{stats.upcomingWork}</h3>
           </div>
         </div>
 
@@ -188,7 +188,7 @@ export const UserDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Completed Work</p>
-            <h3 className="text-2xl font-black text-gray-900 mt-0.5">{stats.completedWork}</h3>
+            <h3 className="text-2xl font-black text-gray-900 mt-0.5 font-number">{stats.completedWork}</h3>
           </div>
         </div>
 
@@ -214,7 +214,7 @@ export const UserDashboard: React.FC = () => {
                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
               />
             </svg>
-            <span className="absolute text-xs font-bold text-gray-900">{stats.completionPercentage}%</span>
+            <span className="absolute text-xs font-bold text-gray-900 font-number">{stats.completionPercentage}%</span>
           </div>
           <div>
             <p className="text-xs font-bold text-gray-900">My Work Completion</p>

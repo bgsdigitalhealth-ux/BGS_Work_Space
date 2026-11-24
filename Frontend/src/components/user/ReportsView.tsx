@@ -19,7 +19,7 @@ import { api } from '../../services/api';
 import { ReportItem } from '../../types';
 
 export const ReportsView: React.FC = () => {
-  const { teams, currentUser, members, notify } = useApp();
+  const { teams, currentUser, members, notify, confirmAction } = useApp();
 
   const [period, setPeriod] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
@@ -184,9 +184,13 @@ export const ReportsView: React.FC = () => {
       notify('Access denied: Only Administrators and Managers have access to delete report records.', 'error', 'Permission Denied');
       return;
     }
-    if (!window.confirm(`Are you sure you want to remove the report entry for ${item.userName}? Underlying tasks, attendance punches, and audit history will remain permanently safe.`)) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: 'Remove Report Entry',
+      message: `Are you sure you want to remove the report entry for ${item.userName}? Underlying tasks, attendance punches, and audit history will remain permanently safe.`,
+      confirmText: 'Remove Entry',
+      variant: 'danger'
+    });
+    if (!ok) return;
 
     try {
       await api.deleteReportEntry(item.id, currentUser?.role);
@@ -350,7 +354,7 @@ export const ReportsView: React.FC = () => {
             </div>
             <div>
               <p className="text-[11px] font-semibold text-slate-500">Total Attendance</p>
-              <p className="text-base font-black text-slate-900">{formatHours(totalAttendanceSecs)}</p>
+              <p className="text-base font-black text-slate-900 font-number">{formatHours(totalAttendanceSecs)}</p>
             </div>
           </div>
 
@@ -360,7 +364,7 @@ export const ReportsView: React.FC = () => {
             </div>
             <div>
               <p className="text-[11px] font-semibold text-emerald-600">Active Task Work</p>
-              <p className="text-base font-black text-emerald-900">{formatHours(totalActiveSecs)}</p>
+              <p className="text-base font-black text-emerald-900 font-number">{formatHours(totalActiveSecs)}</p>
             </div>
           </div>
 
@@ -370,7 +374,7 @@ export const ReportsView: React.FC = () => {
             </div>
             <div>
               <p className="text-[11px] font-semibold text-amber-600">Total Paused Time</p>
-              <p className="text-base font-black text-amber-900">{formatHours(totalPausedSecs)}</p>
+              <p className="text-base font-black text-amber-900 font-number">{formatHours(totalPausedSecs)}</p>
             </div>
           </div>
 
@@ -380,7 +384,7 @@ export const ReportsView: React.FC = () => {
             </div>
             <div>
               <p className="text-[11px] font-semibold text-purple-600">Completed Work</p>
-              <p className="text-base font-black text-purple-900">{totalCompleted} Tasks</p>
+              <p className="text-base font-black text-purple-900 font-number">{totalCompleted} Tasks</p>
             </div>
           </div>
         </div>

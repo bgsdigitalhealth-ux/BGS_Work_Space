@@ -18,6 +18,8 @@ import {
 } from '../types';
 import { api, API_BASE } from '../services/api';
 import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
+import { ToastItem, ToastType } from '../components/common/ToastContainer';
+import { ConfirmModalProps } from '../components/common/ConfirmModal';
 
 interface AppContextType {
   // Authentication & Session
@@ -104,8 +106,24 @@ interface AppContextType {
 
   // Unified Non-Blocking Toast Notification System
   toastNotification: { message: string; type: 'success' | 'error' | 'info'; title?: string } | null;
-  notify: (message: string, type?: 'success' | 'error' | 'info', title?: string) => void;
+  toasts: ToastItem[];
+  notify: (message: string, type?: ToastType, title?: string, duration?: number) => string;
+  dismissToast: (id: string) => void;
   clearNotification: () => void;
+
+  // Custom Confirmation & Prompt Modal
+  confirmModal: ConfirmModalProps | null;
+  confirmAction: (options: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'primary' | 'warning';
+    isPrompt?: boolean;
+    promptPlaceholder?: string;
+    promptDefaultValue?: string;
+  }) => Promise<string | boolean>;
+  closeConfirmModal: () => void;
   selectedUserTask: UserAssignedWork | null;
   setSelectedUserTask: (task: UserAssignedWork | null) => void;
   selectedHistoryItem: UserWorkHistory | null;
@@ -355,15 +373,78 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [userNav, setUserNav] = useState<string>('dashboard');
   const [managerNav, setManagerNav] = useState<string>('dashboard');
   const [toastNotification, setToastNotification] = useState<{ message: string; type: 'success' | 'error' | 'info'; title?: string } | null>(null);
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [confirmModal, setConfirmModal] = useState<ConfirmModalProps | null>(null);
 
-  const notify = (message: string, type: 'success' | 'error' | 'info' = 'success', title?: string) => {
-    setToastNotification({ message, type, title });
-    setTimeout(() => {
-      setToastNotification(prev => (prev?.message === message ? null : prev));
-    }, 4500);
+  const notify = (
+    message: string,
+    type: ToastType = 'success',
+    title?: string,
+    duration?: number
+  ): string => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    setToasts(prev => {
+      // Prevent duplicate notifications if same message is already visible
+      if (prev.some(t => t.message === message)) return prev;
+      return [...prev, { id, message, type, title, duration }];
+    });
+
+    const defaultDuration =
+      type === 'error' ? 8000 : type === 'warning' ? 5000 : type === 'processing' ? 30000 : 4000;
+    const time = duration ?? defaultDuration;
+
+    if (time > 0) {
+      setTimeout(() => {
+        setToasts(prev => prev.filter(t => t.id !== id));
+      }, time);
+    }
+
+    // Keep backwards compatibility with single toastNotification
+    setToastNotification({
+      message,
+      type: type === 'warning' || type === 'processing' ? 'info' : type,
+      title
+    });
+
+    return id;
   };
 
-  const clearNotification = () => setToastNotification(null);
+  const dismissToast = (id: string) => {
+    setToasts(prev => prev.filter(t => t.id !== id));
+  };
+
+  const clearNotification = () => {
+    setToastNotification(null);
+    setToasts([]);
+  };
+
+  const confirmAction = (options: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'primary' | 'warning';
+    isPrompt?: boolean;
+    promptPlaceholder?: string;
+    promptDefaultValue?: string;
+  }): Promise<string | boolean> => {
+    return new Promise((resolve) => {
+      setConfirmModal({
+        isOpen: true,
+        ...options,
+        onConfirm: (val) => {
+          setConfirmModal(null);
+          resolve(options.isPrompt ? (val ?? '') : true);
+        },
+        onCancel: () => {
+          setConfirmModal(null);
+          resolve(false);
+        }
+      });
+    });
+  };
+
+  const closeConfirmModal = () => setConfirmModal(null);
   const [selectedUserTask, setSelectedUserTask] = useState<UserAssignedWork | null>(null);
   const [selectedHistoryItem, setSelectedHistoryItem] = useState<UserWorkHistory | null>(null);
   const [userWorkspace, setUserWorkspace] = useState<UserWorkspaceData | null>(null);
@@ -808,12 +889,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleDeleteAppointment = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Appointment',
+      message: 'Are you sure you want to delete this appointment? This record will be removed from your calendar.',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteAppointment(id);
       await refreshAppointments();
-    } catch (e) {
+      notify('Appointment deleted successfully.', 'success', 'Deleted');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to delete appointment', 'error', 'Error');
     }
   };
 
@@ -1126,29 +1215,51 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleDeleteTask = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this task?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Task',
+      message: 'Are you sure you want to delete this task?',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteTask(id);
       if (selectedTeam) fetchTasks(selectedTeam.id);
       fetchStats();
-    } catch (e) {
+      notify('Task deleted successfully.', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to delete task', 'error');
     }
   };
 
   const handleDeleteWorkDone = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this work log?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Work Log',
+      message: 'Are you sure you want to delete this completed work entry?',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteWorkDone(id);
       if (selectedTeam) fetchWorkDone(selectedTeam.id);
       fetchStats();
-    } catch (e) {
+      notify('Work entry removed successfully.', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to delete work log', 'error');
     }
   };
 
   const handleDeleteAssignment = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this assigned work?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Assigned Work',
+      message: 'Are you sure you want to delete this assigned work item?',
+      confirmText: 'Delete',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteAssignment(id);
       setUserWorkspace(prev => {
@@ -1167,6 +1278,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         promises.push(fetchAssignments(selectedTeam.id));
       }
       await Promise.all(promises);
+      notify('Assigned work item deleted.', 'success');
     } catch (e: any) {
       console.error('Failed to delete assignment:', e);
       notify(e.message || 'Failed to delete assignment', 'error', 'Delete Failed');
@@ -1174,35 +1286,59 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleDeleteMember = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this team member?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Team Member',
+      message: 'Are you sure you want to remove this team member from the team?',
+      confirmText: 'Remove Member',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteMember(id);
       if (selectedTeam) fetchMembers(selectedTeam.id);
       fetchStats();
-    } catch (e) {
+      notify('Team member removed successfully.', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to remove member', 'error');
     }
   };
 
   const handleDeleteDepartment = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this department? All its teams and members will also be affected.')) return;
+    const ok = await confirmAction({
+      title: 'Delete Department',
+      message: 'Are you sure you want to delete this department? All associated teams and members will also be affected.',
+      confirmText: 'Delete Department',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteDepartment(id);
       await fetchDepartments();
       fetchStats();
-    } catch (e) {
+      notify('Department deleted successfully.', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to delete department', 'error');
     }
   };
 
   const handleDeleteTeam = async (id: string) => {
-    if (!window.confirm('Are you sure you want to delete this team?')) return;
+    const ok = await confirmAction({
+      title: 'Delete Team',
+      message: 'Are you sure you want to delete this team and unlink its members?',
+      confirmText: 'Delete Team',
+      variant: 'danger'
+    });
+    if (!ok) return;
     try {
       await api.deleteTeam(id);
       if (selectedDepartment) fetchTeams(selectedDepartment.id);
       fetchStats();
-    } catch (e) {
+      notify('Team deleted successfully.', 'success');
+    } catch (e: any) {
       console.error(e);
+      notify(e.message || 'Failed to delete team', 'error');
     }
   };
 
@@ -1443,8 +1579,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         managerNav,
         setManagerNav,
         toastNotification,
+        toasts,
         notify,
+        dismissToast,
         clearNotification,
+        confirmModal,
+        confirmAction,
+        closeConfirmModal,
         selectedUserTask,
         setSelectedUserTask,
         selectedHistoryItem,

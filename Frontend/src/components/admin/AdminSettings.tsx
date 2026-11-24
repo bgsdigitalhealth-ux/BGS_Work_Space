@@ -24,7 +24,7 @@ import { api } from '../../services/api';
 import { User } from '../../types';
 
 export const AdminSettings: React.FC = () => {
-  const { currentUser, setCurrentUser, allUsers, refreshAll, notify } = useApp();
+  const { currentUser, setCurrentUser, allUsers, refreshAll, notify, confirmAction } = useApp();
 
   // Admin Profile State
   const [name, setName] = useState(currentUser?.name || 'Admin');
@@ -156,19 +156,25 @@ export const AdminSettings: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to permanently delete user "${u.name}" (${u.email})?\n\nOnce deleted, this user will immediately be logged out and will NEVER be able to access the dashboard or website using this email ID.`)) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: 'Permanently Delete User',
+      message: `Are you sure you want to permanently delete user "${u.name}" (${u.email})?\n\nOnce deleted, this user will immediately be logged out and will NEVER be able to access the dashboard or website using this email ID.`,
+      confirmText: 'Delete User Permanently',
+      variant: 'danger'
+    });
+    if (!ok) return;
 
     try {
       const res = await api.deleteUser(u.id);
       if (res.success) {
         setUserActionMsg(`User "${u.name}" (${u.email}) was deleted permanently. Access revoked.`);
+        notify(`User "${u.name}" deleted permanently.`, 'success');
         await refreshAll();
         fetchAdmins();
       }
     } catch (err: any) {
       setUserActionError(err.message || 'Failed to delete user.');
+      notify(err.message || 'Failed to delete user.', 'error');
     }
   };
 
@@ -302,18 +308,24 @@ export const AdminSettings: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(`Are you sure you want to remove administrator access for ${adminEmail}?`)) {
-      return;
-    }
+    const ok = await confirmAction({
+      title: 'Remove Administrator',
+      message: `Are you sure you want to remove administrator access for ${adminEmail}?`,
+      confirmText: 'Remove Admin Access',
+      variant: 'danger'
+    });
+    if (!ok) return;
 
     try {
       await api.deleteAdmin(adminId);
       setAdminActionMsg(`Administrator ${adminEmail} removed successfully.`);
+      notify(`Administrator ${adminEmail} removed successfully.`, 'success');
       setAdmins(prev => prev.filter(a => a.id !== adminId && a.email.toLowerCase() !== adminEmail.toLowerCase()));
       await refreshAll();
       fetchAdmins();
     } catch (err: any) {
       setAdminActionError(err.message || 'Failed to remove administrator.');
+      notify(err.message || 'Failed to remove administrator.', 'error');
     }
   };
 

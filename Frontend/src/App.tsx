@@ -35,7 +35,8 @@ import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';
 import { useApp } from './context/AppContext';
-import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import { ToastContainer } from './components/common/ToastContainer';
+import { ConfirmModal } from './components/common/ConfirmModal';
 
 export const App: React.FC = () => {
   const { 
@@ -43,8 +44,10 @@ export const App: React.FC = () => {
     userNav, 
     managerNav, 
     adminNav, 
-    toastNotification, 
-    clearNotification 
+    toasts,
+    dismissToast,
+    confirmModal,
+    closeConfirmModal 
   } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
@@ -85,90 +88,55 @@ export const App: React.FC = () => {
     );
   }
 
-  // Common Toast Notification Component
-  const ToastBanner = () => {
-    if (!toastNotification) return null;
-    const isError = toastNotification.type === 'error';
-    const isInfo = toastNotification.type === 'info';
-
-    return (
-      <div className="fixed top-5 right-5 z-[100] max-w-md w-full animate-in slide-in-from-top-4 fade-in duration-300 pointer-events-auto">
-        <div className={`rounded-2xl p-4 border shadow-2xl flex items-start gap-3.5 relative overflow-hidden backdrop-blur-md ${
-          isError 
-            ? 'bg-slate-900/95 text-white border-rose-500/40 shadow-rose-950/30' 
-            : isInfo 
-            ? 'bg-slate-900/95 text-white border-indigo-500/40 shadow-indigo-950/30' 
-            : 'bg-slate-900/95 text-white border-emerald-500/40 shadow-emerald-950/30'
-        }`}>
-          <div className="mt-0.5 shrink-0">
-            {isError ? (
-              <AlertCircle className="w-5 h-5 text-rose-400" />
-            ) : isInfo ? (
-              <Info className="w-5 h-5 text-indigo-400" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-            )}
-          </div>
-          <div className="flex-1 min-w-0 pr-2">
-            {toastNotification.title && (
-              <h4 className="text-xs font-bold text-white mb-0.5">{toastNotification.title}</h4>
-            )}
-            <p className="text-xs text-slate-200 leading-relaxed font-medium">{toastNotification.message}</p>
-          </div>
-          <button 
-            type="button" 
-            onClick={clearNotification}
-            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer shrink-0"
-            title="Dismiss notification"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    );
-  };
-
   // 1. ADMIN WORKSPACE (Strictly for role: 'admin')
   if (currentUser.role === 'admin') {
     return (
-      <div className="min-h-screen flex bg-[#f3f4fa] font-sans antialiased relative overflow-x-hidden">
-        <ToastBanner />
-        {/* Dark Navy Sidebar */}
+      <div className="h-screen w-screen overflow-hidden flex bg-[#f3f4fa] font-sans antialiased relative">
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        {confirmModal && (
+          <ConfirmModal
+            {...confirmModal}
+            onCancel={confirmModal.onCancel || closeConfirmModal}
+          />
+        )}
+        {/* Fixed Viewport Left Sidebar */}
         <Sidebar />
 
-        {/* Main Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 pt-6 px-4 sm:pt-8 sm:px-6 lg:px-8 pb-8 overflow-y-auto w-full">
+        {/* Independently Scrollable Main Content Area */}
+        <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
           <Header />
 
-          {adminNav === 'appointments' ? (
-            <AdminAppointments />
-          ) : adminNav === 'messages' ? (
-            <MessagesView />
-          ) : adminNav === 'settings' ? (
-            <AdminSettings />
-          ) : adminNav === 'timeline' ? (
-            <ManagerTimelineView />
-          ) : adminNav === 'reports' ? (
-            <ReportsView />
-          ) : (
-            <>
-              {/* Top 5 KPI Stats Cards */}
-              <StatsOverview />
+          <main className="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-6">
+            {adminNav === 'appointments' ? (
+              <AdminAppointments />
+            ) : adminNav === 'messages' ? (
+              <MessagesView />
+            ) : adminNav === 'settings' ? (
+              <AdminSettings />
+            ) : adminNav === 'timeline' ? (
+              <ManagerTimelineView />
+            ) : adminNav === 'reports' ? (
+              <ReportsView />
+            ) : (
+              <>
+                {/* Top 5 KPI Stats Cards */}
+                <StatsOverview />
 
-              {/* Central Departments & Teams (Left) + Unified Department Detail (Right) */}
-              <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
-                <div className="w-full lg:w-80 shrink-0 space-y-5">
-                  <DepartmentList />
-                  <TeamList />
+                {/* Central Departments & Teams (Left) + Unified Department Detail (Right) */}
+                <div className="flex flex-col lg:flex-row gap-5 items-stretch flex-1">
+                  <div className="w-full lg:w-80 shrink-0 space-y-5">
+                    <DepartmentList />
+                    <TeamList />
+                  </div>
+                  <DepartmentDetail />
                 </div>
-                <DepartmentDetail />
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {/* Global Modals for Add/Edit Actions */}
-          <Modals />
-        </main>
+            {/* Global Modals for Add/Edit Actions */}
+            <Modals />
+          </main>
+        </div>
       </div>
     );
   }
@@ -176,27 +144,35 @@ export const App: React.FC = () => {
   // 2. MANAGER WORKSPACE (Strictly for role: 'manager')
   if (currentUser.role === 'manager') {
     return (
-      <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
-        <ToastBanner />
-        {/* Dedicated Manager Sidebar */}
+      <div className="h-screen w-screen overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        {confirmModal && (
+          <ConfirmModal
+            {...confirmModal}
+            onCancel={confirmModal.onCancel || closeConfirmModal}
+          />
+        )}
+        {/* Dedicated Fixed Left Manager Sidebar */}
         <ManagerSidebar />
 
-        {/* Manager Content Area */}
-        <main className="flex-1 flex flex-col min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+        {/* Independently Scrollable Manager Content Area */}
+        <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
           <UserHeader />
 
-          {/* Conditional View by managerNav */}
-          {managerNav === 'dashboard' && <ManagerDashboard />}
-          {managerNav === 'team' && <UserTeamView />}
-          {managerNav === 'assign-work' && <UserAssignWork />}
-          {managerNav === 'my-work' && <UserAssignedWork initialView="cards" title="My Work" />}
-          {managerNav === 'review-work' && <ManagerReviewWork />}
-          {(managerNav === 'appointments' || managerNav === 'my-schedule') && <UserAppointments />}
-          {managerNav === 'messages' && <MessagesView />}
-          {managerNav === 'timeline' && <ManagerTimelineView />}
-          {managerNav === 'reports' && <ReportsView />}
-          {managerNav === 'settings' && <UserSettings />}
-        </main>
+          <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
+            {/* Conditional View by managerNav */}
+            {managerNav === 'dashboard' && <ManagerDashboard />}
+            {managerNav === 'team' && <UserTeamView />}
+            {managerNav === 'assign-work' && <UserAssignWork />}
+            {managerNav === 'my-work' && <UserAssignedWork initialView="cards" title="My Work" />}
+            {managerNav === 'review-work' && <ManagerReviewWork />}
+            {(managerNav === 'appointments' || managerNav === 'my-schedule') && <UserAppointments />}
+            {managerNav === 'messages' && <MessagesView />}
+            {managerNav === 'timeline' && <ManagerTimelineView />}
+            {managerNav === 'reports' && <ReportsView />}
+            {managerNav === 'settings' && <UserSettings />}
+          </main>
+        </div>
 
         {/* Global Submit Work Drawer */}
         <SubmitWorkDrawer />
@@ -206,28 +182,36 @@ export const App: React.FC = () => {
 
   // 3. USER WORKSPACE (Strictly for role: 'user')
   return (
-    <div className="min-h-screen flex bg-[#f7f8fc] font-sans antialiased relative overflow-x-hidden">
-      <ToastBanner />
-      {/* WorkHub User Sidebar */}
+    <div className="h-screen w-screen overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
+      <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+      {confirmModal && (
+        <ConfirmModal
+          {...confirmModal}
+          onCancel={confirmModal.onCancel || closeConfirmModal}
+        />
+      )}
+      {/* WorkHub Fixed Left User Sidebar */}
       <UserSidebar />
 
-      {/* User Content Area */}
-      <main className="flex-1 flex flex-col min-w-0 p-3.5 sm:p-6 lg:p-8 overflow-y-auto max-w-[1600px] mx-auto w-full">
+      {/* Independently Scrollable User Content Area */}
+      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
         <UserHeader />
 
-        {/* Conditional View by userNav */}
-        {userNav === 'dashboard' && <UserDashboard />}
-        {(userNav === 'record' || userNav === 'records') && <UserAttendanceRecords />}
-        {userNav === 'messages' && <MessagesView />}
-        {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
-        {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}
-        {userNav === 'assign-work' && <UserAssignWork />}
-        {userNav === 'work-history' && <UserWorkHistory />}
-        {userNav === 'settings' && <UserSettings />}
-        {userNav === 'team' && <UserTeamView />}
-        {userNav === 'timeline' && <ManagerTimelineView />}
-        {userNav === 'reports' && <ReportsView />}
-      </main>
+        <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
+          {/* Conditional View by userNav */}
+          {userNav === 'dashboard' && <UserDashboard />}
+          {(userNav === 'record' || userNav === 'records') && <UserAttendanceRecords />}
+          {userNav === 'messages' && <MessagesView />}
+          {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
+          {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}
+          {userNav === 'assign-work' && <UserAssignWork />}
+          {userNav === 'work-history' && <UserWorkHistory />}
+          {userNav === 'settings' && <UserSettings />}
+          {userNav === 'team' && <UserTeamView />}
+          {userNav === 'timeline' && <ManagerTimelineView />}
+          {userNav === 'reports' && <ReportsView />}
+        </main>
+      </div>
 
       {/* Global Submit Work Drawer for Worker Mode */}
       <SubmitWorkDrawer />

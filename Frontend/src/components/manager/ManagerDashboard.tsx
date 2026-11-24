@@ -157,7 +157,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{myTeamMembers.length || 1}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{myTeamMembers.length || 1}</h3>
           </div>
         </div>
 
@@ -171,7 +171,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">In Progress</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{inProgressTasks}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{inProgressTasks}</h3>
           </div>
         </div>
 
@@ -185,7 +185,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-amber-700 uppercase tracking-wider">Needs Review</p>
-            <h3 className="text-2xl font-black text-amber-900 mt-0.5">{underReviewTasks}</h3>
+            <h3 className="text-2xl font-black text-amber-900 mt-0.5 font-number">{underReviewTasks}</h3>
           </div>
         </div>
 
@@ -199,7 +199,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Not Started</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{todoTasks}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{todoTasks}</h3>
           </div>
         </div>
 
@@ -213,7 +213,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Completed</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-0.5">{completedTasks}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{completedTasks}</h3>
           </div>
         </div>
       </div>

@@ -99,7 +99,7 @@ export const StatsOverview: React.FC = () => {
                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider truncate group-hover:text-indigo-600 transition-colors">
                   {card.title}
                 </p>
-                <h3 className="text-base sm:text-lg font-bold text-slate-900 leading-tight">
+                <h3 className="text-base sm:text-lg font-extrabold text-slate-900 leading-tight font-number">
                   {card.value}
                 </h3>
               </div>

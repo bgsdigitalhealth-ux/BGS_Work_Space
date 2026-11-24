@@ -3,7 +3,44 @@ import { Layers, Calendar, Trash2, CheckCircle2, RotateCcw } from 'lucide-react'
 import { useApp } from '../context/AppContext';
 
 export const AssignedWorkSummary: React.FC = () => {
-  const { selectedTeam, assignments, members, handleDeleteAssignment, handleApproveWork, handleRequestRework } = useApp();
+  const { 
+    selectedTeam, 
+    assignments, 
+    members, 
+    handleDeleteAssignment, 
+    handleApproveWork, 
+    handleRequestRework,
+    confirmAction,
+    notify 
+  } = useApp();
+
+  const handleReworkClick = async (itemId: string) => {
+    const feedback = await confirmAction({
+      title: 'Request Task Rework',
+      message: 'Please provide clear feedback or instructions for the team member explaining what needs revision:',
+      confirmText: 'Submit Feedback',
+      variant: 'warning',
+      isPrompt: true,
+      promptPlaceholder: 'e.g. Please verify responsive styles and test on mobile screen...'
+    });
+    if (typeof feedback === 'string' && feedback.trim()) {
+      await handleRequestRework(itemId, feedback.trim());
+      notify('Rework feedback delivered to team member.', 'info', 'Feedback Sent');
+    }
+  };
+
+  const handleApproveClick = async (itemId: string) => {
+    const ok = await confirmAction({
+      title: 'Approve Deliverable',
+      message: 'Mark this assigned task as fully approved and completed?',
+      confirmText: 'Approve Work',
+      variant: 'primary'
+    });
+    if (ok) {
+      await handleApproveWork(itemId, 'Approved by Admin');
+      notify('Task marked as Completed.', 'success', 'Approved');
+    }
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -84,21 +121,29 @@ export const AssignedWorkSummary: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-xs flex-1 flex flex-col">
-      <div className="flex items-center gap-2.5 mb-1">
-        <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-          <Layers className="w-4 h-4" />
+    <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-xs flex-1 flex flex-col h-full min-h-[560px]">
+      <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <Layers className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-base">Assigned Work Summary</h3>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Recently assigned work for {selectedTeam?.name || 'Selected Team'} ({members.length} members).
+            </p>
+          </div>
         </div>
-        <h3 className="font-bold text-slate-900 text-base">Assigned Work Summary</h3>
+        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 shrink-0">
+          {assignments.length} Tasks
+        </span>
       </div>
-      <p className="text-xs text-slate-500 mb-4">
-        Recently assigned work for {selectedTeam?.name || 'Selected Team'} ({members.length} members).
-      </p>
 
-      <div className="space-y-3 overflow-y-auto flex-1 max-h-[380px] pr-1">
+      <div className="space-y-3 overflow-y-auto flex-1 pr-1 min-h-0">
         {assignments.length === 0 ? (
-          <div className="p-6 text-center text-slate-400 text-xs">
-            No work items assigned yet. Fill out the form to assign work!
+          <div className="p-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center flex-1">
+            <Layers className="w-8 h-8 text-slate-300 mb-2" />
+            <span>No work items assigned yet. Fill out the form to assign work!</span>
           </div>
         ) : (
           assignments.map((item) => {
@@ -142,19 +187,16 @@ export const AssignedWorkSummary: React.FC = () => {
                   {item.status !== 'Completed' && (
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleApproveWork(item.id, 'Approved by Admin')}
+                        onClick={() => handleApproveClick(item.id)}
                         title="Approve as Completed"
-                        className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition"
+                        className="p-1 rounded-md text-emerald-600 hover:bg-emerald-50 transition cursor-pointer"
                       >
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </button>
                       <button
-                        onClick={() => {
-                          const fb = prompt('Enter rework feedback for team member:');
-                          if (fb) handleRequestRework(item.id, fb);
-                        }}
+                        onClick={() => handleReworkClick(item.id)}
                         title="Request Rework"
-                        className="p-1 rounded-md text-amber-600 hover:bg-amber-50 transition"
+                        className="p-1 rounded-md text-amber-600 hover:bg-amber-50 transition cursor-pointer"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
                       </button>

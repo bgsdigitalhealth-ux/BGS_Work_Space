@@ -30,7 +30,9 @@ export const AdminAppointments: React.FC = () => {
     handleDeleteAppointment,
     departments,
     teams,
-    members
+    members,
+    confirmAction,
+    notify
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'All' | 'Today' | 'Upcoming' | 'Completed' | 'Cancelled'>('All');
@@ -398,8 +400,15 @@ export const AdminAppointments: React.FC = () => {
                             <button
                               type="button"
                               onClick={async () => {
-                                if (window.confirm(`Are you sure you want to cancel the appointment "${apt.title}"?`)) {
+                                const ok = await confirmAction({
+                                  title: 'Cancel Appointment',
+                                  message: `Are you sure you want to cancel the appointment "${apt.title}"?`,
+                                  confirmText: 'Cancel Appointment',
+                                  variant: 'warning'
+                                });
+                                if (ok) {
                                   await handleUpdateAppointment(apt.id, { status: 'Cancelled' });
+                                  notify(`Appointment "${apt.title}" cancelled.`, 'info');
                                 }
                               }}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
@@ -412,8 +421,15 @@ export const AdminAppointments: React.FC = () => {
                             <button
                               type="button"
                               onClick={async () => {
-                                if (window.confirm(`Do you want to restore and schedule "${apt.title}"?`)) {
+                                const ok = await confirmAction({
+                                  title: 'Restore Appointment',
+                                  message: `Do you want to restore and schedule "${apt.title}"?`,
+                                  confirmText: 'Restore & Schedule',
+                                  variant: 'primary'
+                                });
+                                if (ok) {
                                   await handleUpdateAppointment(apt.id, { status: 'Scheduled' });
+                                  notify(`Appointment "${apt.title}" restored.`, 'success');
                                 }
                               }}
                               className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors cursor-pointer"
@@ -673,9 +689,16 @@ export const AdminAppointments: React.FC = () => {
                   <button
                     type="button"
                     onClick={async () => {
-                      if (window.confirm(`Are you sure you want to cancel the appointment "${viewingItem.title}"?`)) {
+                      const ok = await confirmAction({
+                        title: 'Cancel Appointment',
+                        message: `Are you sure you want to cancel the appointment "${viewingItem.title}"?`,
+                        confirmText: 'Cancel Appointment',
+                        variant: 'warning'
+                      });
+                      if (ok) {
                         await handleUpdateAppointment(viewingItem.id, { status: 'Cancelled' });
                         setViewingItem(prev => prev ? { ...prev, status: 'Cancelled' } : null);
+                        notify(`Appointment "${viewingItem.title}" cancelled.`, 'info');
                       }
                     }}
                     className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
@@ -692,9 +715,16 @@ export const AdminAppointments: React.FC = () => {
                     <button
                       type="button"
                       onClick={async () => {
-                        if (window.confirm(`Do you want to restore and schedule "${viewingItem.title}"?`)) {
+                        const ok = await confirmAction({
+                          title: 'Restore Appointment',
+                          message: `Do you want to restore and schedule "${viewingItem.title}"?`,
+                          confirmText: 'Restore & Schedule',
+                          variant: 'primary'
+                        });
+                        if (ok) {
                           await handleUpdateAppointment(viewingItem.id, { status: 'Scheduled' });
                           setViewingItem(prev => prev ? { ...prev, status: 'Scheduled' } : null);
+                          notify(`Appointment "${viewingItem.title}" restored.`, 'success');
                         }
                       }}
                       className="px-3 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer"

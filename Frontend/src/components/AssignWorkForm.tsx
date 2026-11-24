@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Shield, User, Mail, Phone, AlertCircle, ArrowRight } from 'lucide-react';
+import { Send, User, Mail, Phone, AlertCircle, ArrowRight } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../context/AppContext';
 import { api } from '../services/api';
+import { ButtonSpinner } from './common/LoadingSpinner';
 
 export const AssignWorkForm: React.FC = () => {
   const { selectedTeam, members, allUsers, currentUser, refreshAll, notify } = useApp();
@@ -154,15 +155,15 @@ export const AssignWorkForm: React.FC = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200/60 p-5 shadow-sm flex-1 flex flex-col">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
-            <Shield className="w-4 h-4" />
+    <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-xs flex-1 flex flex-col h-full min-h-[560px]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 mb-5">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+            <Send className="w-5 h-5" />
           </div>
           <div>
             <h3 className="font-bold text-slate-900 text-base">Assign Work</h3>
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-slate-500 mt-0.5">
               {assignMode === 'admin_to_user'
                 ? `Assign work to team member in ${selectedTeam?.name || 'Department'}.`
                 : assignMode === 'admin_to_manager'
@@ -451,10 +452,16 @@ export const AssignWorkForm: React.FC = () => {
           <button
             type="submit"
             disabled={submitting}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-semibold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
+            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold text-xs sm:text-sm rounded-xl flex items-center justify-center gap-2 shadow-xs transition-colors cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5" />
-            <span>{submitting ? 'Assigning...' : 'Assign'}</span>
+            {submitting ? (
+              <ButtonSpinner text="Assigning work..." size="sm" />
+            ) : (
+              <>
+                <Send className="w-3.5 h-3.5" />
+                <span>Assign Work</span>
+              </>
+            )}
           </button>
         </div>
       </form>

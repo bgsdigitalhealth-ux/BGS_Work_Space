@@ -56,7 +56,7 @@ export const Sidebar: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed lg:static top-0 bottom-0 left-0 z-50 w-72 max-w-[85vw] lg:max-w-none bg-[#121139] text-slate-300 flex flex-col shrink-0 min-h-screen transition-transform duration-300 ease-in-out ${mobileSidebarOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen bg-[#121139] text-slate-300 flex flex-col shrink-0 overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
         {/* Brand Header */}
         <div className="p-5 flex items-center justify-between border-b border-indigo-950/60 shrink-0">

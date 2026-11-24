@@ -7,9 +7,14 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        serif: ['"Playfair Display"', 'Georgia', 'serif'],
-        playfair: ['"Playfair Display"', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        button: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        nav: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        number: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
+        jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
+        manrope: ['Manrope', 'sans-serif'],
       },
       colors: {
         brand: {

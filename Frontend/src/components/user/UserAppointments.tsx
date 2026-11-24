@@ -22,7 +22,9 @@ export const UserAppointments: React.FC = () => {
     setSelectedAppointmentDate,
     handleCreateAppointment,
     handleUpdateAppointment,
-    currentUser
+    currentUser,
+    confirmAction,
+    notify
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'All' | 'Today' | 'Upcoming' | 'Completed' | 'Cancelled'>('All');
@@ -333,8 +335,15 @@ export const UserAppointments: React.FC = () => {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (window.confirm(`Are you sure you want to cancel the appointment "${apt.title}"?`)) {
+                            const ok = await confirmAction({
+                              title: 'Cancel Appointment',
+                              message: `Are you sure you want to cancel the appointment "${apt.title}"?`,
+                              confirmText: 'Cancel Appointment',
+                              variant: 'warning'
+                            });
+                            if (ok) {
                               await handleUpdateAppointment(apt.id, { status: 'Cancelled' });
+                              notify(`Appointment "${apt.title}" cancelled.`, 'info');
                             }
                           }}
                           className="text-gray-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition cursor-pointer"
@@ -346,8 +355,15 @@ export const UserAppointments: React.FC = () => {
                         <button
                           type="button"
                           onClick={async () => {
-                            if (window.confirm(`Do you want to restore and schedule "${apt.title}"?`)) {
+                            const ok = await confirmAction({
+                              title: 'Restore Appointment',
+                              message: `Do you want to restore and schedule "${apt.title}"?`,
+                              confirmText: 'Restore & Schedule',
+                              variant: 'primary'
+                            });
+                            if (ok) {
                               await handleUpdateAppointment(apt.id, { status: 'Scheduled' });
+                              notify(`Appointment "${apt.title}" scheduled.`, 'success');
                             }
                           }}
                           className="text-rose-400 hover:text-emerald-600 p-1 rounded-lg hover:bg-emerald-50 transition cursor-pointer"
