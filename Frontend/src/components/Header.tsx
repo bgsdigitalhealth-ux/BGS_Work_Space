@@ -233,29 +233,27 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={handleOpenWppModal}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs ${
-              isWppReady
-                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80'
-                : isWppReconnecting
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs ${isWppReady
+              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80'
+              : isWppReconnecting
                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100/80'
                 : isWppActionRequired
-                ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/80'
-                : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
-            }`}
+                  ? 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/80'
+                  : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+              }`}
             title="Manage automated WhatsApp delivery, background reconnection, and disconnection alerts"
           >
             <Smartphone className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden md:inline">WhatsApp:</span>
             <span className="font-bold flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${
-                isWppReady
-                  ? 'bg-emerald-500 animate-pulse'
-                  : isWppReconnecting
+              <span className={`w-2 h-2 rounded-full ${isWppReady
+                ? 'bg-emerald-500 animate-pulse'
+                : isWppReconnecting
                   ? 'bg-blue-500 animate-ping'
                   : isWppActionRequired
-                  ? 'bg-amber-500'
-                  : 'bg-slate-400'
-              }`} />
+                    ? 'bg-amber-500'
+                    : 'bg-slate-400'
+                }`} />
               {isWppReady ? 'Connected' : isWppReconnecting ? 'Reconnecting' : isWppActionRequired ? 'Action Required' : 'Disconnected'}
             </span>
             {pendingCount > 0 && (
@@ -372,11 +370,10 @@ export const Header: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setWppModalTab('status')}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  wppModalTab === 'status'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${wppModalTab === 'status'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 <QrCode className="w-3.5 h-3.5" />
                 <span>Connection & QR</span>
@@ -389,11 +386,10 @@ export const Header: React.FC = () => {
                   setWppModalTab('messages');
                   fetchStoredMessages();
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  wppModalTab === 'messages'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${wppModalTab === 'messages'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>Stored Messages Log</span>
@@ -413,11 +409,10 @@ export const Header: React.FC = () => {
                   setWppModalTab('alerts');
                   fetchAlertSettings();
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
-                  wppModalTab === 'alerts'
-                    ? 'bg-emerald-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:bg-slate-100'
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${wppModalTab === 'alerts'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+                  }`}
               >
                 <Bell className="w-3.5 h-3.5" />
                 <span>Disconnection Alerts</span>
@@ -429,15 +424,14 @@ export const Header: React.FC = () => {
             {wppModalTab === 'status' && (
               <div className="overflow-y-auto flex-1 pr-1">
                 {/* Current Status Box */}
-                <div className={`p-4 rounded-2xl border mb-5 flex items-center justify-between gap-3 ${
-                  isWppReady
-                    ? 'bg-emerald-50/70 border-emerald-200'
-                    : isWppReconnecting
+                <div className={`p-4 rounded-2xl border mb-5 flex items-center justify-between gap-3 ${isWppReady
+                  ? 'bg-emerald-50/70 border-emerald-200'
+                  : isWppReconnecting
                     ? 'bg-blue-50/70 border-blue-200'
                     : isWppActionRequired
-                    ? 'bg-amber-50/70 border-amber-200'
-                    : 'bg-slate-50 border-slate-200'
-                }`}>
+                      ? 'bg-amber-50/70 border-amber-200'
+                      : 'bg-slate-50 border-slate-200'
+                  }`}>
                   <div className="flex items-center gap-2.5">
                     {isWppReady ? (
                       <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
@@ -451,38 +445,37 @@ export const Header: React.FC = () => {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-bold text-slate-900">Status:</span>
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
-                          isWppReady
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : isWppReconnecting
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${isWppReady
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : isWppReconnecting
                             ? 'bg-blue-100 text-blue-700'
                             : isWppActionRequired
-                            ? 'bg-amber-100 text-amber-800'
-                            : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-slate-200 text-slate-700'
-                        }`}>
+                              ? 'bg-amber-100 text-amber-800'
+                              : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                                ? 'bg-indigo-100 text-indigo-700'
+                                : 'bg-slate-200 text-slate-700'
+                          }`}>
                           {isWppReady
                             ? 'Connected & Ready'
                             : isWppReconnecting
-                            ? `Reconnecting (Attempt ${wppStatus?.reconnectAttempts || 1})`
-                            : isWppActionRequired
-                            ? 'Action Required'
-                            : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
-                            ? 'Starting Browser...'
-                            : 'Disconnected'}
+                              ? `Reconnecting (Attempt ${wppStatus?.reconnectAttempts || 1})`
+                              : isWppActionRequired
+                                ? 'Action Required'
+                                : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                                  ? 'Starting Browser...'
+                                  : 'Disconnected'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 mt-0.5">
                         {isWppReady
                           ? 'Automated WhatsApp alerts are active for all Meeting, Event, and Work assignments.'
                           : isWppReconnecting
-                          ? 'Automatic background reconnection is in progress with bounded exponential backoff.'
-                          : isWppActionRequired
-                          ? 'Scan the live QR code below on your phone to link your WhatsApp session.'
-                          : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
-                          ? 'Initializing headless browser engine and preparing WhatsApp Web QR code...'
-                          : 'Session disconnected. Click restart to start the session, or wait for background reconnection.'}
+                            ? 'Automatic background reconnection is in progress with bounded exponential backoff.'
+                            : isWppActionRequired
+                              ? 'Scan the live QR code below on your phone to link your WhatsApp session.'
+                              : wppStatus?.status === 'RESTARTING' || wppStatus?.status === 'CONNECTING'
+                                ? 'Initializing headless browser engine and preparing WhatsApp Web QR code...'
+                                : 'Session disconnected. Click restart to start the session, or wait for background reconnection.'}
                       </p>
                     </div>
                   </div>
@@ -676,11 +669,10 @@ export const Header: React.FC = () => {
                           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-700">
                             {msg.formType || 'Work Request'}
                           </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold capitalize ${
-                            msg.recipientType === 'sender'
-                              ? 'bg-blue-100 text-blue-700'
-                              : 'bg-emerald-100 text-emerald-700'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold capitalize ${msg.recipientType === 'sender'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-emerald-100 text-emerald-700'
+                            }`}>
                             {msg.recipientType || 'recipient'}
                           </span>
                           <span className="text-[11px] font-semibold text-slate-800">
@@ -697,11 +689,10 @@ export const Header: React.FC = () => {
                               Retry #{msg.retries}
                             </span>
                           )}
-                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            msg.status === 'sent'
-                              ? 'bg-emerald-100 text-emerald-700'
-                              : 'bg-amber-100 text-amber-700'
-                          }`}>
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${msg.status === 'sent'
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-amber-100 text-amber-700'
+                            }`}>
                             {msg.status || 'pending'}
                           </span>
                         </div>
@@ -955,11 +946,10 @@ export const Header: React.FC = () => {
                   </div>
 
                   {testAlertResult && (
-                    <div className={`p-3 rounded-xl text-xs border ${
-                      testAlertResult.success
-                        ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
-                        : 'bg-rose-50/80 border-rose-200 text-rose-800'
-                    }`}>
+                    <div className={`p-3 rounded-xl text-xs border ${testAlertResult.success
+                      ? 'bg-emerald-50/80 border-emerald-200 text-emerald-800'
+                      : 'bg-rose-50/80 border-rose-200 text-rose-800'
+                      }`}>
                       <p className="font-bold mb-1">
                         {testAlertResult.success ? '✓ Test Alert Executed' : '⚠️ Test Alert Warning'}
                       </p>
@@ -1000,13 +990,12 @@ export const Header: React.FC = () => {
                           className="p-2.5 rounded-xl border border-slate-200 bg-white text-[11px] flex items-center justify-between gap-2"
                         >
                           <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              log.channel === 'email'
-                                ? 'bg-blue-100 text-blue-700'
-                                : log.channel === 'sms'
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${log.channel === 'email'
+                              ? 'bg-blue-100 text-blue-700'
+                              : log.channel === 'sms'
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-purple-100 text-purple-700'
-                            }`}>
+                              }`}>
                               {log.channel}
                             </span>
                             <span className="font-medium text-slate-800 truncate max-w-[180px]">
@@ -1014,13 +1003,12 @@ export const Header: React.FC = () => {
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                              log.status === 'delivered'
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : log.status === 'skipped'
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${log.status === 'delivered'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : log.status === 'skipped'
                                 ? 'bg-amber-100 text-amber-700'
                                 : 'bg-rose-100 text-rose-700'
-                            }`}>
+                              }`}>
                               {log.status}
                             </span>
                             <span className="text-[10px] text-slate-400">

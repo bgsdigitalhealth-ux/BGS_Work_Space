@@ -652,13 +652,13 @@ export const AdminSettings: React.FC = () => {
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                     }`}
                 >
-                  {role === 'all' 
-                    ? `All (${(allUsers || []).length})` 
-                    : role === 'admin' 
-                    ? `Admins (${adminsCount})` 
-                    : role === 'manager' 
-                    ? `Managers (${managersCount})` 
-                    : `Staff (${regularUsersCount})`}
+                  {role === 'all'
+                    ? `All (${(allUsers || []).length})`
+                    : role === 'admin'
+                      ? `Admins (${adminsCount})`
+                      : role === 'manager'
+                        ? `Managers (${managersCount})`
+                        : `Staff (${regularUsersCount})`}
                 </button>
               ))}
             </div>
@@ -681,8 +681,8 @@ export const AdminSettings: React.FC = () => {
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${isAdmin
                         ? 'bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-2xs'
                         : isManager
-                        ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200/60'
+                          : 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
                         }`}>
                         {u.avatar || (u.name || 'U').charAt(0).toUpperCase()}
                       </div>
@@ -703,8 +703,8 @@ export const AdminSettings: React.FC = () => {
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${isAdmin
                         ? 'bg-purple-50 text-purple-700 border-purple-200/60'
                         : isManager
-                        ? 'bg-amber-50 text-amber-700 border-amber-200/60'
-                        : 'bg-slate-100 text-slate-600 border-slate-200/60'
+                          ? 'bg-amber-50 text-amber-700 border-amber-200/60'
+                          : 'bg-slate-100 text-slate-600 border-slate-200/60'
                         }`}>
                         {isAdmin ? 'Admin' : isManager ? 'Manager' : 'User'}
                       </span>
