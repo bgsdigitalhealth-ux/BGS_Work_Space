@@ -156,33 +156,34 @@ export const AssignWorkForm: React.FC = () => {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200/70 p-5 sm:p-6 shadow-xs flex-1 flex flex-col h-full min-h-[560px]">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 mb-5">
+      {/* Header with full-width Title & Segmented Mode Switcher */}
+      <div className="pb-4 border-b border-slate-100 mb-5 space-y-3.5">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
             <Send className="w-5 h-5" />
           </div>
-          <div>
-            <h3 className="font-bold text-slate-900 text-base">Assign Work</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+          <div className="min-w-0">
+            <h3 className="font-bold text-slate-900 text-base leading-snug">Assign Work</h3>
+            <p className="text-xs text-slate-500 mt-0.5 leading-relaxed truncate">
               {assignMode === 'admin_to_user'
                 ? `Assign work to team member in ${selectedTeam?.name || 'Department'}.`
                 : assignMode === 'admin_to_manager'
-                ? 'Assign operational initiative to Team Manager.'
-                : 'Delegate executive task to another Administrator.'}
+                  ? 'Assign operational initiative to Team Manager.'
+                  : 'Delegate executive task to another Administrator.'}
             </p>
           </div>
         </div>
 
-        {/* Aligned Segmented Control for Assignment Mode */}
-        <div className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200/60 self-start sm:self-center" role="radiogroup" aria-label="Assignment mode">
+        {/* Full-width segmented mode bar so buttons never get cut off */}
+        <div className="flex items-center gap-1.5 p-1 bg-slate-100 rounded-xl border border-slate-200/80 w-full" role="radiogroup" aria-label="Assignment mode">
           <button
             type="button"
             role="radio"
             aria-checked={assignMode === 'admin_to_user'}
             onClick={() => setAssignMode('admin_to_user')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_user'
+            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${assignMode === 'admin_to_user'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
           >
             <span>Admin</span>
@@ -194,9 +195,9 @@ export const AssignWorkForm: React.FC = () => {
             role="radio"
             aria-checked={assignMode === 'admin_to_manager'}
             onClick={() => setAssignMode('admin_to_manager')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_manager'
+            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${assignMode === 'admin_to_manager'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
           >
             <span>Admin</span>
@@ -208,9 +209,9 @@ export const AssignWorkForm: React.FC = () => {
             role="radio"
             aria-checked={assignMode === 'admin_to_admin'}
             onClick={() => setAssignMode('admin_to_admin')}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${assignMode === 'admin_to_admin'
+            className={`flex-1 py-1.5 px-2.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${assignMode === 'admin_to_admin'
               ? 'bg-indigo-600 text-white shadow-xs'
-              : 'text-slate-600 hover:text-slate-900'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
               }`}
           >
             <span>Admin</span>
@@ -221,69 +222,70 @@ export const AssignWorkForm: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4 text-xs font-medium text-slate-700">
-        {/* Row 1: Assignee Name, Email, Phone */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              {assignMode === 'admin_to_user' ? 'Team Member (User)' : assignMode === 'admin_to_manager' ? 'Team Manager' : 'Assignee Administrator'}{' '}
-              <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              {assignMode === 'admin_to_user' ? (
-                <select
-                  value={targetId}
-                  onChange={(e) => handleMemberChange(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  {(regularMembers.length > 0 ? regularMembers : members).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.role || 'Member'})
-                    </option>
-                  ))}
-                  {members.length === 0 && (
-                    <option value="">No members in team yet</option>
-                  )}
-                </select>
-              ) : assignMode === 'admin_to_manager' ? (
-                <select
-                  value={targetId}
-                  onChange={(e) => handleManagerChange(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  {managerUsers.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.teamRole || m.title || 'Team Head'}) - {m.email}
-                    </option>
-                  ))}
-                  {managerUsers.length === 0 && members.filter(m => m.role?.toLowerCase().includes('head')).map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} ({m.role}) - {m.email}
-                    </option>
-                  ))}
-                  {managerUsers.length === 0 && (
-                    <option value="usr-1795150363087-258">DR. Sajjan (dynamicsajjan@gmail.com)</option>
-                  )}
-                </select>
-              ) : (
-                <select
-                  value={targetId}
-                  onChange={(e) => handleAdminChange(e.target.value)}
-                  className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
-                >
-                  {adminUsers.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name} ({a.email})
-                    </option>
-                  ))}
-                  {adminUsers.length === 0 && (
-                    <option value="usr-bgsmch-admin">BGS MCH (bgsmchhospitalnagarur@gmail.com)</option>
-                  )}
-                </select>
-              )}
-            </div>
+        {/* Row 1: Assignee Name (Full Width) */}
+        <div>
+          <label className="block text-[11px] font-bold text-slate-600 mb-1">
+            {assignMode === 'admin_to_user' ? 'Team Member (User)' : assignMode === 'admin_to_manager' ? 'Team Manager' : 'Assignee Administrator'}{' '}
+            <span className="text-red-500">*</span>
+          </label>
+          <div className="relative">
+            <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+            {assignMode === 'admin_to_user' ? (
+              <select
+                value={targetId}
+                onChange={(e) => handleMemberChange(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium truncate"
+              >
+                {(regularMembers.length > 0 ? regularMembers : members).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.role || 'Member'}) - {m.email}
+                  </option>
+                ))}
+                {members.length === 0 && (
+                  <option value="">No members in team yet</option>
+                )}
+              </select>
+            ) : assignMode === 'admin_to_manager' ? (
+              <select
+                value={targetId}
+                onChange={(e) => handleManagerChange(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium truncate"
+              >
+                {managerUsers.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.teamRole || m.title || 'Team Head'}) - {m.email}
+                  </option>
+                ))}
+                {managerUsers.length === 0 && members.filter(m => m.role?.toLowerCase().includes('head')).map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name} ({m.role}) - {m.email}
+                  </option>
+                ))}
+                {managerUsers.length === 0 && (
+                  <option value="usr-1795150363087-258">DR. Sajjan (dynamicsajjan@gmail.com)</option>
+                )}
+              </select>
+            ) : (
+              <select
+                value={targetId}
+                onChange={(e) => handleAdminChange(e.target.value)}
+                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium truncate"
+              >
+                {adminUsers.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name} ({a.email})
+                  </option>
+                ))}
+                {adminUsers.length === 0 && (
+                  <option value="usr-bgsmch-admin">BGS MCH (bgsmchhospitalnagarur@gmail.com)</option>
+                )}
+              </select>
+            )}
           </div>
+        </div>
 
+        {/* Row 2: Recipient Email & Contact Number (2 Columns for ample breathing room) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Recipient Email ID
@@ -294,7 +296,7 @@ export const AssignWorkForm: React.FC = () => {
                 type="email"
                 value={email}
                 readOnly
-                className="w-full pl-8 pr-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-medium cursor-not-allowed"
+                className="w-full pl-8 pr-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-medium cursor-not-allowed truncate"
               />
             </div>
           </div>
@@ -315,8 +317,8 @@ export const AssignWorkForm: React.FC = () => {
           </div>
         </div>
 
-        {/* Row 2: Assigned Role and Role Examples */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+        {/* Row 3: Assigned Role (Full Width Input) & Quick Select Chips */}
+        <div className="space-y-2">
           <div>
             <label className="block text-[11px] font-bold text-slate-600 mb-1">
               Assigned Role <span className="text-red-500">*</span>
@@ -326,34 +328,30 @@ export const AssignWorkForm: React.FC = () => {
               required
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              placeholder="e.g. Team Lead, Developer, Administrator..."
+              placeholder="e.g. Developer, Designer, Team Lead..."
               className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium"
             />
           </div>
 
-          <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Role Assignment (Quick Select)
-            </label>
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Quick select roles">
-              {['Team Lead', 'Developer', 'Administrator', 'Tester', 'Designer'].map((rName) => {
-                const isSelected = role === rName;
-                return (
-                  <button
-                    type="button"
-                    key={rName}
-                    aria-pressed={isSelected}
-                    onClick={() => handleQuickRole(rName)}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${isSelected
-                        ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold ring-1 ring-indigo-600'
-                        : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
-                      }`}
-                  >
-                    + {rName}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex flex-wrap items-center gap-1.5 pt-0.5" role="group" aria-label="Quick select roles">
+            <span className="text-[10px] font-semibold text-slate-400 mr-1">Quick Select:</span>
+            {['Team Lead', 'Developer', 'Administrator', 'Tester', 'Designer'].map((rName) => {
+              const isSelected = role === rName;
+              return (
+                <button
+                  type="button"
+                  key={rName}
+                  aria-pressed={isSelected}
+                  onClick={() => handleQuickRole(rName)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${isSelected
+                    ? 'border-indigo-600 bg-indigo-50 text-indigo-700 font-bold ring-1 ring-indigo-600'
+                    : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                >
+                  + {rName}
+                </button>
+              );
+            })}
           </div>
         </div>
 

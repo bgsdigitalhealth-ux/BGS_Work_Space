@@ -673,8 +673,8 @@ router.post('/tasks/:id/timer/finish', async (req, res) => {
 // --- Manager's Daily Timeline ---
 router.get('/timeline', async (req, res) => {
   try {
-    const { date, teamId, memberId } = req.query;
-    const result = await dataService.getManagerTimeline({ date, teamId, memberId });
+    const { date, teamId, memberId, userId, userRole, userEmail } = req.query;
+    const result = await dataService.getManagerTimeline({ date, teamId, memberId, userId, userRole, userEmail });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

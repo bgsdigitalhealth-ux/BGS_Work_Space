@@ -5413,9 +5413,13 @@ const finishTaskTimer = async (taskId, user) => {
 // =========================================================================
 // MANAGER'S DAILY TIMELINE
 // =========================================================================
-const getManagerTimeline = async ({ date, teamId, memberId }) => {
+const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, userEmail }) => {
   const targetDate = date || new Date().toISOString().split('T')[0];
-  const events = [];
+  let events = [];
+
+  const isRegularUser = userRole === 'user';
+  const cleanEmail = (userEmail || '').trim().toLowerCase();
+  const cleanUserId = userId ? String(userId).trim() : '';
 
   // 1. Attendance punches
   if (!memoryStore.attendance) memoryStore.attendance = [];
@@ -5429,11 +5433,20 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
     }
   }
 
-  if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-    attendanceList = attendanceList.filter(a => a.userId === memberId);
-  }
-  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
-    attendanceList = attendanceList.filter(a => a.teamId === teamId || a.teamName === teamId);
+  // Strict user isolation if regular user
+  if (isRegularUser && (cleanUserId || cleanEmail)) {
+    attendanceList = attendanceList.filter(a => {
+      const aId = String(a.userId || '').trim();
+      const aEmail = (a.userEmail || '').trim().toLowerCase();
+      return (cleanUserId && aId === cleanUserId) || (cleanEmail && aEmail === cleanEmail);
+    });
+  } else {
+    if (memberId && memberId !== 'All' && memberId !== 'All Members') {
+      attendanceList = attendanceList.filter(a => a.userId === memberId);
+    }
+    if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+      attendanceList = attendanceList.filter(a => a.teamId === teamId || a.teamName === teamId);
+    }
   }
 
   for (const att of attendanceList) {
@@ -5485,11 +5498,19 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
     }
   }
 
-  if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-    allTasks = allTasks.filter(t => t.userId === memberId || t.assigneeId === memberId);
-  }
-  if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
-    allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId);
+  if (isRegularUser && (cleanUserId || cleanEmail)) {
+    allTasks = allTasks.filter(t => {
+      const tId = String(t.userId || t.assigneeId || '').trim();
+      const tEmail = (t.userEmail || t.assigneeEmail || '').trim().toLowerCase();
+      return (cleanUserId && tId === cleanUserId) || (cleanEmail && tEmail === cleanEmail);
+    });
+  } else {
+    if (memberId && memberId !== 'All' && memberId !== 'All Members') {
+      allTasks = allTasks.filter(t => t.userId === memberId || t.assigneeId === memberId);
+    }
+    if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
+      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId);
+    }
   }
 
   for (const t of allTasks) {
@@ -5550,12 +5571,21 @@ const getManagerTimeline = async ({ date, teamId, memberId }) => {
     }
   }
 
+  // Defense-in-depth: If regular user, strictly isolate all generated events to this user only
+  if (isRegularUser && (cleanUserId || cleanEmail)) {
+    events = events.filter(e => {
+      const eId = String(e.userId || '').trim();
+      const eEmail = (e.userEmail || '').trim().toLowerCase();
+      return (cleanUserId && eId === cleanUserId) || (cleanEmail && eEmail === cleanEmail);
+    });
+  }
+
   events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
 
   return {
     date: targetDate,
-    teamId: teamId || 'All',
-    memberId: memberId || 'All',
+    teamId: isRegularUser ? 'Personal' : (teamId || 'All'),
+    memberId: isRegularUser ? (cleanUserId || 'Self') : (memberId || 'All'),
     events
   };
 };

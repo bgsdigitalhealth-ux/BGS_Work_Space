@@ -205,13 +205,13 @@ export const DepartmentDetail: React.FC = () => {
       {activeTab === 'Teams' && teamSubTab === 'Roles' && (
         <div className="space-y-5">
           {/* Top Row: Assign Work Form (Left) + Assigned Work Summary (Right) */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5 items-stretch">
             <AssignWorkForm />
             <AssignedWorkSummary />
           </div>
 
           {/* Bottom Row: Today's Tasks (Left) + Today's Work Done (Right) */}
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 items-stretch">
+          <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5 items-stretch">
             <TodayTasks />
             <TodayWorkDone />
           </div>

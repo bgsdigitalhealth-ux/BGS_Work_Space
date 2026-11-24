@@ -167,11 +167,10 @@ export const SubmitWorkDrawer: React.FC = () => {
                       </p>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                    currentTask.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${currentTask.priority === 'High' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
                     currentTask.priority === 'Medium' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                    'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
+                      'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                    }`}>
                     {currentTask.priority || 'Medium'}
                   </span>
                 </div>

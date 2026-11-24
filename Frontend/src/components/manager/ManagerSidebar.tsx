@@ -76,7 +76,7 @@ export const ManagerSidebar: React.FC = () => {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight text-white leading-none truncate">WorkHub</h1>
+                <h1 className="text-xl font-bold tracking-wide text-white leading-none truncate font-formal">WorkHub</h1>
                 <p className="text-xs text-indigo-300 font-medium tracking-wide mt-1 truncate">Manager Workspace</p>
               </div>
             </div>

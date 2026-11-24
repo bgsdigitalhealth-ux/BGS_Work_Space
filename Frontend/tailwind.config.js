@@ -15,6 +15,8 @@ export default {
         inter: ['Inter', 'sans-serif'],
         jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
         manrope: ['Manrope', 'sans-serif'],
+        calligraphy: ['"Pinyon Script"', '"Great Vibes"', 'cursive'],
+        formal: ['"Playfair Display"', 'Georgia', 'serif'],
       },
       colors: {
         brand: {

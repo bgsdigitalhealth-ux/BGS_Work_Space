@@ -68,7 +68,7 @@ export const Sidebar: React.FC = () => {
               <Shield className="w-5 h-5 text-white" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-base leading-tight truncate">WorkHub</h1>
+              <h1 className="text-white font-bold text-xl font-formal tracking-wide leading-tight truncate">WorkHub</h1>
               <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase truncate block">
                 {currentUser?.role === 'manager' ? 'Manager Panel' : 'Admin Panel'}
               </span>

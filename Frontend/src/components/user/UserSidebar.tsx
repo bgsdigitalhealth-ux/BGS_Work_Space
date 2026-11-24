@@ -94,7 +94,7 @@ export const UserSidebar: React.FC = () => {
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-tight text-white leading-none truncate">WorkHub</h1>
+                <h1 className="text-xl font-bold tracking-wide text-white leading-none truncate font-formal">WorkHub</h1>
                 <p className="text-xs text-[#9d9bb9] font-medium tracking-wide mt-1 truncate">Team Workspace</p>
               </div>
             </div>

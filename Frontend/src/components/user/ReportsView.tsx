@@ -104,28 +104,28 @@ export const ReportsView: React.FC = () => {
 
   const displayedItems: ReportItem[] = isRegularUser
     ? (filteredForUser.length > 0
-        ? filteredForUser
-        : currentUser
+      ? filteredForUser
+      : currentUser
         ? [{
-            id: `rep-self-${userId || 'usr'}`,
-            userId: userId || 'usr',
-            userName: currentUser.name || 'Member',
-            userEmail: currentUser.email || '',
-            teamName: myTeamName,
-            period,
-            startDate: selectedDate,
-            endDate: selectedDate,
-            attendanceSeconds: 0,
-            activeWorkSeconds: 0,
-            pausedSeconds: 0,
-            completedTasksCount: 0,
-            inProgressTasksCount: 0,
-            managerNotes: 'Active registered account'
-          }]
+          id: `rep-self-${userId || 'usr'}`,
+          userId: userId || 'usr',
+          userName: currentUser.name || 'Member',
+          userEmail: currentUser.email || '',
+          teamName: myTeamName,
+          period,
+          startDate: selectedDate,
+          endDate: selectedDate,
+          attendanceSeconds: 0,
+          activeWorkSeconds: 0,
+          pausedSeconds: 0,
+          completedTasksCount: 0,
+          inProgressTasksCount: 0,
+          managerNotes: 'Active registered account'
+        }]
         : [])
     : isManager && selectedTeam !== 'All'
-    ? reportItems.filter(item => item.teamName === selectedTeam || (item as any).teamId === selectedTeam)
-    : reportItems;
+      ? reportItems.filter(item => item.teamName === selectedTeam || (item as any).teamId === selectedTeam)
+      : reportItems;
 
   // Aggregated totals strictly calculated for the displayed scope:
   // - For user: only their own attendance, active work, paused time, and completed tasks
@@ -205,14 +205,14 @@ export const ReportsView: React.FC = () => {
   const pageTitle = isAdmin
     ? 'Executive Work & Attendance Reports'
     : isManager
-    ? 'Manager Work & Attendance Reports'
-    : 'My Work & Attendance Report';
+      ? 'Manager Work & Attendance Reports'
+      : 'My Work & Attendance Report';
 
   const breakdownHeading = isAdmin
     ? 'Member Performance & Activity Breakdown'
     : isManager
-    ? 'Team Member Performance & Activity Breakdown'
-    : 'My Performance & Activity Breakdown';
+      ? 'Team Member Performance & Activity Breakdown'
+      : 'My Performance & Activity Breakdown';
 
   const memberCountBadge = isRegularUser
     ? `${displayedItems.length} Member Listed (Your Personal Record)`
@@ -237,8 +237,8 @@ export const ReportsView: React.FC = () => {
                 </span>
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                {canChangeReport 
-                  ? 'Consolidated attendance present, active task time, pause durations, and completed deliverables.' 
+                {canChangeReport
+                  ? 'Consolidated attendance present, active task time, pause durations, and completed deliverables.'
                   : 'Your individual attendance present, active task duration, and deliverable metrics.'}
               </p>
             </div>
@@ -286,11 +286,10 @@ export const ReportsView: React.FC = () => {
                   key={p}
                   type="button"
                   onClick={() => setPeriod(p)}
-                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition capitalize cursor-pointer ${
-                    period === p
-                      ? 'bg-white text-[#5a36e6] shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition capitalize cursor-pointer ${period === p
+                    ? 'bg-white text-[#5a36e6] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                    }`}
                 >
                   {p}
                 </button>
@@ -418,8 +417,8 @@ export const ReportsView: React.FC = () => {
               {displayedItems.length === 0 ? (
                 <tr>
                   <td colSpan={canChangeReport ? 9 : 8} className="text-center py-12 text-gray-400 text-xs">
-                    {isRegularUser 
-                      ? 'No recorded work metrics found for your profile on this reference date.' 
+                    {isRegularUser
+                      ? 'No recorded work metrics found for your profile on this reference date.'
                       : 'No member records found for the selected period and team.'}
                   </td>
                 </tr>
@@ -496,7 +495,7 @@ export const ReportsView: React.FC = () => {
       {/* Edit Report Entry Modal (Strictly Admin and Manager) */}
       {canChangeReport && editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div 
+          <div
             className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >

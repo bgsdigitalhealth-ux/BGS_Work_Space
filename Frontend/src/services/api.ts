@@ -262,12 +262,15 @@ export const api = {
   },
 
   // Manager's Daily Timeline
-  getManagerTimeline: async (params: { date?: string; teamId?: string; memberId?: string }): Promise<{ date: string; teamId: string; memberId: string; events: TimelineEvent[] }> => {
+  getManagerTimeline: async (params: { date?: string; teamId?: string; memberId?: string; userId?: string; userRole?: string; userEmail?: string }): Promise<{ date: string; teamId: string; memberId: string; events: TimelineEvent[] }> => {
     const q = new URLSearchParams();
     if (params.date) q.append('date', params.date);
     if (params.teamId) q.append('teamId', params.teamId);
     if (params.memberId) q.append('memberId', params.memberId);
-    const res = await fetch(`${API_BASE}/timeline?${q.toString()}`);
+    if (params.userId) q.append('userId', params.userId);
+    if (params.userRole) q.append('userRole', params.userRole);
+    if (params.userEmail) q.append('userEmail', params.userEmail);
+    const res = await fetch(`${API_BASE}/timeline?${q.toString()}`, { headers: getAuthHeaders() });
     if (!res.ok) throw new Error('Failed to fetch timeline');
     return res.json();
   },
