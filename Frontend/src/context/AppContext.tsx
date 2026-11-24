@@ -514,7 +514,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
           return { ...prev, assignedWork };
         });
       }
-      await Promise.all([refreshUserWorkspace(), fetchAssignments(), fetchTasks()]);
+      const refreshPromises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
+      if (selectedTeam) {
+        refreshPromises.push(fetchWorkDone(selectedTeam.id));
+      }
+      await Promise.all(refreshPromises);
     } catch (e: any) {
       alert(e.message || 'Failed to edit assignment');
       throw e;

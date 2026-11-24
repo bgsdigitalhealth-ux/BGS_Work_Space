@@ -12,8 +12,7 @@ import {
   MessageSquare,
   Check,
   ClipboardCheck,
-  Edit3,
-  CheckCircle2
+  Edit3
 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
@@ -55,22 +54,38 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     }
   }, [task?.progress, task?.status]);
 
-  const handleQuickProgressUpdate = async (newPct: number) => {
-    if (!task) return;
+  const handleSetLevel = async (level: 'assigned' | 'started' | 'in_progress' | 'submitted' | 'completed') => {
+    if (!task || isUpdatingProgress) return;
     setIsUpdatingProgress(true);
     try {
-      let newStatus: 'Not Started' | 'In Progress' | 'Under Review' | 'Completed' = task.status;
-      if (newPct === 100) newStatus = 'Completed';
-      else if (newPct === 0) newStatus = 'Not Started';
-      else if (task.status === 'Completed' || task.status === 'Not Started' || (task.status as any) === 'To Do') {
+      let newStatus: 'Not Started' | 'In Progress' | 'Under Review' | 'Completed' = 'In Progress';
+      let newProgress = 60;
+
+      if (level === 'assigned') {
+        newStatus = 'Not Started';
+        newProgress = 0;
+      } else if (level === 'started') {
         newStatus = 'In Progress';
+        newProgress = 25;
+      } else if (level === 'in_progress') {
+        newStatus = 'In Progress';
+        newProgress = 60;
+      } else if (level === 'submitted') {
+        newStatus = 'Under Review';
+        newProgress = 85;
+      } else if (level === 'completed') {
+        newStatus = 'Completed';
+        newProgress = 100;
       }
+
+      setProgressValue(newProgress);
       await handleEditAssignment(task.id, {
-        progress: newPct,
-        status: newStatus
+        status: newStatus,
+        progress: newProgress,
+        level
       });
     } catch (e) {
-      console.error('Failed to update progress:', e);
+      console.error('Failed to update progress level:', e);
     } finally {
       setIsUpdatingProgress(false);
     }
@@ -206,6 +221,16 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     return isCompleted ? 'Completed' : '—';
   };
   const completedDateLabel = getCompletedTime();
+
+  const currentStepLevel = isCompleted || progressPercent === 100
+    ? 5
+    : isSubmitted || (progressPercent >= 85 && progressPercent < 100)
+    ? 4
+    : (isInProgress && progressPercent >= 50) || progressPercent === 60
+    ? 3
+    : progressPercent >= 25 || (!isToDo && isInProgress)
+    ? 2
+    : 1;
 
   const timeLeftLabel = (task as any).timeLeft || calculateDynamicTimeLeft(task.dueDate, task.status);
 
@@ -376,110 +401,159 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
             </div>
           </div>
 
-          {/* Work Progress Horizontal Stepper Card - Matching Image 1 */}
+          {/* Work Progress Horizontal Stepper Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <ClipboardCheck className="w-4 h-4 text-[#5a36e6]" />
-              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Progress</h3>
+            <div className="flex items-center justify-between gap-2 mb-6">
+              <div className="flex items-center gap-2">
+                <ClipboardCheck className="w-4 h-4 text-[#5a36e6]" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Progress</h3>
+              </div>
+              {isUpdatingProgress && (
+                <span className="text-[11px] text-[#5a36e6] font-bold animate-pulse">Syncing Level...</span>
+              )}
             </div>
 
-            {/* Stepper Milestones Row */}
+            {/* Stepper Milestones Row (Clickable Levels to update progress) */}
             <div className="relative flex items-center justify-between mb-8 px-2 sm:px-6">
               {/* Step 1: Assigned */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleSetLevel('assigned')}
+                disabled={isUpdatingProgress}
+                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
+                title="Level 1: Assigned (0% - Not Started)"
+              >
+                <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
                   <Check className="w-4 h-4 stroke-[3]" />
                 </div>
-                <span className="text-xs font-bold text-gray-900 mt-2">Assigned</span>
+                <span className="text-xs font-bold text-gray-900 mt-2 group-hover:text-[#5a36e6] transition-colors">Assigned</span>
                 <span className="text-[11px] text-gray-500 font-medium">{assignedDateLabel}</span>
-              </div>
+              </button>
 
               {/* Connector 1-2 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${!isToDo ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${currentStepLevel >= 2 ? 'bg-emerald-500' : 'bg-gray-200'}`} />
 
               {/* Step 2: Work Started */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {!isToDo ? (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleSetLevel('started')}
+                disabled={isUpdatingProgress}
+                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
+                title="Level 2: Work Started (25% - In Progress)"
+              >
+                {currentStepLevel > 2 ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
                     <Check className="w-4 h-4 stroke-[3]" />
                   </div>
-                ) : (
-                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
-                    <span className="w-2 h-2 rounded-full bg-gray-200" />
-                  </div>
-                )}
-                <span className="text-xs font-bold text-gray-900 mt-2">Work Started</span>
-                <span className="text-[11px] text-gray-500 font-medium">{startedDateLabel}</span>
-              </div>
-
-              {/* Connector 2-3 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isSubmitted || isCompleted ? 'bg-emerald-500' : isInProgress ? 'bg-[#5a36e6]' : 'bg-gray-200'}`} />
-
-              {/* Step 3: In Progress (Current) */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {isSubmitted || isCompleted ? (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
-                    <Check className="w-4 h-4 stroke-[3]" />
-                  </div>
-                ) : isInProgress ? (
+                ) : currentStepLevel === 2 ? (
                   <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-purple-100">
                     <span className="tracking-tighter font-black text-sm leading-none pb-1">•••</span>
                   </div>
                 ) : (
-                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
-                    <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold group-hover:border-[#5a36e6] group-hover:text-[#5a36e6] transition-all">
+                    <span className="w-2 h-2 rounded-full bg-gray-200 group-hover:bg-[#5a36e6]" />
                   </div>
                 )}
-                <span className={`text-xs font-bold mt-2 ${isSubmitted || isCompleted ? 'text-gray-900' : isInProgress ? 'text-[#5a36e6]' : 'text-gray-400'}`}>
+                <span className={`text-xs font-bold mt-2 group-hover:text-[#5a36e6] transition-colors ${currentStepLevel >= 2 ? 'text-gray-900' : 'text-gray-400'}`}>
+                  Work Started
+                </span>
+                <span className="text-[11px] text-gray-500 font-medium">{startedDateLabel}</span>
+              </button>
+
+              {/* Connector 2-3 */}
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${currentStepLevel > 3 ? 'bg-emerald-500' : currentStepLevel === 3 ? 'bg-[#5a36e6]' : 'bg-gray-200'}`} />
+
+              {/* Step 3: In Progress (Current) */}
+              <button
+                type="button"
+                onClick={() => handleSetLevel('in_progress')}
+                disabled={isUpdatingProgress}
+                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
+                title="Level 3: In Progress (60%)"
+              >
+                {currentStepLevel > 3 ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
+                    <Check className="w-4 h-4 stroke-[3]" />
+                  </div>
+                ) : currentStepLevel === 3 ? (
+                  <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-purple-100">
+                    <span className="tracking-tighter font-black text-sm leading-none pb-1">•••</span>
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold group-hover:border-[#5a36e6] group-hover:text-[#5a36e6] transition-all">
+                    <span className="w-2 h-2 rounded-full bg-gray-200 group-hover:bg-[#5a36e6]" />
+                  </div>
+                )}
+                <span className={`text-xs font-bold mt-2 group-hover:text-[#5a36e6] transition-colors ${currentStepLevel > 3 ? 'text-gray-900' : currentStepLevel === 3 ? 'text-[#5a36e6]' : 'text-gray-400'}`}>
                   In Progress
                 </span>
                 <span className="text-[11px] text-gray-500 font-medium">
-                  {isCompleted ? 'Done' : isSubmitted ? 'Under Review' : isInProgress ? '(Current)' : 'Upcoming'}
+                  {currentStepLevel > 3 ? 'Done' : currentStepLevel === 3 ? '(Current)' : 'Upcoming'}
                 </span>
-              </div>
+              </button>
 
               {/* Connector 3-4 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isSubmitted || isCompleted ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${currentStepLevel > 4 ? 'bg-emerald-500' : currentStepLevel === 4 ? 'bg-[#5a36e6]' : 'bg-gray-200'}`} />
 
               {/* Step 4: Submitted */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {isSubmitted || isCompleted ? (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleSetLevel('submitted')}
+                disabled={isUpdatingProgress}
+                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
+                title="Level 4: Submitted (85% - Under Review)"
+              >
+                {currentStepLevel > 4 ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
                     <Check className="w-4 h-4 stroke-[3]" />
                   </div>
+                ) : currentStepLevel === 4 ? (
+                  <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-xs ring-4 ring-purple-100">
+                    <span className="tracking-tighter font-black text-sm leading-none pb-1">•••</span>
+                  </div>
                 ) : (
-                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
-                    <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold group-hover:border-[#5a36e6] group-hover:text-[#5a36e6] transition-all">
+                    <span className="w-2 h-2 rounded-full bg-gray-200 group-hover:bg-[#5a36e6]" />
                   </div>
                 )}
-                <span className={`text-xs font-semibold mt-2 ${isSubmitted || isCompleted ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold mt-2 group-hover:text-[#5a36e6] transition-colors ${currentStepLevel >= 4 ? 'text-gray-900 font-bold' : 'text-gray-400'}`}>
                   Submitted
                 </span>
-                <span className="text-[11px] text-gray-500 font-medium">{submittedDateLabel}</span>
-              </div>
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {currentStepLevel >= 4 ? (submittedDateLabel !== '—' ? submittedDateLabel : 'Under Review') : '—'}
+                </span>
+              </button>
 
               {/* Connector 4-5 */}
-              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${isCompleted ? 'bg-emerald-500' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mx-2 -mt-7 ${currentStepLevel === 5 ? 'bg-emerald-500' : 'bg-gray-200'}`} />
 
               {/* Step 5: Completed */}
-              <div className="flex flex-col items-center text-center relative z-10">
-                {isCompleted ? (
-                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs">
+              <button
+                type="button"
+                onClick={() => handleSetLevel('completed')}
+                disabled={isUpdatingProgress}
+                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
+                title="Level 5: Completed (100%)"
+              >
+                {currentStepLevel === 5 ? (
+                  <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
                     <Check className="w-4 h-4 stroke-[3]" />
                   </div>
                 ) : (
-                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold">
-                    <span className="w-2 h-2 rounded-full bg-gray-200" />
+                  <div className="w-8 h-8 rounded-full border-2 border-gray-300 bg-white text-gray-300 flex items-center justify-center font-bold group-hover:border-emerald-500 group-hover:text-emerald-600 transition-all">
+                    <span className="w-2 h-2 rounded-full bg-gray-200 group-hover:bg-emerald-500" />
                   </div>
                 )}
-                <span className={`text-xs font-semibold mt-2 ${isCompleted ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
+                <span className={`text-xs font-semibold mt-2 group-hover:text-emerald-600 transition-colors ${currentStepLevel === 5 ? 'text-emerald-600 font-bold' : 'text-gray-400'}`}>
                   Completed
                 </span>
-                <span className="text-[11px] text-gray-500 font-medium">{completedDateLabel}</span>
-              </div>
+                <span className="text-[11px] text-gray-500 font-medium">
+                  {currentStepLevel === 5 ? completedDateLabel : '—'}
+                </span>
+              </button>
             </div>
 
-            {/* Progress Bar with Percentage Tag */}
+            {/* Single Progress Bar with Percentage Tag */}
             <div className="flex items-center gap-3">
               <div className="flex-1 bg-gray-100 rounded-full h-2.5 overflow-hidden">
                 <div
@@ -488,62 +562,6 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 />
               </div>
               <span className="text-xs font-black text-gray-900 shrink-0">{progressPercent}%</span>
-            </div>
-
-            {/* Quick Interactive Progress Controls (User Update Progress) */}
-            <div className="mt-5 pt-4 border-t border-gray-100 space-y-3">
-              <div className="flex items-center justify-between gap-2 flex-wrap">
-                <span className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>Update Work Progress</span>
-                  {isUpdatingProgress && <span className="text-[11px] text-[#5a36e6] font-medium animate-pulse">(Saving...)</span>}
-                </span>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {[0, 25, 50, 75, 100].map(val => (
-                    <button
-                      key={val}
-                      type="button"
-                      disabled={isUpdatingProgress}
-                      onClick={async () => {
-                        setProgressValue(val);
-                        await handleQuickProgressUpdate(val);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer ${
-                        progressValue === val
-                          ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                          : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                      }`}
-                    >
-                      {val}% {val === 100 ? 'Done' : ''}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setIsEditModalOpen(true)}
-                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-[#5a36e6] bg-purple-50 hover:bg-purple-100 border border-purple-200 transition cursor-pointer"
-                  >
-                    <Edit3 className="w-3 h-3" />
-                    <span>Full Edit</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Slider for smooth percentage adjustment */}
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="5"
-                  value={progressValue}
-                  disabled={isUpdatingProgress}
-                  onChange={(e) => setProgressValue(Number(e.target.value))}
-                  onMouseUp={() => handleQuickProgressUpdate(progressValue)}
-                  onTouchEnd={() => handleQuickProgressUpdate(progressValue)}
-                  className="flex-1 accent-emerald-600 cursor-pointer h-2 bg-gray-200 rounded-lg"
-                />
-                <span className="text-xs font-black text-gray-800 w-10 text-right">{progressValue}%</span>
-              </div>
             </div>
           </div>
 

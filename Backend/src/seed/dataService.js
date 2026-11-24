@@ -4611,6 +4611,76 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   const comments = Array.isArray(oldUserTask?.comments) ? oldUserTask.comments : [];
   const timerState = oldUserTask?.timerState || { status: 'idle', activeSeconds: 0, pausedSeconds: 0, isPaused: false };
 
+  // Dynamic date and timestamp tracking for Stepper levels
+  const now = new Date();
+  const dateISO = now.toISOString();
+  const dateStr = now.toISOString().split('T')[0];
+  const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  const fullDateTime = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + formattedTime;
+
+  let workStartedDate = oldUserTask?.workStartedDate;
+  let workStartedTime = oldUserTask?.workStartedTime;
+  let workStartedAt = oldUserTask?.workStartedAt;
+  if (!workStartedDate && (data.level === 'started' || newStatus === 'In Progress' || newStatus === 'Under Review' || newStatus === 'Completed')) {
+    workStartedDate = fullDateTime;
+    workStartedTime = formattedTime;
+    workStartedAt = dateISO;
+    if (!activityLog.some(a => a.type === 'started')) {
+      activityLog.push({
+        id: generateId('act'),
+        type: 'started',
+        performedBy: user.name || 'User',
+        performedByRole: user.role || 'user',
+        performedById: user.id || '',
+        timestamp: now,
+        details: { progress: newProgress },
+        message: `Work started by ${user.name || 'User'}`
+      });
+    }
+  }
+
+  let submittedDate = oldUserTask?.submittedDate;
+  let submittedTime = oldUserTask?.submittedTime;
+  let submittedAt = oldUserTask?.submittedAt;
+  if (!submittedDate && (data.level === 'submitted' || newStatus === 'Under Review' || newStatus === 'Completed')) {
+    submittedDate = fullDateTime;
+    submittedTime = formattedTime;
+    submittedAt = dateISO;
+    if (!activityLog.some(a => a.type === 'deliverable_submitted')) {
+      activityLog.push({
+        id: generateId('act'),
+        type: 'deliverable_submitted',
+        performedBy: user.name || 'User',
+        performedByRole: user.role || 'user',
+        performedById: user.id || '',
+        timestamp: now,
+        details: { progress: newProgress },
+        message: `Work deliverables submitted for review by ${user.name || 'User'}`
+      });
+    }
+  }
+
+  let completedDate = oldUserTask?.completedDate;
+  let completedTime = oldUserTask?.completedTime;
+  let completedAt = oldUserTask?.completedAt;
+  if (data.level === 'completed' || newStatus === 'Completed') {
+    completedDate = fullDateTime;
+    completedTime = formattedTime;
+    completedAt = dateISO;
+    if (!activityLog.some(a => a.type === 'completed')) {
+      activityLog.push({
+        id: generateId('act'),
+        type: 'completed',
+        performedBy: user.name || 'User',
+        performedByRole: user.role || 'user',
+        performedById: user.id || '',
+        timestamp: now,
+        details: { progress: 100 },
+        message: `Work marked completed by ${user.name || 'User'}`
+      });
+    }
+  }
+
   // Update Assignment
   const updatedAssign = {
     ...(oldAssign || {}),
@@ -4656,6 +4726,15 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     assigneeId: newAssigneeId,
     assigneeName: newAssigneeName,
     assigneeEmail: updatedAssign.assigneeEmail,
+    workStartedDate: workStartedDate || oldUserTask?.workStartedDate,
+    workStartedTime: workStartedTime || oldUserTask?.workStartedTime,
+    workStartedAt: workStartedAt || oldUserTask?.workStartedAt,
+    submittedDate: submittedDate || oldUserTask?.submittedDate,
+    submittedTime: submittedTime || oldUserTask?.submittedTime,
+    submittedAt: submittedAt || oldUserTask?.submittedAt,
+    completedDate: completedDate || oldUserTask?.completedDate,
+    completedTime: completedTime || oldUserTask?.completedTime,
+    completedAt: completedAt || oldUserTask?.completedAt,
     comments, // PRESERVED
     timerState, // PRESERVED
     activityLog, // AUDITED
@@ -4666,6 +4745,33 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     memoryStore.userWorkspace.assignedWork[userTaskIndex] = updatedUserTask;
   } else {
     memoryStore.userWorkspace.assignedWork.unshift(updatedUserTask);
+  }
+
+  // Auto-log into "Today's Work Done" when completed so Manager and Admin immediately see it
+  if (newStatus === 'Completed' || data.level === 'completed') {
+    const teamObj = (memoryStore.teams || []).find(tm => (updatedUserTask && tm.name === updatedUserTask.team) || (updatedAssign && tm.id === updatedAssign.teamId));
+    const completedTeamId = teamObj ? teamObj.id : (updatedAssign.teamId || updatedUserTask.teamId || null);
+
+    if (completedTeamId) {
+      if (!memoryStore.workDone) memoryStore.workDone = [];
+      const alreadyLogged = memoryStore.workDone.some(w => w.taskId === updatedUserTask.taskId || w.taskId === id || (w.title === updatedUserTask.title && w.teamId === completedTeamId));
+      if (!alreadyLogged) {
+        const newWorkDone = {
+          id: generateId('wd'),
+          teamId: completedTeamId,
+          taskId: updatedUserTask.taskId || id,
+          title: updatedUserTask.title || 'Work Completed',
+          details: updatedUserTask.description || 'Work deliverables completed and verified.',
+          completedBy: updatedUserTask.assigneeName || user.name || 'Team Member',
+          date: dateStr,
+          time: formattedTime,
+          submittedTime: formattedTime,
+          submittedDate: fullDateTime,
+          submittedAt: dateISO
+        };
+        memoryStore.workDone.unshift(newWorkDone);
+      }
+    }
   }
 
   saveStore();

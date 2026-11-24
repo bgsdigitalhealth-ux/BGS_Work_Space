@@ -541,6 +541,11 @@ router.put('/assignments/:id', async (req, res) => {
     const result = await dataService.editAssignment(req.params.id, req.body, user);
     broadcast('ASSIGNMENT_UPDATED', result);
     broadcast('WORK_CHANGED', { action: 'update', id: req.params.id, ...result });
+    broadcast('work_changed', { action: 'update', id: req.params.id, ...result });
+    if (result?.userTask?.status === 'Completed' || result?.assignment?.status === 'Completed') {
+      broadcast('WORK_DONE_ADDED', result);
+      broadcast('work_done_added', result);
+    }
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

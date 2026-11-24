@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Edit3, ShieldAlert, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users, Percent } from 'lucide-react';
+import { X, Edit3, CheckCircle2, Calendar, UserCheck, Tag, Building2, Users } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 
@@ -116,7 +116,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   {task.taskId || task.id}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 font-medium">Administrator & Manager Assignment Editor</p>
+              <p className="text-xs text-gray-500 font-medium">Assignment & Task Editor</p>
             </div>
           </div>
           <button 
@@ -126,14 +126,6 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
           >
             <X className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Protection Notice Banner */}
-        <div className="bg-amber-50/70 border-b border-amber-100 px-6 py-3 flex items-start gap-2.5 text-xs text-amber-800">
-          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-          <p className="leading-relaxed">
-            <span className="font-bold">Attribution Guarantee:</span> If you reassign this work or update its deadline, all comments and previously logged hours remain permanently credited to the original users who performed them.
-          </p>
         </div>
 
         {/* Form */}
@@ -280,52 +272,6 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 <option value="Completed">Completed</option>
               </select>
             </div>
-          </div>
-
-          {/* Progress Slider (Full Editable) */}
-          <div className="bg-purple-50/50 p-3.5 rounded-2xl border border-purple-100 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
-                <Percent className="w-3.5 h-3.5 text-[#5a36e6]" />
-                <span>Work Progress: <span className="text-[#5a36e6] font-black">{progress}%</span></span>
-              </label>
-              <div className="flex items-center gap-1">
-                {[0, 25, 50, 75, 100].map(val => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => {
-                      setProgress(val);
-                      if (val === 100) setStatus('Completed');
-                      else if (val === 0) setStatus('To Do');
-                      else if (status === 'To Do' || status === 'Completed') setStatus('In Progress');
-                    }}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition cursor-pointer ${
-                      progress === val
-                        ? 'bg-[#5a36e6] text-white border-[#5a36e6]'
-                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
-                    }`}
-                  >
-                    {val}%
-                  </button>
-                ))}
-              </div>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              value={progress}
-              onChange={(e) => {
-                const val = Number(e.target.value);
-                setProgress(val);
-                if (val === 100) setStatus('Completed');
-                else if (val === 0) setStatus('To Do');
-                else if (status === 'To Do' || status === 'Completed') setStatus('In Progress');
-              }}
-              className="w-full accent-[#5a36e6] cursor-pointer"
-            />
           </div>
 
           {/* Footer Actions */}
