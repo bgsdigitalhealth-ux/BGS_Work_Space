@@ -17,6 +17,7 @@ import {
 import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 import { AttendanceWidget } from './AttendanceWidget';
+import { ActiveBreakBanner } from '../break/ActiveBreakBanner';
 
 export const UserDashboard: React.FC = () => {
   const { 
@@ -129,6 +130,9 @@ export const UserDashboard: React.FC = () => {
     <div className="space-y-6 relative pb-10">
       {/* Workspace Attendance Punch Widget */}
       <AttendanceWidget />
+
+      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
+      <ActiveBreakBanner />
 
       {/* Top 5 KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

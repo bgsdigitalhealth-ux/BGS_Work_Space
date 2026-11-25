@@ -1,0 +1,129 @@
+import React, { useState, useEffect } from 'react';
+import { Coffee, Clock, CheckCircle2 } from 'lucide-react';
+import { useApp } from '../../context/AppContext';
+import { BreakTimeRecord } from '../../types';
+
+export const ActiveBreakBanner: React.FC = () => {
+  const { activeTeamBreaks, currentUser, handleEndBreak, refreshActiveBreaks } = useApp();
+  const [, setTick] = useState(0);
+
+  // Update live countdown every second
+  useEffect(() => {
+    if (!activeTeamBreaks || activeTeamBreaks.length === 0) return;
+    const timer = setInterval(() => {
+      setTick(t => t + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [activeTeamBreaks]);
+
+  if (!activeTeamBreaks || activeTeamBreaks.length === 0) {
+    return null;
+  }
+
+  const formatRemaining = (toTimestamp: string | Date) => {
+    const endMs = new Date(toTimestamp).getTime();
+    const diff = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
+    if (diff <= 0) {
+      // Time is up, refresh breaks so expired one clears
+      setTimeout(() => refreshActiveBreaks(), 500);
+      return 'Ending now...';
+    }
+    const hours = Math.floor(diff / 3600);
+    const minutes = Math.floor((diff % 3600) / 60);
+    const seconds = diff % 60;
+    if (hours > 0) {
+      return `${hours}h ${minutes}m ${seconds}s left`;
+    }
+    return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s left`;
+  };
+
+  return (
+    <div className="space-y-3 mb-6">
+      {activeTeamBreaks.map((brk: BreakTimeRecord) => {
+        const isMe = currentUser?.id && (brk.userId === currentUser.id || brk.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
+        const remainingText = formatRemaining(brk.toTimestamp);
+
+        return (
+          <div
+            key={brk.id || brk.customId}
+            className={`relative overflow-hidden rounded-2xl border p-4 sm:p-5 shadow-md transition-all ${
+              isMe
+                ? 'bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-600/15 border-amber-300 dark:border-amber-700/60 shadow-amber-500/5'
+                : 'bg-gradient-to-r from-indigo-50/90 via-purple-50/80 to-blue-50/90 border-indigo-200/90 shadow-indigo-500/5'
+            }`}
+          >
+            {/* Background Accent Glow */}
+            <div className="absolute top-0 right-0 -mt-6 -mr-6 w-32 h-32 rounded-full bg-amber-400/10 blur-2xl pointer-events-none" />
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
+              {/* Left Info */}
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div
+                  className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
+                    isMe
+                      ? 'bg-gradient-to-br from-amber-500 to-orange-600 text-white'
+                      : 'bg-gradient-to-br from-indigo-600 to-purple-600 text-white'
+                  }`}
+                >
+                  <Coffee className="w-5 h-5 animate-bounce" />
+                </div>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-slate-900 text-base">
+                      {isMe ? 'You are on a Break' : `${brk.userName} is on a Break`}
+                    </span>
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 border border-amber-200">
+                      {brk.reason || 'Break'}
+                    </span>
+                    {brk.teamName && (
+                      <span className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-white/80 text-slate-600 border border-slate-200/80">
+                        {brk.teamName}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="text-xs sm:text-sm text-slate-600 font-medium mt-0.5 flex items-center gap-2 flex-wrap">
+                    <span>
+                      Scheduled: <strong className="text-slate-800">{brk.fromTime} - {brk.toTime}</strong>
+                    </span>
+                    <span className="text-slate-300">•</span>
+                    <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
+                      <Clock className="w-3.5 h-3.5" />
+                      {remainingText}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Right Action */}
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
+                <div className="text-right hidden md:block">
+                  <div className="text-[11px] uppercase tracking-wider font-bold text-slate-400">Status</div>
+                  <div className="text-xs font-semibold text-emerald-600 flex items-center gap-1 justify-end">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                    Active Break
+                  </div>
+                </div>
+
+                {isMe ? (
+                  <button
+                    onClick={() => handleEndBreak(brk.id || brk.customId || '')}
+                    className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-md"
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>End Break Early</span>
+                  </button>
+                ) : (
+                  <div className="px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-xs font-medium text-slate-600">
+                    Notified to Team & Manager
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};

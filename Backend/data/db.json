@@ -125,6 +125,19 @@
   "appointments": [],
   "notifications": [
     {
+      "id": "notif-1795582794467-13",
+      "recipientRole": "admin",
+      "recipientUserId": "usr-bgsmch-admin",
+      "recipientEmail": "bgsmchhospitalnagarur@gmail.com",
+      "referenceId": "brk-1795582794466-955",
+      "title": "☕ Mehul is on Break (Tea / Coffee Break)",
+      "message": "Mehul from AI Team is on break until 01:00 PM.",
+      "timestamp": "25 Nov 2026, 10:29 AM",
+      "read": false,
+      "link": "/break-time",
+      "actionUrl": ""
+    },
+    {
       "id": "notif-1795580694887-692",
       "recipientRole": "user",
       "recipientUserId": "usr-mehul",
@@ -356,5 +369,6 @@
   ],
   "attendance": [],
   "timeLogs": [],
-  "reportEntries": []
+  "reportEntries": [],
+  "breaks": []
 }

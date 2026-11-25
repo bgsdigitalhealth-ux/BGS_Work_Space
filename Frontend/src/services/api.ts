@@ -1,4 +1,4 @@
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, TimelineEvent, ReportItem, ReportResponse } from '../types';
+import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, BreakTimeRecord, TimelineEvent, ReportItem, ReportResponse } from '../types';
 
 // Support production backend on Render via VITE_API_URL (Cloudflare Pages) or fallback to local proxy /api
 const rawBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
@@ -207,6 +207,62 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || 'Failed to punch out');
+    }
+    return res.json();
+  },
+
+  // Break Time Management
+  getActiveBreaks: async (teamId?: string, teamName?: string, userId?: string): Promise<BreakTimeRecord[]> => {
+    const params = new URLSearchParams();
+    if (teamId) params.append('teamId', teamId);
+    if (teamName) params.append('teamName', teamName);
+    if (userId) params.append('userId', userId);
+    const res = await fetch(`${API_BASE}/breaks/active?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch active breaks');
+    return res.json();
+  },
+  getTodayBreaks: async (teamId?: string, teamName?: string, userId?: string): Promise<BreakTimeRecord[]> => {
+    const params = new URLSearchParams();
+    if (teamId) params.append('teamId', teamId);
+    if (teamName) params.append('teamName', teamName);
+    if (userId) params.append('userId', userId);
+    const res = await fetch(`${API_BASE}/breaks/today?${params.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch today breaks');
+    return res.json();
+  },
+  recordBreak: async (data: {
+    userId: string;
+    userName: string;
+    userEmail: string;
+    userRole?: string;
+    teamId?: string;
+    teamName?: string;
+    departmentId?: string;
+    departmentName?: string;
+    fromTime: string;
+    toTime: string;
+    reason?: string;
+  }): Promise<BreakTimeRecord> => {
+    const res = await fetch(`${API_BASE}/breaks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to submit break');
+    }
+    return res.json();
+  },
+  endBreakEarly: async (id: string, userId?: string): Promise<BreakTimeRecord> => {
+    const res = await fetch(`${API_BASE}/breaks/${id}/end`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to end break');
     }
     return res.json();
   },

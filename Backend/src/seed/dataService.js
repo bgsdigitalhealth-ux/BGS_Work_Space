@@ -14,6 +14,7 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const Meeting = require('../models/Meeting');
 const Attendance = require('../models/Attendance');
+const BreakTime = require('../models/BreakTime');
 const TimeLog = require('../models/TimeLog');
 const ReportEntry = require('../models/ReportEntry');
 const initialData = require('./seedData');
@@ -198,6 +199,9 @@ const loadStore = () => {
         }
         if (!memoryStore.attendance) {
           memoryStore.attendance = [];
+        }
+        if (!memoryStore.breaks) {
+          memoryStore.breaks = [];
         }
         if (!memoryStore.timeLogs) {
           memoryStore.timeLogs = [];
@@ -5860,6 +5864,240 @@ const deleteReportEntry = async (id, user) => {
   return { success: true, id };
 };
 
+// =========================================================================
+// BREAK TIME MANAGEMENT
+// =========================================================================
+
+const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
+  if (!timeStr) return new Date();
+  const date = new Date(baseDate);
+  const clean = String(timeStr).trim().toUpperCase();
+
+  // Check 12-hour or 24-hour time format (e.g. "12:30 PM", "1:15 AM", "14:30")
+  const match = clean.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/);
+  if (match) {
+    let hours = parseInt(match[1], 10);
+    const minutes = parseInt(match[2], 10);
+    const meridiem = match[4];
+    if (meridiem === 'PM' && hours < 12) hours += 12;
+    if (meridiem === 'AM' && hours === 12) hours = 0;
+    date.setHours(hours, minutes, 0, 0);
+    return date;
+  }
+
+  const d = new Date(timeStr);
+  if (!isNaN(d.getTime())) return d;
+  return new Date();
+};
+
+const getActiveBreaks = async ({ teamId, teamName, userId } = {}) => {
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const now = new Date();
+
+  // Check and update any break whose time has expired
+  let changed = false;
+  memoryStore.breaks.forEach(b => {
+    if (b.status === 'active' && new Date(b.toTimestamp).getTime() <= now.getTime()) {
+      b.status = 'completed';
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    saveStore();
+    if (getStatus()) {
+      try {
+        await BreakTime.updateMany(
+          { status: 'active', toTimestamp: { $lte: now } },
+          { $set: { status: 'completed' } }
+        );
+      } catch (e) {
+        console.warn('Mongo update expired breaks error:', e.message);
+      }
+    }
+  }
+
+  // Strictly isolate active breaks:
+  // Must be active and toTimestamp in the future
+  let activeList = memoryStore.breaks.filter(b => b.status === 'active' && new Date(b.toTimestamp).getTime() > now.getTime());
+
+  if (teamId || teamName) {
+    activeList = activeList.filter(b => {
+      if (teamId && b.teamId && b.teamId === teamId) return true;
+      if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      if (userId && b.userId === userId) return true;
+      return false;
+    });
+  } else if (userId) {
+    activeList = activeList.filter(b => b.userId === userId);
+  }
+
+  return activeList;
+};
+
+const getTodayBreaks = async ({ teamId, teamName, userId } = {}) => {
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const today = new Date().toISOString().split('T')[0];
+
+  let list = memoryStore.breaks.filter(b => b.date === today);
+
+  if (teamId || teamName) {
+    list = list.filter(b => {
+      if (teamId && b.teamId && b.teamId === teamId) return true;
+      if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      if (userId && b.userId === userId) return true;
+      return false;
+    });
+  } else if (userId) {
+    list = list.filter(b => b.userId === userId);
+  }
+
+  return list.sort((a, b) => new Date(b.createdAt || b.fromTimestamp).getTime() - new Date(a.createdAt || a.fromTimestamp).getTime());
+};
+
+const recordBreak = async ({
+  userId,
+  userName,
+  userEmail,
+  userRole = 'user',
+  teamId = '',
+  teamName = '',
+  departmentId = '',
+  departmentName = '',
+  fromTime,
+  toTime,
+  reason = 'Break'
+}) => {
+  if (!userName || !fromTime || !toTime) {
+    throw new Error('Name, fromTime and toTime are required');
+  }
+
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date();
+  const fromTs = parseTimeToTodayDate(fromTime);
+  let toTs = parseTimeToTodayDate(toTime);
+
+  // If toTs <= fromTs, roll over to the next hour or day
+  if (toTs.getTime() <= fromTs.getTime()) {
+    toTs = new Date(toTs.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  // End any currently active break for this user
+  memoryStore.breaks.forEach(b => {
+    if (b.userId === userId && b.status === 'active') {
+      b.status = 'completed';
+    }
+  });
+
+  const breakRecord = {
+    id: generateId('brk'),
+    customId: generateId('brk'),
+    userId: userId || generateId('usr'),
+    userName: userName.trim(),
+    userEmail: (userEmail || '').toLowerCase().trim(),
+    userRole: userRole || 'user',
+    teamId: teamId || '',
+    teamName: teamName || '',
+    departmentId: departmentId || '',
+    departmentName: departmentName || '',
+    date: today,
+    fromTime: String(fromTime).trim(),
+    toTime: String(toTime).trim(),
+    fromTimestamp: fromTs,
+    toTimestamp: toTs,
+    reason: reason || 'Break',
+    status: 'active',
+    createdAt: now.toISOString()
+  };
+
+  memoryStore.breaks.unshift(breakRecord);
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await BreakTime.create(breakRecord);
+    } catch (e) {
+      console.warn('Mongo recordBreak error:', e.message);
+    }
+  }
+
+  // Team-isolated notification: only notify members and managers of this specific team
+  try {
+    const cleanTeam = (teamName || '').toLowerCase().trim();
+    const targetMembers = (memoryStore.members || []).filter(m => {
+      if (m.userId === userId || (userEmail && m.email?.toLowerCase() === userEmail.toLowerCase())) return false;
+      if (teamId && m.teamId && m.teamId === teamId) return true;
+      if (cleanTeam && m.role && m.role.toLowerCase().includes(cleanTeam)) return true;
+      return false;
+    });
+
+    for (const m of targetMembers) {
+      createNotification({
+        recipientRole: 'user',
+        recipientUserId: m.userId || m.id,
+        recipientEmail: m.email,
+        referenceId: breakRecord.id,
+        title: `☕ ${userName} is on Break (${reason})`,
+        message: `${userName} is taking a ${reason} from ${fromTime} to ${toTime}.`,
+        link: '/break-time'
+      });
+    }
+
+    // Also notify managers of that team
+    const targetManagers = (memoryStore.users || []).filter(u => {
+      if (u.id === userId || (userEmail && u.email?.toLowerCase() === userEmail.toLowerCase())) return false;
+      if (u.role === 'manager' || u.role === 'admin') {
+        if (teamId && (u.teamId === teamId || u.team === teamName)) return true;
+        if (cleanTeam && u.team && u.team.toLowerCase() === cleanTeam) return true;
+        if (u.role === 'admin') return true;
+      }
+      return false;
+    });
+
+    for (const mgr of targetManagers) {
+      createNotification({
+        recipientRole: mgr.role || 'manager',
+        recipientUserId: mgr.id,
+        recipientEmail: mgr.email,
+        referenceId: breakRecord.id,
+        title: `☕ ${userName} is on Break (${reason})`,
+        message: `${userName} from ${teamName || 'your team'} is on break until ${toTime}.`,
+        link: '/break-time'
+      });
+    }
+  } catch (err) {
+    console.warn('Break notifications error:', err.message);
+  }
+
+  return breakRecord;
+};
+
+const endBreakEarly = async (breakId, { userId } = {}) => {
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const now = new Date();
+  const record = memoryStore.breaks.find(b => b.id === breakId || b.customId === breakId || b._id === breakId);
+  if (!record) throw new Error('Break record not found');
+
+  record.status = 'completed';
+  record.toTimestamp = now;
+  record.toTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await BreakTime.findOneAndUpdate(
+        buildIdQuery(breakId),
+        { $set: { status: 'completed', toTimestamp: now, toTime: record.toTime } }
+      );
+    } catch (e) {
+      console.warn('Mongo endBreakEarly error:', e.message);
+    }
+  }
+
+  return record;
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -5947,5 +6185,10 @@ module.exports = {
   getManagerTimeline,
   getReports,
   updateReportEntry,
-  deleteReportEntry
+  deleteReportEntry,
+  // Break Time Management
+  getActiveBreaks,
+  getTodayBreaks,
+  recordBreak,
+  endBreakEarly
 };

@@ -8,6 +8,7 @@ import {
   CheckSquare,
   Calendar as CalendarIcon,
   CalendarCheck,
+  Coffee,
   ClipboardCheck,
   FileBarChart,
   Clock,
@@ -120,6 +121,19 @@ export const Sidebar: React.FC = () => {
           >
             <CalendarCheck className="w-4 h-4 text-emerald-400" />
             <span>Attendance Record</span>
+          </button>
+
+          {/* Break Time */}
+          <button
+            onClick={() => handleNavAction(() => setAdminNav('break-time'))}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${adminNav === 'break-time'
+              ? 'text-white bg-indigo-600 shadow-sm'
+              : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            title="Team Break Time & Schedule"
+          >
+            <Coffee className="w-4 h-4 text-amber-400" />
+            <span>Break Time</span>
           </button>
 
           {/* Organization Group */}

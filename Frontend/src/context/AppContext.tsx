@@ -14,7 +14,8 @@ import {
   AppointmentStats,
   User,
   type Notification,
-  AttendanceRecord
+  AttendanceRecord,
+  BreakTimeRecord
 } from '../types';
 import { api, API_BASE } from '../services/api';
 import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
@@ -200,6 +201,14 @@ interface AppContextType {
   handleFinishTimer: (taskId: string) => Promise<void>;
   handleEditAssignment: (id: string, data: any) => Promise<void>;
   isManagerOrAdmin: boolean;
+
+  // Break Time Management
+  activeTeamBreaks: BreakTimeRecord[];
+  todayTeamBreaks: BreakTimeRecord[];
+  refreshActiveBreaks: () => Promise<void>;
+  refreshTodayBreaks: () => Promise<void>;
+  handleStartBreak: (payload: { fromTime: string; toTime: string; reason?: string }) => Promise<void>;
+  handleEndBreak: (breakId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -569,6 +578,99 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       notify('Punch out recorded successfully!', 'success', 'Attendance');
     } catch (e: any) {
       notify(e.message || 'Failed to punch out', 'error', 'Attendance Error');
+    }
+  };
+
+  // Break Time Management
+  const [activeTeamBreaks, setActiveTeamBreaks] = useState<BreakTimeRecord[]>([]);
+  const [todayTeamBreaks, setTodayTeamBreaks] = useState<BreakTimeRecord[]>([]);
+
+  const refreshActiveBreaks = async () => {
+    if (!currentUser) return;
+    try {
+      const myMem = (members || []).find(m =>
+        (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+        (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamName = currentUser.team || myMem?.role || '';
+      const list = await api.getActiveBreaks(teamId, teamName, currentUser.id);
+      setActiveTeamBreaks(list || []);
+    } catch (e) {
+      console.warn('Could not fetch active breaks:', e);
+    }
+  };
+
+  const refreshTodayBreaks = async () => {
+    if (!currentUser) return;
+    try {
+      const myMem = (members || []).find(m =>
+        (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+        (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamName = currentUser.team || myMem?.role || '';
+      const list = await api.getTodayBreaks(teamId, teamName, currentUser.id);
+      setTodayTeamBreaks(list || []);
+    } catch (e) {
+      console.warn('Could not fetch today breaks:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (currentUser) {
+      refreshActiveBreaks();
+      refreshTodayBreaks();
+      const interval = setInterval(() => {
+        refreshActiveBreaks();
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [currentUser?.id, currentUser?.email, currentUser?.team]);
+
+  const handleStartBreak = async (payload: { fromTime: string; toTime: string; reason?: string }) => {
+    if (!currentUser) return;
+    try {
+      const myMem = (members || []).find(m =>
+        (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+        (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+      );
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamName = currentUser.team || myMem?.role || '';
+      const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || '';
+      const departmentName = currentUser.department || '';
+
+      await api.recordBreak({
+        userId: currentUser.id,
+        userName: currentUser.name,
+        userEmail: currentUser.email,
+        userRole: currentUser.role || 'user',
+        teamId,
+        teamName,
+        departmentId,
+        departmentName,
+        fromTime: payload.fromTime,
+        toTime: payload.toTime,
+        reason: payload.reason || 'Break'
+      });
+
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
+      notify(`Break started from ${payload.fromTime} to ${payload.toTime}`, 'success', 'Break Time');
+    } catch (e: any) {
+      notify(e.message || 'Failed to start break', 'error', 'Break Error');
+      throw e;
+    }
+  };
+
+  const handleEndBreak = async (breakId: string) => {
+    if (!currentUser) return;
+    try {
+      await api.endBreakEarly(breakId, currentUser.id);
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
+      notify('Break ended successfully. Welcome back!', 'success', 'Break Time');
+    } catch (e: any) {
+      notify(e.message || 'Failed to end break', 'error', 'Break Error');
+      throw e;
     }
   };
 
@@ -1481,6 +1583,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshTodayAttendance();
         refreshAttendanceRecords();
       });
+      socket.on('BREAK_STARTED', () => {
+        refreshActiveBreaks();
+        refreshTodayBreaks();
+      });
+      socket.on('BREAK_ENDED', () => {
+        refreshActiveBreaks();
+        refreshTodayBreaks();
+      });
       socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
       socket.on('ASSIGNMENT_UPDATED', () => {
         refreshUserWorkspace();
@@ -1510,6 +1620,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         socket.off('appointment_deleted', handleRealtimeEntityChange);
         socket.off('work_changed', handleRealtimeEntityChange);
         socket.off('work_done_deleted', handleRealtimeEntityChange);
+        socket.off('BREAK_STARTED');
+        socket.off('BREAK_ENDED');
       };
     } else {
       setUnreadMessagesCount(0);
@@ -1649,7 +1761,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         handleResumeTimer,
         handleFinishTimer,
         handleEditAssignment,
-        isManagerOrAdmin
+        isManagerOrAdmin,
+        activeTeamBreaks,
+        todayTeamBreaks,
+        refreshActiveBreaks,
+        refreshTodayBreaks,
+        handleStartBreak,
+        handleEndBreak
       }}
     >
       {children}

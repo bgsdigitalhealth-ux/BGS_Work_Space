@@ -600,6 +600,74 @@ router.post('/attendance/punch-out', async (req, res) => {
   }
 });
 
+// --- Break Time Management ---
+router.get('/breaks/active', async (req, res) => {
+  try {
+    const { teamId, teamName, userId } = req.query;
+    const breaks = await dataService.getActiveBreaks({ teamId, teamName, userId });
+    res.json(breaks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/breaks/today', async (req, res) => {
+  try {
+    const { teamId, teamName, userId } = req.query;
+    const breaks = await dataService.getTodayBreaks({ teamId, teamName, userId });
+    res.json(breaks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/breaks', async (req, res) => {
+  try {
+    const { userId, userName, userEmail, userRole, teamId, teamName, departmentId, departmentName, fromTime, toTime, reason } = req.body;
+    if (!userName || !fromTime || !toTime) {
+      return res.status(400).json({ error: 'Name, fromTime, and toTime are required' });
+    }
+    const result = await dataService.recordBreak({
+      userId,
+      userName,
+      userEmail,
+      userRole,
+      teamId,
+      teamName,
+      departmentId,
+      departmentName,
+      fromTime,
+      toTime,
+      reason
+    });
+    broadcast('BREAK_STARTED', result);
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'break',
+      teamId: result.teamId,
+      teamName: result.teamName,
+      userName: result.userName,
+      reason: result.reason,
+      fromTime: result.fromTime,
+      toTime: result.toTime
+    });
+    res.status(201).json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.put('/breaks/:id/end', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+    const result = await dataService.endBreakEarly(id, { userId });
+    broadcast('BREAK_ENDED', result);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- Task Time Tracking (Start, Pause, Resume, Finish) ---
 router.post('/tasks/:id/timer/start', async (req, res) => {
   try {

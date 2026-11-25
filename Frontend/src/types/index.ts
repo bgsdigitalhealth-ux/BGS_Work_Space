@@ -188,6 +188,27 @@ export interface AttendanceRecord {
   punchCount?: number;
 }
 
+export interface BreakTimeRecord {
+  id: string;
+  customId?: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  userRole?: string;
+  teamId?: string;
+  teamName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  date: string;
+  fromTime: string;
+  toTime: string;
+  fromTimestamp: string | Date;
+  toTimestamp: string | Date;
+  reason: string;
+  status: 'active' | 'completed' | 'cancelled';
+  createdAt?: string;
+}
+
 export interface TimelineEvent {
   id: string;
   timestamp: string;

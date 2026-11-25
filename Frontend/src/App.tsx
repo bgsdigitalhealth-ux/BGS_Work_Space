@@ -32,6 +32,7 @@ import { ManagerTimelineView } from './components/user/ManagerTimelineView';
 import { ReportsView } from './components/user/ReportsView';
 import { UserAttendanceRecords } from './components/user/UserAttendanceRecords';
 import { AttendanceWidget } from './components/user/AttendanceWidget';
+import { BreakTimeView } from './components/break/BreakTimeView';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';
@@ -111,6 +112,8 @@ export const App: React.FC = () => {
             <AttendanceWidget />
             {(adminNav === 'record' || adminNav === 'records') ? (
               <UserAttendanceRecords />
+            ) : adminNav === 'break-time' ? (
+              <BreakTimeView />
             ) : adminNav === 'appointments' ? (
               <AdminAppointments />
             ) : adminNav === 'messages' ? (
@@ -167,6 +170,7 @@ export const App: React.FC = () => {
             <AttendanceWidget />
             {/* Conditional View by managerNav */}
             {(managerNav === 'record' || managerNav === 'records') && <UserAttendanceRecords />}
+            {managerNav === 'break-time' && <BreakTimeView />}
             {managerNav === 'dashboard' && <ManagerDashboard />}
             {managerNav === 'team' && <UserTeamView />}
             {managerNav === 'assign-work' && <UserAssignWork />}
@@ -207,6 +211,7 @@ export const App: React.FC = () => {
           {/* Conditional View by userNav */}
           {userNav === 'dashboard' && <UserDashboard />}
           {(userNav === 'record' || userNav === 'records') && <UserAttendanceRecords />}
+          {userNav === 'break-time' && <BreakTimeView />}
           {userNav === 'messages' && <MessagesView />}
           {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}

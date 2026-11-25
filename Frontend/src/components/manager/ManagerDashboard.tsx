@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { AttendanceWidget } from '../user/AttendanceWidget';
+import { ActiveBreakBanner } from '../break/ActiveBreakBanner';
 
 export const ManagerDashboard: React.FC = () => {
   const {
@@ -108,6 +109,9 @@ export const ManagerDashboard: React.FC = () => {
     <div className="space-y-6 pb-12">
       {/* Workspace Attendance Widget (Punch In / Punch Out & Today's Time Present) */}
       <AttendanceWidget />
+
+      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
+      <ActiveBreakBanner />
 
       {/* Welcome Banner */}
       <div className="bg-gradient-to-r from-[#14122d] via-[#1f1b45] to-[#2d225a] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
