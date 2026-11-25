@@ -19,6 +19,7 @@ import {
   Paperclip,
   LayoutGrid,
   List,
+  Kanban,
   Play,
   Pause,
   RotateCcw,
@@ -31,9 +32,10 @@ import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { PauseReasonModal } from './PauseReasonModal';
 import { EditTaskModal } from './EditTaskModal';
+import { KanbanBoard } from '../kanban/KanbanBoard';
 
 interface UserAssignedWorkProps {
-  initialView?: 'cards' | 'list' | 'details';
+  initialView?: 'cards' | 'list' | 'kanban' | 'details';
   title?: string;
 }
 
@@ -85,16 +87,23 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     ? (currentUser?.name ? `${currentUser.name}'s Work` : 'My Assigned Work')
     : title;
 
-  // View modes: 'cards' | 'list' | 'details'
-  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'details'>(() => {
-    if (initialView && (initialView === 'cards' || initialView === 'list' || initialView === 'details')) return initialView;
+  // View modes: 'cards' | 'list' | 'kanban' | 'details'
+  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'kanban' | 'details'>(() => {
+    if (initialView && (initialView === 'cards' || initialView === 'list' || initialView === 'kanban' || initialView === 'details')) return initialView;
     if (userNav === 'details') return 'details';
+    if (userNav === 'kanban') return 'kanban';
     return 'cards';
   });
 
-  const [previousViewMode, setPreviousViewMode] = useState<'cards' | 'list'>('cards');
+  const [previousViewMode, setPreviousViewMode] = useState<'cards' | 'list' | 'kanban'>('cards');
 
-  // Keep viewMode synchronized with userNav and selectedUserTask
+  // Keep viewMode synchronized with initialView, userNav and selectedUserTask
+  useEffect(() => {
+    if (initialView) {
+      setViewMode(initialView);
+    }
+  }, [initialView]);
+
   useEffect(() => {
     if (userNav === 'details' || selectedUserTask) {
       setViewMode('details');
@@ -102,6 +111,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
       if (viewMode === 'details') {
         setViewMode(previousViewMode);
       }
+    } else if (userNav === 'kanban') {
+      setViewMode('kanban');
     }
   }, [userNav, selectedUserTask]);
 
@@ -144,6 +155,29 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
       if (statusFilter === 'Completed' && task.status !== 'Completed') return false;
     }
 
+    // Priority filter
+    if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
+
+    // Department filter
+    if (departmentFilter !== 'All' && task.department !== departmentFilter) return false;
+
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = (task.title || '').toLowerCase().includes(q);
+      const matchDesc = (task.description || '').toLowerCase().includes(q);
+      const matchDept = (task.department || '').toLowerCase().includes(q);
+      const matchTeam = (task.team || '').toLowerCase().includes(q);
+      const matchAssignee = (task.assigneeName || '').toLowerCase().includes(q);
+      const matchId = (task.taskId || task.id || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchDept && !matchTeam && !matchAssignee && !matchId) return false;
+    }
+
+    return true;
+  });
+
+  // Filtered tasks for Kanban View (all statuses visible in their respective columns)
+  const kanbanTasks = teamFilteredTasks.filter(task => {
     // Priority filter
     if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
 
@@ -418,18 +452,21 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 )}
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                Switch seamlessly between Card and List views. Dashboard metrics reflect selected team filters in real time.
+                Switch seamlessly between Card, List, and Kanban views. Dashboard metrics reflect selected team filters in real time.
               </p>
             </div>
           </div>
 
           {/* View Mode Switcher + Action Button */}
           <div className="flex items-center gap-3 flex-wrap">
-            {/* View Switcher: Card | List */}
+            {/* View Switcher: Card | List | Kanban */}
             <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/70">
               <button
                 type="button"
-                onClick={() => setViewMode('cards')}
+                onClick={() => {
+                  setPreviousViewMode('cards');
+                  setViewMode('cards');
+                }}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'cards'
                     ? 'bg-white text-[#5a36e6] shadow-xs'
@@ -442,7 +479,10 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode('list')}
+                onClick={() => {
+                  setPreviousViewMode('list');
+                  setViewMode('list');
+                }}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewMode === 'list'
                     ? 'bg-white text-[#5a36e6] shadow-xs'
@@ -452,6 +492,22 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
               >
                 <List className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPreviousViewMode('kanban');
+                  setViewMode('kanban');
+                }}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  viewMode === 'kanban'
+                    ? 'bg-white text-[#5a36e6] shadow-xs'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+                title="Kanban Board View"
+              >
+                <Kanban className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kanban</span>
               </button>
             </div>
 
@@ -627,33 +683,42 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
       {/* Filter & Search Bar - Shared across all three views */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Status Tabs (shown for Card & List views) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
-          {(['All', 'To Do', 'In Progress', 'Under Review', 'Completed'] as const).map(st => {
-            const count = st === 'All' ? totalCount :
-              st === 'To Do' ? todoCount :
-                st === 'In Progress' ? inProgressCount :
-                  st === 'Under Review' ? underReviewCount : completedCount;
+        {/* Status Tabs (shown for Card & List views; Kanban separates columns by status) */}
+        {viewMode !== 'kanban' ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+            {(['All', 'To Do', 'In Progress', 'Under Review', 'Completed'] as const).map(st => {
+              const count = st === 'All' ? totalCount :
+                st === 'To Do' ? todoCount :
+                  st === 'In Progress' ? inProgressCount :
+                    st === 'Under Review' ? underReviewCount : completedCount;
 
-            return (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${statusFilter === st
-                  ? 'bg-[#5a36e6] text-white shadow-sm shadow-indigo-600/30'
-                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-              >
-                <span>{st}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${statusFilter === st
+                    ? 'bg-[#5a36e6] text-white shadow-sm shadow-indigo-600/30'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                >
+                  <span>{st}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                    }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-xl bg-indigo-50 text-[#5a36e6] border border-indigo-200/60 text-xs font-bold flex items-center gap-1.5">
+              <Kanban className="w-3.5 h-3.5" />
+              Interactive Workflow Columns (4 Stages)
+            </span>
+          </div>
+        )}
 
         {/* Filter Controls Row */}
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -1005,6 +1070,17 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             </table>
           </div>
         </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 3. KANBAN BOARD VIEW                                 */}
+      {/* ---------------------------------------------------- */}
+      {viewMode === 'kanban' && (
+        <KanbanBoard
+          tasks={kanbanTasks}
+          showHeader={false}
+          onOpenTaskDetails={handleCardClick}
+        />
       )}
 
       {/* Pause Reason Modal (Mandatory reason prompt) */}

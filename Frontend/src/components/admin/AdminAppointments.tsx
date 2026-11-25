@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calendar as CalendarIcon,
   Clock,
@@ -14,10 +14,13 @@ import {
   Edit2,
   Trash2,
   X,
-  Video
+  Video,
+  Calendar,
+  RotateCcw
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Appointment } from '../../types';
+import { normalizeDateStr, formatDateDisplay, generateCalendarMonth } from '../../utils/calendarUtils';
 
 export const AdminAppointments: React.FC = () => {
   const {
@@ -62,9 +65,72 @@ export const AdminAppointments: React.FC = () => {
     cancelled: 0
   };
 
+  // Real Date Scan & Month Navigation State
+  const todayDateObj = new Date();
+  const [calendarYear, setCalendarYear] = useState(todayDateObj.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(todayDateObj.getMonth());
+
+  // Scanned Appointment Dates from Real Appointments Data
+  const { scannedDates, appointmentCounts } = useMemo(() => {
+    const set = new Set<string>();
+    const counts = new Map<string, number>();
+    (appointments || []).forEach(apt => {
+      const d1 = normalizeDateStr(apt.date);
+      if (d1) {
+        set.add(d1);
+        counts.set(d1, (counts.get(d1) || 0) + 1);
+      }
+      if (apt.dateTimeDisplay) {
+        const d2 = normalizeDateStr(apt.dateTimeDisplay);
+        if (d2) {
+          set.add(d2);
+          counts.set(d2, (counts.get(d2) || 0) + 1);
+        }
+      }
+    });
+    return { scannedDates: set, appointmentCounts: counts };
+  }, [appointments]);
+
+  const { paddingDays, days: monthDays, monthName, year: currentYear } = useMemo(() => {
+    return generateCalendarMonth(calendarYear, calendarMonth, scannedDates, appointmentCounts);
+  }, [calendarYear, calendarMonth, scannedDates, appointmentCounts]);
+
+  const handlePrevMonth = () => {
+    if (calendarMonth === 0) {
+      setCalendarMonth(11);
+      setCalendarYear(y => y - 1);
+    } else {
+      setCalendarMonth(m => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calendarMonth === 11) {
+      setCalendarMonth(0);
+      setCalendarYear(y => y + 1);
+    } else {
+      setCalendarMonth(m => m + 1);
+    }
+  };
+
+  const handleTodayClick = () => {
+    const now = new Date();
+    setCalendarYear(now.getFullYear());
+    setCalendarMonth(now.getMonth());
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    setSelectedAppointmentDate(todayStr);
+  };
+
   // Filtered Appointments
   const filteredAppointments = appointments.filter(apt => {
     const todayStr = new Date().toISOString().split('T')[0];
+
+    // Real Date Scan Filter
+    if (selectedAppointmentDate) {
+      const aptDate = normalizeDateStr(apt.date) || normalizeDateStr(apt.dateTimeDisplay);
+      if (aptDate !== selectedAppointmentDate) return false;
+    }
+
     // Tab filter
     if (activeTab === 'Today' && !apt.isToday && apt.date !== todayStr) return false;
     if (activeTab === 'Upcoming' && apt.status !== 'Upcoming' && apt.status !== 'Scheduled') return false;
@@ -140,9 +206,6 @@ export const AdminAppointments: React.FC = () => {
     }
     setIsModalOpen(false);
   };
-
-  // Calendar dates generator for Nov 2026 (Nov 1 is Sunday)
-  const calendarDays = Array.from({ length: 30 }, (_, i) => i + 1);
 
   return (
     <div className="space-y-6 pb-12">
@@ -233,15 +296,35 @@ export const AdminAppointments: React.FC = () => {
         <div className="lg:col-span-4 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <h3 className="text-sm font-bold text-gray-900">Schedule Appointment</h3>
+            <button
+              type="button"
+              onClick={handleTodayClick}
+              className="text-[11px] font-bold text-[#5a36e6] hover:text-[#4527cb] transition cursor-pointer flex items-center gap-1"
+            >
+              <RotateCcw className="w-3 h-3" />
+              <span>Today</span>
+            </button>
           </div>
 
-          {/* Calendar Month Header */}
+          {/* Calendar Month Header with Active Navigation */}
           <div className="flex items-center justify-between px-2">
-            <button className="p-1 rounded-lg hover:bg-gray-100 text-gray-600 transition">
+            <button
+              type="button"
+              onClick={handlePrevMonth}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition cursor-pointer"
+              title="Previous Month"
+            >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="text-xs font-bold text-gray-900">November 2026</span>
-            <button className="p-1 rounded-lg hover:bg-gray-100 text-gray-600 transition">
+            <span className="text-xs font-bold text-gray-900 font-inter">
+              {monthName} {currentYear}
+            </span>
+            <button
+              type="button"
+              onClick={handleNextMonth}
+              className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition cursor-pointer"
+              title="Next Month"
+            >
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>
@@ -257,35 +340,69 @@ export const AdminAppointments: React.FC = () => {
             <span>Sat</span>
           </div>
 
-          {/* Days grid */}
+          {/* Real Date Scan Days Grid */}
           <div className="grid grid-cols-7 gap-1 text-center text-xs">
-            {calendarDays.map(day => {
-              const dateStr = `2026-11-${String(day).padStart(2, '0')}`;
-              const isSelected = selectedAppointmentDate === dateStr;
-              const hasEvents = appointments.some(a => a.date === dateStr);
+            {/* Blank padding cells for weekday offset */}
+            {Array.from({ length: paddingDays }).map((_, idx) => (
+              <div key={`pad-${idx}`} className="h-8 w-8 mx-auto" />
+            ))}
+
+            {monthDays.map(day => {
+              const isSelected = selectedAppointmentDate === day.dateStr;
 
               return (
                 <button
-                  key={day}
-                  onClick={() => setSelectedAppointmentDate(dateStr)}
-                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative ${isSelected
-                    ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30'
-                    : 'text-gray-700 hover:bg-gray-100'
-                    }`}
+                  key={day.dateStr}
+                  type="button"
+                  onClick={() => {
+                    if (isSelected) {
+                      setSelectedAppointmentDate('');
+                    } else {
+                      setSelectedAppointmentDate(day.dateStr);
+                    }
+                  }}
+                  title={day.hasAppointments ? `${day.appointmentCount} appointment(s) on ${day.dateStr}` : day.dateStr}
+                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30 font-bold'
+                      : day.isToday
+                      ? 'border-2 border-[#5a36e6] text-[#5a36e6] font-bold hover:bg-indigo-50'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  }`}
                 >
-                  <span>{day}</span>
-                  {hasEvents && !isSelected && (
-                    <span className="w-1 h-1 rounded-full bg-[#5a36e6] absolute bottom-1" />
+                  <span>{day.dayNumber}</span>
+                  {day.hasAppointments && !isSelected && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#5a36e6] absolute bottom-0.5" />
                   )}
                 </button>
               );
             })}
           </div>
 
+          {/* Active Date Scan Status Filter Banner */}
+          {selectedAppointmentDate && (
+            <div className="p-2.5 rounded-xl bg-indigo-50 border border-indigo-100 text-xs flex items-center justify-between animate-in fade-in duration-150">
+              <div className="flex items-center gap-1.5 truncate">
+                <Calendar className="w-3.5 h-3.5 text-[#5a36e6] shrink-0" />
+                <span className="text-indigo-900 font-bold truncate">
+                  {formatDateDisplay(selectedAppointmentDate)}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAppointmentDate('')}
+                className="text-[11px] font-bold text-indigo-700 hover:text-indigo-950 transition cursor-pointer flex items-center gap-0.5 ml-2 shrink-0"
+              >
+                <X className="w-3 h-3" />
+                <span>Clear</span>
+              </button>
+            </div>
+          )}
+
           {/* New Appointment Button */}
           <button
             onClick={openCreateModal}
-            className="w-full py-3 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-indigo-600/30 mt-4"
+            className="w-full py-3 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-md shadow-indigo-600/30 mt-4 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             New Appointment
@@ -294,6 +411,24 @@ export const AdminAppointments: React.FC = () => {
 
         {/* Right Column: Appointments Table (8 cols) */}
         <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 space-y-4">
+          {/* Active Date Filter Banner in Table Column */}
+          {selectedAppointmentDate && (
+            <div className="p-3 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-between text-xs animate-in fade-in duration-150">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-[#5a36e6]" />
+                <span className="text-gray-800">
+                  Showing appointments for <strong>{formatDateDisplay(selectedAppointmentDate)}</strong> ({filteredAppointments.length} found)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedAppointmentDate('')}
+                className="px-2.5 py-1 rounded-lg bg-white border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition cursor-pointer"
+              >
+                Show All Dates
+              </button>
+            </div>
+          )}
           {/* Header Controls: Filter Tabs + Search Box */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-gray-100">
             {/* Filter Tabs */}

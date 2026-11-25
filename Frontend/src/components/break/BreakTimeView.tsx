@@ -623,10 +623,9 @@ export const BreakTimeView: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || !!validationError}
-                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                  editingBreakId
-                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
-                    : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${editingBreakId
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                  : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
                   }`}
               >
                 {isSubmitting ? (
@@ -847,10 +846,10 @@ export const BreakTimeView: React.FC = () => {
           const isUserRole = currentUser?.role === 'user';
           const displayedBreaks = isUserRole
             ? (todayTeamBreaks || []).filter(
-                b =>
-                  (currentUser?.id && (b.userId === currentUser.id || String(b.userId) === String(currentUser.id))) ||
-                  (currentUser?.email && b.userEmail?.toLowerCase() === currentUser.email.toLowerCase())
-              )
+              b =>
+                (currentUser?.id && (b.userId === currentUser.id || String(b.userId) === String(currentUser.id))) ||
+                (currentUser?.email && b.userEmail?.toLowerCase() === currentUser.email.toLowerCase())
+            )
             : (todayTeamBreaks || []);
 
           if (displayedBreaks.length === 0) {
@@ -883,10 +882,10 @@ export const BreakTimeView: React.FC = () => {
 
                     const formattedRowDate = b.date
                       ? new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', {
-                          day: '2-digit',
-                          month: 'short',
-                          year: 'numeric'
-                        })
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric'
+                      })
                       : todayDisplayDate;
 
                     return (

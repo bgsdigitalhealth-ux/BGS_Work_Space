@@ -117,6 +117,8 @@ export const App: React.FC = () => {
               <BreakTimeView />
             ) : adminNav === 'appointments' ? (
               <AdminAppointments />
+            ) : adminNav === 'kanban' ? (
+              <UserAssignedWork initialView="kanban" title="Workspace Kanban Board" />
             ) : adminNav === 'messages' ? (
               <MessagesView />
             ) : adminNav === 'settings' ? (
@@ -178,6 +180,7 @@ export const App: React.FC = () => {
             {managerNav === 'team' && <UserTeamView />}
             {managerNav === 'assign-work' && <UserAssignWork />}
             {managerNav === 'my-work' && <UserAssignedWork initialView="cards" title="My Work" />}
+            {managerNav === 'kanban' && <UserAssignedWork initialView="kanban" title="Team Kanban Board" />}
             {managerNav === 'review-work' && <ManagerReviewWork />}
             {(managerNav === 'appointments' || managerNav === 'my-schedule') && <UserAppointments />}
             {managerNav === 'messages' && <MessagesView />}
@@ -218,6 +221,7 @@ export const App: React.FC = () => {
           {userNav === 'messages' && <MessagesView />}
           {(userNav === 'appointments' || userNav === 'my-schedule') && <UserAppointments />}
           {(userNav === 'my-work' || userNav === 'details' || userNav === 'assigned-work') && <UserAssignedWork />}
+          {userNav === 'kanban' && <UserAssignedWork initialView="kanban" title="Kanban Board" />}
           {userNav === 'assign-work' && <UserAssignWork />}
           {userNav === 'work-history' && <UserWorkHistory />}
           {userNav === 'settings' && <UserSettings />}

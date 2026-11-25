@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   Coffee,
   ClipboardCheck,
+  Kanban,
   FileBarChart,
   Clock,
   ChevronDown,
@@ -232,6 +233,21 @@ export const Sidebar: React.FC = () => {
                     <CalendarIcon className="w-3.5 h-3.5 shrink-0" />
                   </div>
                   <span className="truncate">Appointments</span>
+                </button>
+
+                {/* Workspace Kanban Board */}
+                <button
+                  type="button"
+                  onClick={() => handleNavAction(() => {
+                    setAdminNav('kanban');
+                  })}
+                  className={`w-full h-9 flex items-center gap-2.5 px-3 rounded-lg text-sm transition-colors text-left cursor-pointer ${adminNav === 'kanban' ? 'text-white font-bold bg-indigo-600 shadow-sm' : 'text-slate-300 hover:text-white hover:bg-white/5'
+                    }`}
+                >
+                  <div className="w-4 h-4 flex items-center justify-center shrink-0">
+                    <Kanban className="w-3.5 h-3.5 shrink-0" />
+                  </div>
+                  <span className="truncate">Kanban Board</span>
                 </button>
 
                 <button
