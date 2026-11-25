@@ -7,6 +7,7 @@ import {
   UserCheck,
   CheckSquare,
   Calendar as CalendarIcon,
+  CalendarCheck,
   ClipboardCheck,
   FileBarChart,
   Clock,
@@ -106,6 +107,19 @@ export const Sidebar: React.FC = () => {
               <LayoutDashboard className="w-4 h-4 shrink-0" />
             </div>
             <span className="truncate text-left whitespace-nowrap">Dashboard</span>
+          </button>
+
+          {/* Manager & Admin Attendance Record */}
+          <button
+            onClick={() => handleNavAction(() => setAdminNav('record'))}
+            className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all text-left cursor-pointer ${adminNav === 'record' || adminNav === 'records'
+              ? 'text-white bg-indigo-600 shadow-sm'
+              : 'text-slate-300 hover:text-white hover:bg-white/5'
+              }`}
+            title="View Attendance Records & Punch History"
+          >
+            <CalendarCheck className="w-4 h-4 text-emerald-400" />
+            <span>Attendance Record</span>
           </button>
 
           {/* Organization Group */}

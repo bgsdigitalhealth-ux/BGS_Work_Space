@@ -39,6 +39,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const [newCommentText, setNewCommentText] = useState('');
   const [newCommentBadge, setNewCommentBadge] = useState('Update');
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [optimisticLevel, setOptimisticLevel] = useState<'assigned' | 'started' | 'in_progress' | 'submitted' | 'completed' | null>(null);
+  const [optimisticStatus, setOptimisticStatus] = useState<string | null>(null);
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
   const task = taskOverride || selectedUserTask;
@@ -50,39 +52,67 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
 
   useEffect(() => {
     if (task) {
+      setOptimisticLevel(null);
+      setOptimisticStatus(null);
       const val = task.progress !== undefined 
         ? Number(task.progress) 
         : (task.status === 'Completed' || task.status === 'Under Review' ? 100 : (task.status === 'Not Started' || (task.status as any) === 'To Do' ? 0 : 60));
       setProgressValue(val);
     }
-  }, [task?.progress, task?.status]);
+  }, [task?.id, task?.status, task?.progress]);
 
   const handleSetLevel = async (level: 'assigned' | 'started' | 'in_progress' | 'submitted' | 'completed') => {
-    if (!task || isUpdatingProgress) return;
+    if (!task) return;
     setIsUpdatingProgress(true);
+
+    let newStatus: 'Not Started' | 'In Progress' | 'Under Review' | 'Completed' = 'In Progress';
+    let newProgress = 60;
+
+    if (level === 'assigned') {
+      newStatus = 'Not Started';
+      newProgress = 0;
+    } else if (level === 'started') {
+      newStatus = 'In Progress';
+      newProgress = 25;
+    } else if (level === 'in_progress') {
+      newStatus = 'In Progress';
+      newProgress = 60;
+    } else if (level === 'submitted') {
+      newStatus = 'Under Review';
+      newProgress = 85;
+    } else if (level === 'completed') {
+      newStatus = 'Completed';
+      newProgress = 100;
+    }
+
+    // Immediately update UI optimistically
+    setOptimisticLevel(level);
+    setOptimisticStatus(newStatus);
+    setProgressValue(newProgress);
+
+    // Safety timeout so "Syncing Level..." never stays stuck indefinitely
+    const safetyTimer = setTimeout(() => {
+      setIsUpdatingProgress(false);
+    }, 1500);
+
     try {
-      let newStatus: 'Not Started' | 'In Progress' | 'Under Review' | 'Completed' = 'In Progress';
-      let newProgress = 60;
-
-      if (level === 'assigned') {
-        newStatus = 'Not Started';
-        newProgress = 0;
-      } else if (level === 'started') {
-        newStatus = 'In Progress';
-        newProgress = 25;
-      } else if (level === 'in_progress') {
-        newStatus = 'In Progress';
-        newProgress = 60;
-      } else if (level === 'submitted') {
-        newStatus = 'Under Review';
-        newProgress = 85;
-      } else if (level === 'completed') {
-        newStatus = 'Completed';
-        newProgress = 100;
-      }
-
-      setProgressValue(newProgress);
-      await handleEditAssignment(task.id, {
+      const targetId = task.taskId || task.id;
+      await handleEditAssignment(targetId, {
+        id: task.id,
+        taskId: task.taskId,
+        title: task.title,
+        workTitle: task.title,
+        description: task.description,
+        workDescription: task.description,
+        priority: task.priority,
+        dueDate: task.dueDate,
+        team: task.team,
+        teamId: task.teamId,
+        department: task.department,
+        departmentId: task.departmentId,
+        assigneeName: task.assigneeName || (task as any).assignedTo,
+        assigneeEmail: task.assigneeEmail,
+        assigneeId: task.assigneeId || task.userId,
         status: newStatus,
         progress: newProgress,
         level
@@ -90,6 +120,7 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     } catch (e) {
       console.error('Failed to update progress level:', e);
     } finally {
+      clearTimeout(safetyTimer);
       setIsUpdatingProgress(false);
     }
   };
@@ -133,11 +164,31 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     return 'bg-gray-100 text-gray-700 border border-gray-200';
   };
 
-  const isCompleted = task.status === 'Completed';
-  const isSubmitted = task.status === 'Under Review';
-  const isToDo = task.status === 'Not Started' || (task.status as any) === 'To Do';
-  const isInProgress = task.status === 'In Progress' || (!isCompleted && !isSubmitted && !isToDo);
-  const progressPercent = isCompleted || isSubmitted ? 100 : (progressValue !== undefined ? progressValue : (task.progress !== undefined ? task.progress : (isInProgress ? 60 : 0)));
+  const effectiveStatus = optimisticStatus || task.status;
+  const isCompleted = effectiveStatus === 'Completed' || optimisticLevel === 'completed';
+  const isSubmitted = effectiveStatus === 'Under Review' || optimisticLevel === 'submitted';
+  const isToDo = effectiveStatus === 'Not Started' || (effectiveStatus as any) === 'To Do' || optimisticLevel === 'assigned';
+  const isInProgress = (effectiveStatus === 'In Progress' || (!isCompleted && !isSubmitted && !isToDo)) && !isToDo;
+
+  const currentStepLevel = optimisticLevel === 'completed' || isCompleted || (progressValue !== undefined && progressValue === 100)
+    ? 5
+    : optimisticLevel === 'submitted' || isSubmitted || (progressValue !== undefined && progressValue >= 85)
+    ? 4
+    : optimisticLevel === 'in_progress' || (progressValue !== undefined && progressValue >= 50 && progressValue < 85)
+    ? 3
+    : optimisticLevel === 'started' || (progressValue !== undefined && progressValue > 0 && progressValue < 50) || (!isToDo && isInProgress)
+    ? 2
+    : 1;
+
+  const progressPercent = currentStepLevel === 5
+    ? 100
+    : currentStepLevel === 4
+    ? 85
+    : currentStepLevel === 3
+    ? 60
+    : currentStepLevel === 2
+    ? 25
+    : 0;
 
   // Dynamic real date tracking helpers
   const formatDateTime = (val?: string | Date) => {
@@ -189,51 +240,9 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     ? `${task.assignedOn}, ${(task as any).assignedTime}`
     : (task.createdAt ? formatDateTime(task.createdAt) : (task.assignedOn ? formatTaskDueDate(task.assignedOn) : 'Assigned'));
 
-  const getStartedTime = () => {
-    if ((task as any).workStartedDate) return (task as any).workStartedDate;
-    if ((task as any).workStartedTime && task.assignedOn) return `${formatTaskDueDate(task.assignedOn)}, ${(task as any).workStartedTime}`;
-    if ((task as any).workStartedAt) return formatDateTime((task as any).workStartedAt);
-    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'started');
-    if (act && act.timestamp) return formatDateTime(act.timestamp);
-    if ((task as any).timerState?.activeSessionStart) return formatDateTime((task as any).timerState.activeSessionStart);
-    if (isToDo) return 'Pending Start';
-    return 'In Progress';
-  };
-  const startedDateLabel = getStartedTime();
-
-  const getSubmittedTime = () => {
-    if ((task as any).submittedDate) return (task as any).submittedDate;
-    if ((task as any).submittedAt) return formatDateTime((task as any).submittedAt);
-    const subComment = (task.comments || []).find(c => c.badge === 'Submission' || (c.text && c.text.toLowerCase().includes('submitted')));
-    if (subComment && subComment.date) return subComment.date;
-    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'deliverable_submitted');
-    if (act && act.timestamp) return formatDateTime(act.timestamp);
-    if (isSubmitted || isCompleted) {
-      if ((task as any).completedDate) return (task as any).completedDate;
-      if ((task as any).completedAt) return formatDateTime((task as any).completedAt);
-    }
-    return isSubmitted ? 'Submitted' : '—';
-  };
-  const submittedDateLabel = getSubmittedTime();
-
-  const getCompletedTime = () => {
-    if ((task as any).completedDate) return (task as any).completedDate;
-    if ((task as any).completedAt) return formatDateTime((task as any).completedAt);
-    const act = ((task as any).activityLog || []).find((a: any) => a.type === 'finished' || a.type === 'completed');
-    if (act && act.timestamp) return formatDateTime(act.timestamp);
-    return isCompleted ? 'Completed' : '—';
-  };
-  const completedDateLabel = getCompletedTime();
-
-  const currentStepLevel = isCompleted || progressPercent === 100
-    ? 5
-    : isSubmitted || (progressPercent >= 85 && progressPercent < 100)
-    ? 4
-    : (isInProgress && progressPercent >= 50) || progressPercent === 60
-    ? 3
-    : progressPercent >= 25 || (!isToDo && isInProgress)
-    ? 2
-    : 1;
+  const startedDateLabel = currentStepLevel >= 2 ? 'In Progress' : 'Pending Start';
+  const submittedDateLabel = currentStepLevel >= 4 ? (currentStepLevel > 4 ? 'Done' : 'Under Review') : '—';
+  const completedDateLabel = currentStepLevel === 5 ? 'Completed' : '—';
 
   const timeLeftLabel = (task as any).timeLeft || calculateDynamicTimeLeft(task.dueDate, task.status);
 

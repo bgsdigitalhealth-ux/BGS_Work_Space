@@ -4577,15 +4577,46 @@ const getTurnCredentials = (userId) => {
 // =========================================================================
 const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' }) => {
   if (!memoryStore.assignments) memoryStore.assignments = [];
-  const assignIndex = memoryStore.assignments.findIndex(a => a.id === id || a.customId === id);
-  const oldAssign = assignIndex >= 0 ? memoryStore.assignments[assignIndex] : null;
-
-  // Find user task in workspace
   if (!memoryStore.userWorkspace) memoryStore.userWorkspace = { assignedWork: [] };
-  const userTaskIndex = memoryStore.userWorkspace.assignedWork.findIndex(
-    w => w.id === id || w.customId === id || w.assignmentId === id || (oldAssign && (w.title === oldAssign.workTitle || w.taskId === oldAssign.id))
+
+  // 1. Locate user task in workspace by id, customId, taskId, assignmentId, or title
+  let userTaskIndex = memoryStore.userWorkspace.assignedWork.findIndex(
+    w => w.id === id || w.customId === id || w.taskId === id || w.assignmentId === id ||
+         (data.taskId && (w.taskId === data.taskId || w.id === data.taskId || w.customId === data.taskId)) ||
+         (data.id && (w.id === data.id || w.taskId === data.id))
   );
-  const oldUserTask = userTaskIndex >= 0 ? memoryStore.userWorkspace.assignedWork[userTaskIndex] : null;
+  let oldUserTask = userTaskIndex >= 0 ? memoryStore.userWorkspace.assignedWork[userTaskIndex] : null;
+
+  // 2. Locate assignment by id, customId, taskId, or via oldUserTask
+  let assignIndex = memoryStore.assignments.findIndex(
+    a => a.id === id || a.customId === id || a.taskId === id ||
+         (data.taskId && (a.id === data.taskId || a.customId === data.taskId)) ||
+         (data.id && (a.id === data.id || a.customId === data.id))
+  );
+  if (assignIndex < 0 && oldUserTask) {
+    assignIndex = memoryStore.assignments.findIndex(a =>
+      a.id === oldUserTask.taskId ||
+      a.id === oldUserTask.id ||
+      a.id === oldUserTask.assignmentId ||
+      a.customId === oldUserTask.taskId ||
+      a.customId === oldUserTask.id ||
+      (oldUserTask.title && a.workTitle && a.workTitle.trim().toLowerCase() === oldUserTask.title.trim().toLowerCase())
+    );
+  }
+  let oldAssign = assignIndex >= 0 ? memoryStore.assignments[assignIndex] : null;
+
+  // 3. If userTask wasn't found initially, try matching via oldAssign
+  if (userTaskIndex < 0 && oldAssign) {
+    userTaskIndex = memoryStore.userWorkspace.assignedWork.findIndex(w =>
+      w.taskId === oldAssign.id ||
+      w.taskId === oldAssign.customId ||
+      w.id === oldAssign.id ||
+      w.id === oldAssign.customId ||
+      w.assignmentId === oldAssign.id ||
+      (oldAssign.workTitle && w.title && w.title.trim().toLowerCase() === oldAssign.workTitle.trim().toLowerCase())
+    );
+    oldUserTask = userTaskIndex >= 0 ? memoryStore.userWorkspace.assignedWork[userTaskIndex] : null;
+  }
 
   const activityLog = Array.isArray(oldUserTask?.activityLog) ? [...oldUserTask.activityLog] : [];
 
@@ -4606,10 +4637,13 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   }
 
   // 2. Audit Assignee Change (Preserve earlier hours credited to original performer)
-  const oldAssigneeName = oldAssign?.assigneeName || oldUserTask?.assigneeName || 'Assignee';
+  const oldAssigneeName = oldAssign?.assigneeName || oldUserTask?.assigneeName || oldUserTask?.assignedTo || 'Assignee';
   const newAssigneeName = data.assigneeName || oldAssigneeName;
-  const oldAssigneeId = oldAssign?.assigneeId || oldUserTask?.assigneeId || '';
+  const oldAssigneeId = oldAssign?.assigneeId || oldUserTask?.assigneeId || oldUserTask?.userId || '';
   const newAssigneeId = data.assigneeId || oldAssigneeId;
+  const oldAssigneeEmail = oldAssign?.assigneeEmail || oldUserTask?.assigneeEmail || '';
+  const newAssigneeEmail = data.assigneeEmail || oldAssigneeEmail;
+
   if (data.assigneeId && data.assigneeId !== oldAssigneeId) {
     activityLog.push({
       id: generateId('act'),
@@ -4670,7 +4704,7 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   let workStartedTime = oldUserTask?.workStartedTime;
   let workStartedAt = oldUserTask?.workStartedAt;
   if (!workStartedDate && (data.level === 'started' || newStatus === 'In Progress' || newStatus === 'Under Review' || newStatus === 'Completed')) {
-    workStartedDate = fullDateTime;
+    workStartedDate = 'In Progress';
     workStartedTime = formattedTime;
     workStartedAt = dateISO;
     if (!activityLog.some(a => a.type === 'started')) {
@@ -4691,7 +4725,7 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   let submittedTime = oldUserTask?.submittedTime;
   let submittedAt = oldUserTask?.submittedAt;
   if (!submittedDate && (data.level === 'submitted' || newStatus === 'Under Review' || newStatus === 'Completed')) {
-    submittedDate = fullDateTime;
+    submittedDate = 'Under Review';
     submittedTime = formattedTime;
     submittedAt = dateISO;
     if (!activityLog.some(a => a.type === 'deliverable_submitted')) {
@@ -4729,23 +4763,34 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
     }
   }
 
+  // Work Title, Description, Priority, Role, Team & Department preservation
+  const resolvedWorkTitle = data.title || data.workTitle || oldAssign?.workTitle || oldUserTask?.title || 'Assigned Work';
+  const resolvedWorkDesc = data.description !== undefined ? data.description : (data.workDescription !== undefined ? data.workDescription : (oldAssign?.workDescription !== undefined ? oldAssign.workDescription : (oldUserTask?.description || '')));
+  const resolvedPriority = data.priority || oldAssign?.priority || oldUserTask?.priority || 'Medium';
+  const resolvedRole = data.role || oldAssign?.role || oldUserTask?.role || 'Developer';
+  const resolvedTeamId = data.teamId !== undefined ? data.teamId : (oldAssign?.teamId || oldUserTask?.teamId || 'general');
+  const resolvedDeptId = data.departmentId !== undefined ? data.departmentId : (oldAssign?.departmentId || oldUserTask?.departmentId || '');
+  const resolvedTeam = data.team || oldUserTask?.team || oldAssign?.team || 'Team';
+  const resolvedDept = data.department || oldUserTask?.department || oldAssign?.department || 'General';
+
   // Update Assignment
+  const targetAssignId = oldAssign?.id || (oldUserTask ? (oldUserTask.assignmentId || oldUserTask.taskId || oldUserTask.id) : id);
   const updatedAssign = {
     ...(oldAssign || {}),
-    id: oldAssign?.id || id,
-    customId: oldAssign?.customId || id,
-    workTitle: data.title || data.workTitle || oldAssign?.workTitle || 'Assigned Work',
-    workDescription: data.description !== undefined ? data.description : (data.workDescription !== undefined ? data.workDescription : (oldAssign?.workDescription || '')),
-    priority: data.priority || oldAssign?.priority || 'Medium',
+    id: targetAssignId,
+    customId: oldAssign?.customId || targetAssignId,
+    workTitle: resolvedWorkTitle,
+    workDescription: resolvedWorkDesc,
+    priority: resolvedPriority,
     dueDate: newDueDate,
     status: newStatus,
     progress: newProgress,
-    role: data.role || oldAssign?.role || 'Developer',
-    teamId: data.teamId !== undefined ? data.teamId : (oldAssign?.teamId || 'general'),
-    departmentId: data.departmentId !== undefined ? data.departmentId : (oldAssign?.departmentId || ''),
+    role: resolvedRole,
+    teamId: resolvedTeamId,
+    departmentId: resolvedDeptId,
     assigneeId: newAssigneeId,
     assigneeName: newAssigneeName,
-    assigneeEmail: data.assigneeEmail || oldAssign?.assigneeEmail || '',
+    assigneeEmail: newAssigneeEmail,
     updatedAt: new Date().toISOString()
   };
 
@@ -4756,24 +4801,26 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   }
 
   // Update UserTask
+  const targetUserTaskId = oldUserTask?.id || id;
   const updatedUserTask = {
     ...(oldUserTask || {}),
-    id: oldUserTask?.id || id,
-    taskId: oldUserTask?.taskId || (oldAssign ? oldAssign.id : id),
-    title: updatedAssign.workTitle,
-    description: updatedAssign.workDescription,
-    priority: updatedAssign.priority,
+    id: targetUserTaskId,
+    taskId: oldUserTask?.taskId || updatedAssign.id,
+    assignmentId: updatedAssign.id,
+    title: resolvedWorkTitle,
+    description: resolvedWorkDesc,
+    priority: resolvedPriority,
     dueDate: updatedAssign.dueDate,
     status: updatedAssign.status,
     progress: newProgress,
-    team: data.team || oldUserTask?.team || 'Team',
-    teamId: updatedAssign.teamId,
-    department: data.department || oldUserTask?.department || 'General',
-    departmentId: updatedAssign.departmentId,
+    team: resolvedTeam,
+    teamId: resolvedTeamId,
+    department: resolvedDept,
+    departmentId: resolvedDeptId,
     userId: newAssigneeId || oldUserTask?.userId || 'usr-user',
     assigneeId: newAssigneeId,
     assigneeName: newAssigneeName,
-    assigneeEmail: updatedAssign.assigneeEmail,
+    assigneeEmail: newAssigneeEmail,
     workStartedDate: workStartedDate || oldUserTask?.workStartedDate,
     workStartedTime: workStartedTime || oldUserTask?.workStartedTime,
     workStartedAt: workStartedAt || oldUserTask?.workStartedAt,
@@ -4820,6 +4867,16 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
         memoryStore.workDone.unshift(newWorkDone);
       }
     }
+  } else {
+    // If status moved back from Completed to in-progress or not-started, remove from today's completed log
+    if (memoryStore.workDone) {
+      memoryStore.workDone = memoryStore.workDone.filter(w =>
+        w.taskId !== updatedUserTask.taskId &&
+        w.taskId !== updatedAssign.id &&
+        w.taskId !== id &&
+        w.id !== id
+      );
+    }
   }
 
   saveStore();
@@ -4828,12 +4885,12 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
   if (getStatus()) {
     try {
       await Assignment.findOneAndUpdate(
-        buildIdQuery(id),
+        buildIdQuery(updatedAssign.id),
         { $set: updatedAssign },
         { new: true, upsert: true }
       );
       await UserTask.findOneAndUpdate(
-        { $or: [{ customId: id }, { taskId: id }, { _id: mongoose.Types.ObjectId.isValid(id) ? id : null }] },
+        { $or: [{ customId: updatedUserTask.id }, { taskId: updatedUserTask.taskId }, { _id: mongoose.Types.ObjectId.isValid(updatedUserTask.id) ? updatedUserTask.id : null }] },
         { $set: updatedUserTask },
         { new: true, upsert: true }
       );

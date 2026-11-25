@@ -3,7 +3,7 @@ import { LogIn, LogOut, Clock, CheckCircle2, CalendarCheck } from 'lucide-react'
 import { useApp } from '../../context/AppContext';
 
 export const AttendanceWidget: React.FC = () => {
-  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav } = useApp();
+  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav, setAdminNav, portalMode } = useApp();
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -84,7 +84,13 @@ export const AttendanceWidget: React.FC = () => {
       <div className="flex items-center gap-2 flex-wrap">
         <button
           type="button"
-          onClick={() => setUserNav('record')}
+          onClick={() => {
+            if (portalMode === 'admin') {
+              setAdminNav('record');
+            } else {
+              setUserNav('record');
+            }
+          }}
           className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-[#5a36e6] border border-purple-200 text-xs font-bold transition shadow-xs cursor-pointer"
           title="View Day-by-Day Attendance Record"
         >

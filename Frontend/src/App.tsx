@@ -31,6 +31,7 @@ import { SubmitWorkDrawer } from './components/user/SubmitWorkDrawer';
 import { ManagerTimelineView } from './components/user/ManagerTimelineView';
 import { ReportsView } from './components/user/ReportsView';
 import { UserAttendanceRecords } from './components/user/UserAttendanceRecords';
+import { AttendanceWidget } from './components/user/AttendanceWidget';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
 import { MeetingRoom } from './components/meet/MeetingRoom';

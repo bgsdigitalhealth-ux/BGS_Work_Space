@@ -626,13 +626,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         operatorTeamRole: currentUser?.teamRole
       });
       if (res?.userTask) {
-        if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id)) {
+        if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id || (data.taskId && selectedUserTask.taskId === data.taskId))) {
           setSelectedUserTask(prev => prev ? { ...prev, ...res.userTask } : res.userTask);
         }
         setUserWorkspace(prev => {
           if (!prev) return prev;
           const assignedWork = (prev.assignedWork || []).map(t =>
-            (t.id === id || t.taskId === id) ? { ...t, ...res.userTask } : t
+            (t.id === id || t.taskId === id || (data.taskId && t.taskId === data.taskId)) ? { ...t, ...res.userTask } : t
           );
           return { ...prev, assignedWork };
         });
@@ -643,7 +643,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       }
       await Promise.all(refreshPromises);
       notify('Assignment updated successfully.', 'success', 'Task Updated');
+      return res;
     } catch (e: any) {
+      console.error('Failed to edit assignment:', e);
       notify(e.message || 'Failed to edit assignment', 'error', 'Update Failed');
       throw e;
     }
