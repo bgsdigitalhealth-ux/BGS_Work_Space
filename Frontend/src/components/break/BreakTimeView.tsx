@@ -4,7 +4,10 @@ import {
   Clock,
   CheckCircle2,
   Users,
-  History
+  History,
+  Edit3,
+  X,
+  Save
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BreakTimeRecord } from '../../types';
@@ -16,6 +19,7 @@ export const BreakTimeView: React.FC = () => {
     activeTeamBreaks,
     todayTeamBreaks,
     handleStartBreak,
+    handleUpdateBreak,
     handleEndBreak,
     refreshActiveBreaks,
     refreshTodayBreaks
@@ -37,27 +41,19 @@ export const BreakTimeView: React.FC = () => {
     return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
-  const getInitialTimes = (durationMinutes = 15) => {
-    const now = new Date();
-    const end = new Date(now.getTime() + durationMinutes * 60 * 1000);
-    return {
-      from: formatTimeStr(now),
-      to: formatTimeStr(end)
-    };
-  };
-
   const [fromTime, setFromTime] = useState('');
   const [toTime, setToTime] = useState('');
   const [reason, setReason] = useState('Tea / Coffee Break');
-  const [customReason, setCustomReason] = useState('');
+  const [editingBreakId, setEditingBreakId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [, setTick] = useState(0);
 
   // Initialize default times on mount
   useEffect(() => {
-    const init = getInitialTimes(15);
-    setFromTime(init.from);
-    setToTime(init.to);
+    const now = new Date();
+    const end = new Date(now.getTime() + 30 * 60 * 1000);
+    setFromTime(formatTimeStr(now));
+    setToTime(formatTimeStr(end));
   }, []);
 
   // Live timer tick for countdown
@@ -68,30 +64,31 @@ export const BreakTimeView: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const addMinutesToFrom = (minutes: number) => {
-    let base = new Date();
-    if (fromTime.trim()) {
-      const match = fromTime.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
-      if (match) {
-        let hrs = parseInt(match[1], 10);
-        const mins = parseInt(match[2], 10);
-        const mer = match[3];
-        if (mer === 'PM' && hrs < 12) hrs += 12;
-        if (mer === 'AM' && hrs === 12) hrs = 0;
-        base.setHours(hrs, mins, 0, 0);
-      }
-    }
-    const end = new Date(base.getTime() + minutes * 60 * 1000);
-    setToTime(formatTimeStr(end));
+  const myActiveBreak = (activeTeamBreaks || []).find(
+    b => currentUser?.id && (b.userId === currentUser.id || b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase())
+  );
+
+  const otherTeamBreaks = (activeTeamBreaks || []).filter(
+    b => !currentUser?.id || (b.userId !== currentUser.id && b.userEmail?.toLowerCase() !== currentUser.email?.toLowerCase())
+  );
+
+  // Start editing an active break
+  const handleStartEdit = (b: BreakTimeRecord) => {
+    setEditingBreakId(b.id || b.customId || null);
+    setFromTime(b.fromTime);
+    setToTime(b.toTime);
+    setReason(b.reason || 'Break');
+    window.scrollTo({ top: 120, behavior: 'smooth' });
   };
 
-  // Quick Presets
-  const applyPreset = (minutes: number, defaultReason?: string) => {
+  // Cancel edit mode
+  const handleCancelEdit = () => {
+    setEditingBreakId(null);
     const now = new Date();
-    const end = new Date(now.getTime() + minutes * 60 * 1000);
+    const end = new Date(now.getTime() + 30 * 60 * 1000);
     setFromTime(formatTimeStr(now));
     setToTime(formatTimeStr(end));
-    if (defaultReason) setReason(defaultReason);
+    setReason('Tea / Coffee Break');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,30 +100,30 @@ export const BreakTimeView: React.FC = () => {
 
     setIsSubmitting(true);
     try {
-      const finalReason = reason === 'Other' && customReason.trim() ? customReason.trim() : reason;
-      await handleStartBreak({
-        fromTime: fromTime.trim(),
-        toTime: toTime.trim(),
-        reason: finalReason
-      });
-      // Reset times to next default
-      const nextInit = getInitialTimes(15);
-      setFromTime(nextInit.from);
-      setToTime(nextInit.to);
+      const finalReason = reason.trim() || 'Break';
+
+      if (editingBreakId) {
+        // User modifying their active break
+        await handleUpdateBreak(editingBreakId, {
+          fromTime: fromTime.trim(),
+          toTime: toTime.trim(),
+          reason: finalReason
+        });
+        setEditingBreakId(null);
+      } else {
+        // User submitting a new break
+        await handleStartBreak({
+          fromTime: fromTime.trim(),
+          toTime: toTime.trim(),
+          reason: finalReason
+        });
+      }
     } catch (err) {
-      // Error handled by notify in context
+      // Error handled in context
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const myActiveBreak = (activeTeamBreaks || []).find(
-    b => currentUser?.id && (b.userId === currentUser.id || b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase())
-  );
-
-  const otherTeamBreaks = (activeTeamBreaks || []).filter(
-    b => !currentUser?.id || (b.userId !== currentUser.id && b.userEmail?.toLowerCase() !== currentUser.email?.toLowerCase())
-  );
 
   const formatRemaining = (toTimestamp: string | Date) => {
     const diff = Math.max(0, Math.floor((new Date(toTimestamp).getTime() - Date.now()) / 1000));
@@ -152,7 +149,7 @@ export const BreakTimeView: React.FC = () => {
               Break Time
             </h1>
             <p className="text-sm sm:text-base text-indigo-200 mt-2">
-              Submit your break schedule. An active banner will appear on the dashboards of your team members and manager in real-time until your break is complete.
+              Log or update your break schedule anytime. Your active break notice is broadcast to your team and manager until the scheduled end time.
             </p>
           </div>
 
@@ -171,22 +168,44 @@ export const BreakTimeView: React.FC = () => {
 
       {/* Main Grid: Form (Left) & Active Status / Team State (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* Left Column: Break Request Form */}
+        {/* Left Column: Break Request / Modify Form */}
         <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-4 border-b border-slate-100">
             <div>
               <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Coffee className="w-5 h-5 text-amber-600" />
-                <span>Log or Schedule a Break</span>
+                {editingBreakId ? (
+                  <>
+                    <Edit3 className="w-5 h-5 text-indigo-600" />
+                    <span>Modify Your Active Break</span>
+                  </>
+                ) : (
+                  <>
+                    <Coffee className="w-5 h-5 text-amber-600" />
+                    <span>Schedule / Start a Break</span>
+                  </>
+                )}
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Fill the time slot below. Your name is auto-selected based on your current account.
+                {editingBreakId
+                  ? 'Update your break schedule. Changes will reflect instantly on your team and manager dashboards.'
+                  : 'Enter your break schedule. Your name is auto-selected based on your account.'}
               </p>
             </div>
+
+            {editingBreakId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 flex items-center gap-1 cursor-pointer"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Cancel</span>
+              </button>
+            )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Name & Team Section (Auto Selected) */}
+            {/* Member Identity & Team Scope (Auto Selected) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
@@ -225,49 +244,21 @@ export const BreakTimeView: React.FC = () => {
               </div>
             </div>
 
-            {/* Quick Presets */}
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2.5">
-                Quick Duration Presets
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                <button
-                  type="button"
-                  onClick={() => applyPreset(15, 'Tea / Coffee Break')}
-                  className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-900 font-semibold text-xs transition-all text-center cursor-pointer shadow-xs"
-                >
-                  ☕ 15m Tea/Coffee
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset(30, 'Lunch Break')}
-                  className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/60 hover:bg-indigo-100 text-indigo-900 font-semibold text-xs transition-all text-center cursor-pointer shadow-xs"
-                >
-                  🍽️ 30m Lunch
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset(45, 'Lunch Break')}
-                  className="p-2.5 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-purple-900 font-semibold text-xs transition-all text-center cursor-pointer shadow-xs"
-                >
-                  🍱 45m Full Lunch
-                </button>
-                <button
-                  type="button"
-                  onClick={() => applyPreset(20, 'Personal Break')}
-                  className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/60 hover:bg-emerald-100 text-emerald-900 font-semibold text-xs transition-all text-center cursor-pointer shadow-xs"
-                >
-                  🧘 20m Rest Break
-                </button>
-              </div>
-            </div>
-
             {/* Time Slot Inputs: From & To */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                  From (Start Time) <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    From (Start Time) <span className="text-red-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setFromTime(formatTimeStr(new Date()))}
+                    className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
+                  >
+                    Set to Now
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     type="text"
@@ -279,21 +270,15 @@ export const BreakTimeView: React.FC = () => {
                   />
                   <Clock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setFromTime(formatTimeStr(new Date()))}
-                    className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
-                  >
-                    Set to Current Time
-                  </button>
-                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                  To (End Time) <span className="text-red-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-600">
+                    To (End Time) <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-slate-400 font-medium">Customizable</span>
+                </div>
                 <div className="relative">
                   <input
                     type="text"
@@ -305,79 +290,73 @@ export const BreakTimeView: React.FC = () => {
                   />
                   <Clock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
                 </div>
-                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[11px] text-slate-400 font-medium">Add:</span>
-                  {[15, 30, 45, 60].map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => addMinutesToFrom(m)}
-                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-700 hover:text-amber-800 transition cursor-pointer"
-                    >
-                      +{m}m
-                    </button>
-                  ))}
-                </div>
               </div>
             </div>
 
-            {/* Break Reason / Type */}
+            {/* Break Reason / Description (Free custom input with quick suggestions) */}
             <div>
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-2">
-                Break Reason / Type
+                Break Reason / Description <span className="text-slate-400 font-normal">(Customizable)</span>
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-3">
-                {[
-                  'Tea / Coffee Break',
-                  'Lunch Break',
-                  'Personal Break',
-                  'Bio / Rest Break',
-                  'Doctor / Emergency',
-                  'Other'
-                ].map(r => (
-                  <button
-                    key={r}
-                    type="button"
-                    onClick={() => setReason(r)}
-                    className={`py-2 px-3 rounded-xl text-xs font-semibold border transition-all text-left cursor-pointer ${
-                      reason === r
-                        ? 'border-amber-600 bg-amber-50 text-amber-900 shadow-xs'
-                        : 'border-slate-200 bg-white hover:bg-slate-50 text-slate-700'
-                    }`}
-                  >
-                    {r}
-                  </button>
-                ))}
-              </div>
+              <input
+                type="text"
+                list="break-reason-datalist"
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+                placeholder="Enter break reason (e.g. Lunch, Tea / Coffee, Personal errand...)"
+                className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
+              />
+              <datalist id="break-reason-datalist">
+                <option value="Tea / Coffee Break" />
+                <option value="Lunch Break" />
+                <option value="Personal Break" />
+                <option value="Rest / Bio Break" />
+                <option value="Doctor Appointment / Emergency" />
+              </datalist>
+              <p className="text-[11px] text-slate-400 mt-1.5">
+                Type any custom reason or select from the drop-down list.
+              </p>
+            </div>
 
-              {reason === 'Other' && (
-                <input
-                  type="text"
-                  value={customReason}
-                  onChange={e => setCustomReason(e.target.value)}
-                  placeholder="Specify other reason..."
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                />
+            {/* Submit / Update Button */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className={`flex-1 py-3.5 rounded-2xl text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
+                  editingBreakId
+                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
+                    : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                }`}
+              >
+                {isSubmitting ? (
+                  <span>Saving Changes...</span>
+                ) : editingBreakId ? (
+                  <>
+                    <Save className="w-5 h-5" />
+                    <span>Save & Update Break Notice</span>
+                  </>
+                ) : (
+                  <>
+                    <Coffee className="w-5 h-5" />
+                    <span>Start / Submit Break Notice</span>
+                  </>
+                )}
+              </button>
+
+              {editingBreakId && (
+                <button
+                  type="button"
+                  onClick={handleCancelEdit}
+                  className="px-5 py-3.5 rounded-2xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-sm cursor-pointer transition"
+                >
+                  Cancel
+                </button>
               )}
             </div>
 
-            {/* Submit Button */}
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white font-bold text-sm sm:text-base shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isSubmitting ? (
-                <span>Submitting Break...</span>
-              ) : (
-                <>
-                  <Coffee className="w-5 h-5" />
-                  <span>Start / Submit Break Notice</span>
-                </>
-              )}
-            </button>
             <p className="text-[11px] text-slate-400 text-center font-medium">
-              🔔 Notification will appear immediately on your team members' and manager's dashboard and remain active until {toTime || 'the break ends'}.
+              🔔 The break notification appears immediately on your team's and manager's dashboard and stays active until {toTime || 'the break ends'}.
             </p>
           </form>
         </div>
@@ -392,7 +371,7 @@ export const BreakTimeView: React.FC = () => {
               <div className="flex items-center justify-between mb-4 relative z-10">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/20 text-xs font-bold text-white border border-white/20">
                   <span className="w-2 h-2 rounded-full bg-white animate-ping" />
-                  You Are Currently On Break
+                  You Are On Break
                 </span>
                 <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-xl">
                   {myActiveBreak.reason}
@@ -415,14 +394,26 @@ export const BreakTimeView: React.FC = () => {
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleEndBreak(myActiveBreak.id || myActiveBreak.customId || '')}
-                className="w-full py-3 rounded-2xl bg-white text-amber-900 font-bold text-sm shadow-md hover:bg-amber-50 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>End Break Early & Return to Work</span>
-              </button>
+              <div className="flex items-center gap-2.5 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => handleStartEdit(myActiveBreak)}
+                  className="flex-1 py-3 rounded-2xl bg-white/90 hover:bg-white text-slate-800 font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Modify break time or reason"
+                >
+                  <Edit3 className="w-4 h-4 text-indigo-600" />
+                  <span>Modify Break</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleEndBreak(myActiveBreak.id || myActiveBreak.customId || '')}
+                  className="flex-1 py-3 rounded-2xl bg-white text-amber-900 font-bold text-xs sm:text-sm shadow-md hover:bg-amber-50 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>End Break Early</span>
+                </button>
+              </div>
             </div>
           ) : (
             <div className="rounded-3xl p-6 bg-white border border-slate-200 text-center space-y-3">
@@ -431,7 +422,7 @@ export const BreakTimeView: React.FC = () => {
               </div>
               <h3 className="font-bold text-slate-800 text-base">You are Working</h3>
               <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                You currently do not have an active break. Whenever you need one, use the form to notify your team.
+                You currently do not have an active break. Whenever you need one, use the form to set your time and notify your team.
               </p>
             </div>
           )}
@@ -567,13 +558,24 @@ export const BreakTimeView: React.FC = () => {
                       </td>
                       <td className="py-3.5 px-3 text-right">
                         {isActive && isMe ? (
-                          <button
-                            type="button"
-                            onClick={() => handleEndBreak(b.id || b.customId || '')}
-                            className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-all"
-                          >
-                            End Early
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(b)}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 cursor-pointer transition-all flex items-center gap-1"
+                              title="Modify Break Time"
+                            >
+                              <Edit3 className="w-3 h-3" />
+                              Modify
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleEndBreak(b.id || b.customId || '')}
+                              className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-all"
+                            >
+                              End Early
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-[11px] text-slate-400">—</span>
                         )}

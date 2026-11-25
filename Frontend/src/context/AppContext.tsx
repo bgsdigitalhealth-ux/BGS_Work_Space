@@ -208,6 +208,7 @@ interface AppContextType {
   refreshActiveBreaks: () => Promise<void>;
   refreshTodayBreaks: () => Promise<void>;
   handleStartBreak: (payload: { fromTime: string; toTime: string; reason?: string }) => Promise<void>;
+  handleUpdateBreak: (breakId: string, payload: { fromTime?: string; toTime?: string; reason?: string }) => Promise<void>;
   handleEndBreak: (breakId: string) => Promise<void>;
 }
 
@@ -670,6 +671,21 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       notify('Break ended successfully. Welcome back!', 'success', 'Break Time');
     } catch (e: any) {
       notify(e.message || 'Failed to end break', 'error', 'Break Error');
+      throw e;
+    }
+  };
+
+  const handleUpdateBreak = async (breakId: string, payload: { fromTime?: string; toTime?: string; reason?: string }) => {
+    if (!currentUser) return;
+    try {
+      await api.updateBreak(breakId, {
+        ...payload,
+        userId: currentUser.id
+      });
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
+      notify('Break time schedule updated.', 'success', 'Break Time');
+    } catch (e: any) {
+      notify(e.message || 'Failed to update break', 'error', 'Break Error');
       throw e;
     }
   };
@@ -1587,6 +1603,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshActiveBreaks();
         refreshTodayBreaks();
       });
+      socket.on('BREAK_UPDATED', () => {
+        refreshActiveBreaks();
+        refreshTodayBreaks();
+      });
       socket.on('BREAK_ENDED', () => {
         refreshActiveBreaks();
         refreshTodayBreaks();
@@ -1621,6 +1641,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         socket.off('work_changed', handleRealtimeEntityChange);
         socket.off('work_done_deleted', handleRealtimeEntityChange);
         socket.off('BREAK_STARTED');
+        socket.off('BREAK_UPDATED');
         socket.off('BREAK_ENDED');
       };
     } else {
@@ -1767,6 +1788,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshActiveBreaks,
         refreshTodayBreaks,
         handleStartBreak,
+        handleUpdateBreak,
         handleEndBreak
       }}
     >

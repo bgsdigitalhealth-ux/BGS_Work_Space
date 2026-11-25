@@ -656,6 +656,27 @@ router.post('/breaks', async (req, res) => {
   }
 });
 
+router.put('/breaks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fromTime, toTime, reason, userId } = req.body;
+    const result = await dataService.updateBreak(id, { fromTime, toTime, reason, userId });
+    broadcast('BREAK_UPDATED', result);
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'break_updated',
+      teamId: result.teamId,
+      teamName: result.teamName,
+      userName: result.userName,
+      reason: result.reason,
+      fromTime: result.fromTime,
+      toTime: result.toTime
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 router.put('/breaks/:id/end', async (req, res) => {
   try {
     const { id } = req.params;

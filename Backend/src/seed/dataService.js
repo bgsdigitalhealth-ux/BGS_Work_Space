@@ -6103,6 +6103,55 @@ const endBreakEarly = async (breakId, { userId } = {}) => {
   return record;
 };
 
+const updateBreak = async (breakId, { fromTime, toTime, reason, userId } = {}) => {
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const record = memoryStore.breaks.find(b => b.id === breakId || b.customId === breakId || b._id === breakId);
+  if (!record) throw new Error('Break record not found');
+
+  if (fromTime) {
+    record.fromTime = String(fromTime).trim();
+    record.fromTimestamp = parseTimeToTodayDate(record.fromTime);
+  }
+  if (toTime) {
+    record.toTime = String(toTime).trim();
+    let toTs = parseTimeToTodayDate(record.toTime);
+    if (toTs.getTime() <= new Date(record.fromTimestamp).getTime()) {
+      toTs = new Date(toTs.getTime() + 24 * 60 * 60 * 1000);
+    }
+    record.toTimestamp = toTs;
+    if (toTs.getTime() > Date.now()) {
+      record.status = 'active';
+    }
+  }
+  if (reason) {
+    record.reason = String(reason).trim();
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await BreakTime.findOneAndUpdate(
+        buildIdQuery(breakId),
+        {
+          $set: {
+            fromTime: record.fromTime,
+            toTime: record.toTime,
+            fromTimestamp: record.fromTimestamp,
+            toTimestamp: record.toTimestamp,
+            reason: record.reason,
+            status: record.status
+          }
+        }
+      );
+    } catch (e) {
+      console.warn('Mongo updateBreak error:', e.message);
+    }
+  }
+
+  return record;
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -6195,5 +6244,6 @@ module.exports = {
   getActiveBreaks,
   getTodayBreaks,
   recordBreak,
+  updateBreak,
   endBreakEarly
 };

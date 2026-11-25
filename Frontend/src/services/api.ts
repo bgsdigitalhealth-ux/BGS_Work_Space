@@ -254,6 +254,18 @@ export const api = {
     }
     return res.json();
   },
+  updateBreak: async (id: string, data: { fromTime?: string; toTime?: string; reason?: string; userId?: string }): Promise<BreakTimeRecord> => {
+    const res = await fetch(`${API_BASE}/breaks/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to update break');
+    }
+    return res.json();
+  },
   endBreakEarly: async (id: string, userId?: string): Promise<BreakTimeRecord> => {
     const res = await fetch(`${API_BASE}/breaks/${id}/end`, {
       method: 'PUT',

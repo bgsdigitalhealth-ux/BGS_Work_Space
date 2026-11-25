@@ -125,6 +125,19 @@
   "appointments": [],
   "notifications": [
     {
+      "id": "notif-1795586164281-663",
+      "recipientRole": "admin",
+      "recipientUserId": "usr-bgsmch-admin",
+      "recipientEmail": "bgsmchhospitalnagarur@gmail.com",
+      "referenceId": "brk-1795586164280-787",
+      "title": "☕ Tester is on Break (Lunch)",
+      "message": "Tester from Mod Team is on break until 01:00 PM.",
+      "timestamp": "25 Nov 2026, 11:26 AM",
+      "read": false,
+      "link": "/break-time",
+      "actionUrl": ""
+    },
+    {
       "id": "notif-1795582794467-13",
       "recipientRole": "admin",
       "recipientUserId": "usr-bgsmch-admin",

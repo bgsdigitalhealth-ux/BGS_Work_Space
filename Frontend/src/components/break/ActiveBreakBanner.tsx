@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Coffee, Clock, CheckCircle2 } from 'lucide-react';
+import { Coffee, Clock, CheckCircle2, Edit3 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BreakTimeRecord } from '../../types';
 
 export const ActiveBreakBanner: React.FC = () => {
-  const { activeTeamBreaks, currentUser, handleEndBreak, refreshActiveBreaks } = useApp();
+  const { activeTeamBreaks, currentUser, handleEndBreak, refreshActiveBreaks, setUserNav, setManagerNav, setAdminNav } = useApp();
   const [, setTick] = useState(0);
 
   // Update live countdown every second
@@ -107,13 +107,29 @@ export const ActiveBreakBanner: React.FC = () => {
                 </div>
 
                 {isMe ? (
-                  <button
-                    onClick={() => handleEndBreak(brk.id || brk.customId || '')}
-                    className="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-md"
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    <span>End Break Early</span>
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentUser?.role === 'manager') setManagerNav('break-time');
+                        else if (currentUser?.role === 'admin') setAdminNav('break-time');
+                        else setUserNav('break-time');
+                      }}
+                      className="px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/95 hover:bg-white text-slate-800 border border-slate-200/90 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                      title="Modify your break time schedule"
+                    >
+                      <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
+                      <span>Modify Time</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleEndBreak(brk.id || brk.customId || '')}
+                      className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-md"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>End Break Early</span>
+                    </button>
+                  </div>
                 ) : (
                   <div className="px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-xs font-medium text-slate-600">
                     Notified to Team & Manager
