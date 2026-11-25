@@ -5879,8 +5879,13 @@ const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
     let hours = parseInt(match[1], 10);
     const minutes = parseInt(match[2], 10);
     const meridiem = match[4];
-    if (meridiem === 'PM' && hours < 12) hours += 12;
-    if (meridiem === 'AM' && hours === 12) hours = 0;
+    if (meridiem === 'PM' && hours < 12) {
+      hours += 12;
+    } else if (meridiem === 'AM' && hours === 12) {
+      hours = 0;
+    } else if (!meridiem && baseDate.getHours() >= 12 && hours < 12) {
+      hours += 12;
+    }
     date.setHours(hours, minutes, 0, 0);
     return date;
   }

@@ -15,7 +15,7 @@ import {
   Edit3,
   Trash2
 } from 'lucide-react';
-import { useApp, formatTaskDueDate } from '../../context/AppContext';
+import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
 import { EditTaskModal } from './EditTaskModal';
 
@@ -26,6 +26,8 @@ interface UserWorkDetailsProps {
 
 export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOverride }) => {
   const {
+    currentUser,
+    members,
     selectedUserTask,
     setUserNav,
     handleAddUserComment,
@@ -33,6 +35,16 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     handleDeleteAssignment,
     notify
   } = useApp();
+
+  const myMember = (members || []).find(m =>
+    (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+  );
+  const isManager = Boolean(
+    isUserManager(currentUser, myMember) ||
+    currentUser?.role === 'manager' ||
+    currentUser?.role === 'admin'
+  );
 
   const [activeTab, setActiveTab] = useState<'overview' | 'updates' | 'attachments' | 'activity'>('overview');
   const [isAddingComment, setIsAddingComment] = useState(false);
@@ -44,6 +56,8 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
   const [isUpdatingProgress, setIsUpdatingProgress] = useState(false);
 
   const task = taskOverride || selectedUserTask;
+  const isAssignedToMe = task ? isTaskAssignedToUser(task, currentUser, myMember) : false;
+  const canUpdateProgress = isAssignedToMe || (!isManager && currentUser?.role === 'user');
 
   const initialProgress = task?.progress !== undefined 
     ? Number(task.progress) 
@@ -431,9 +445,14 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           {/* Work Progress Horizontal Stepper Card */}
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
             <div className="flex items-center justify-between gap-2 mb-6">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <ClipboardCheck className="w-4 h-4 text-[#5a36e6]" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900">Work Progress</h3>
+                {!canUpdateProgress && (
+                  <span className="text-[11px] font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200">
+                    See-only Supervision
+                  </span>
+                )}
               </div>
               {isUpdatingProgress && (
                 <span className="text-[11px] text-[#5a36e6] font-bold animate-pulse">Syncing Level...</span>
@@ -445,10 +464,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               {/* Step 1: Assigned */}
               <button
                 type="button"
-                onClick={() => handleSetLevel('assigned')}
-                disabled={isUpdatingProgress}
-                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
-                title="Level 1: Assigned (0% - Not Started)"
+                onClick={() => canUpdateProgress && handleSetLevel('assigned')}
+                disabled={isUpdatingProgress || !canUpdateProgress}
+                className={`flex flex-col items-center text-center relative z-10 group focus:outline-none transition-transform ${
+                  canUpdateProgress ? 'cursor-pointer active:scale-95' : 'cursor-default'
+                }`}
+                title={canUpdateProgress ? "Level 1: Assigned (0% - Not Started)" : "Level 1: Assigned"}
               >
                 <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
                   <Check className="w-4 h-4 stroke-[3]" />
@@ -463,10 +484,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               {/* Step 2: Work Started */}
               <button
                 type="button"
-                onClick={() => handleSetLevel('started')}
-                disabled={isUpdatingProgress}
-                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
-                title="Level 2: Work Started (25% - In Progress)"
+                onClick={() => canUpdateProgress && handleSetLevel('started')}
+                disabled={isUpdatingProgress || !canUpdateProgress}
+                className={`flex flex-col items-center text-center relative z-10 group focus:outline-none transition-transform ${
+                  canUpdateProgress ? 'cursor-pointer active:scale-95' : 'cursor-default'
+                }`}
+                title={canUpdateProgress ? "Level 2: Work Started (25% - In Progress)" : "Level 2: Work Started"}
               >
                 {currentStepLevel > 2 ? (
                   <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
@@ -493,10 +516,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               {/* Step 3: In Progress (Current) */}
               <button
                 type="button"
-                onClick={() => handleSetLevel('in_progress')}
-                disabled={isUpdatingProgress}
-                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
-                title="Level 3: In Progress (60%)"
+                onClick={() => canUpdateProgress && handleSetLevel('in_progress')}
+                disabled={isUpdatingProgress || !canUpdateProgress}
+                className={`flex flex-col items-center text-center relative z-10 group focus:outline-none transition-transform ${
+                  canUpdateProgress ? 'cursor-pointer active:scale-95' : 'cursor-default'
+                }`}
+                title={canUpdateProgress ? "Level 3: In Progress (60%)" : "Level 3: In Progress"}
               >
                 {currentStepLevel > 3 ? (
                   <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
@@ -525,10 +550,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               {/* Step 4: Submitted */}
               <button
                 type="button"
-                onClick={() => handleSetLevel('submitted')}
-                disabled={isUpdatingProgress}
-                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
-                title="Level 4: Submitted (85% - Under Review)"
+                onClick={() => canUpdateProgress && handleSetLevel('submitted')}
+                disabled={isUpdatingProgress || !canUpdateProgress}
+                className={`flex flex-col items-center text-center relative z-10 group focus:outline-none transition-transform ${
+                  canUpdateProgress ? 'cursor-pointer active:scale-95' : 'cursor-default'
+                }`}
+                title={canUpdateProgress ? "Level 4: Submitted (85% - Under Review)" : "Level 4: Submitted"}
               >
                 {currentStepLevel > 4 ? (
                   <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">
@@ -557,10 +584,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
               {/* Step 5: Completed */}
               <button
                 type="button"
-                onClick={() => handleSetLevel('completed')}
-                disabled={isUpdatingProgress}
-                className="flex flex-col items-center text-center relative z-10 cursor-pointer group focus:outline-none transition-transform active:scale-95"
-                title="Level 5: Completed (100%)"
+                onClick={() => canUpdateProgress && handleSetLevel('completed')}
+                disabled={isUpdatingProgress || !canUpdateProgress}
+                className={`flex flex-col items-center text-center relative z-10 group focus:outline-none transition-transform ${
+                  canUpdateProgress ? 'cursor-pointer active:scale-95' : 'cursor-default'
+                }`}
+                title={canUpdateProgress ? "Level 5: Completed (100%)" : "Level 5: Completed"}
               >
                 {currentStepLevel === 5 ? (
                   <div className="w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center font-bold shadow-xs group-hover:ring-4 group-hover:ring-emerald-100 transition-all">

@@ -87,16 +87,16 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
   const [previousViewMode, setPreviousViewMode] = useState<'cards' | 'list'>('cards');
 
-  // Keep viewMode synchronized with userNav
+  // Keep viewMode synchronized with userNav and selectedUserTask
   useEffect(() => {
-    if (userNav === 'details') {
+    if (userNav === 'details' || selectedUserTask) {
       setViewMode('details');
     } else if (userNav === 'assigned-work' || userNav === 'my-work') {
       if (viewMode === 'details') {
         setViewMode(previousViewMode);
       }
     }
-  }, [userNav]);
+  }, [userNav, selectedUserTask]);
 
   // Filters state - ONE SHARED TEAM DROPDOWN FOR ALL 3 VIEWS
   const [teamFilter, setTeamFilter] = useState<string>('All');
@@ -210,6 +210,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   };
 
   const handleBackToViews = () => {
+    setSelectedUserTask(null);
     setViewMode(previousViewMode);
     setUserNav('assigned-work');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -319,7 +320,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
         )}
 
         {/* Buttons - only shown for assignees who can control the timer */}
-        {canControlTimer && !isRunning && !isPaused && !isFinished && (
+        {canControlTimer && !isRunning && !isPaused && !isFinished && task.status !== 'Completed' && (task.progress === undefined || task.progress < 100) && (
           <button
             type="button"
             onClick={() => handleStartTimer(taskId)}

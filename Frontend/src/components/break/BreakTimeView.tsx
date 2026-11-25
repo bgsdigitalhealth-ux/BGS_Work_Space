@@ -68,6 +68,23 @@ export const BreakTimeView: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
+  const addMinutesToFrom = (minutes: number) => {
+    let base = new Date();
+    if (fromTime.trim()) {
+      const match = fromTime.trim().toUpperCase().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+      if (match) {
+        let hrs = parseInt(match[1], 10);
+        const mins = parseInt(match[2], 10);
+        const mer = match[3];
+        if (mer === 'PM' && hrs < 12) hrs += 12;
+        if (mer === 'AM' && hrs === 12) hrs = 0;
+        base.setHours(hrs, mins, 0, 0);
+      }
+    }
+    const end = new Date(base.getTime() + minutes * 60 * 1000);
+    setToTime(formatTimeStr(end));
+  };
+
   // Quick Presets
   const applyPreset = (minutes: number, defaultReason?: string) => {
     const now = new Date();
@@ -262,6 +279,15 @@ export const BreakTimeView: React.FC = () => {
                   />
                   <Clock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
                 </div>
+                <div className="mt-1.5 flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setFromTime(formatTimeStr(new Date()))}
+                    className="text-[11px] font-semibold text-amber-700 hover:text-amber-800 hover:underline cursor-pointer"
+                  >
+                    Set to Current Time
+                  </button>
+                </div>
               </div>
 
               <div>
@@ -278,6 +304,19 @@ export const BreakTimeView: React.FC = () => {
                     className="w-full px-4 py-3 rounded-2xl bg-white border border-slate-300 text-slate-900 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                   <Clock className="w-4 h-4 text-slate-400 absolute right-3.5 top-3.5 pointer-events-none" />
+                </div>
+                <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-400 font-medium">Add:</span>
+                  {[15, 30, 45, 60].map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => addMinutesToFrom(m)}
+                      className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-amber-100 text-[11px] font-bold text-slate-700 hover:text-amber-800 transition cursor-pointer"
+                    >
+                      +{m}m
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
