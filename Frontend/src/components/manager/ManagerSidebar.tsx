@@ -26,8 +26,13 @@ export const ManagerSidebar: React.FC = () => {
     unreadMessagesCount,
     mobileSidebarOpen,
     setMobileSidebarOpen,
-    userWorkspace
+    userWorkspace,
+    todayAttendance,
+    isAttendanceLoading,
+    notify
   } = useApp();
+
+  const isPunchedIn = todayAttendance?.status === 'punched_in';
 
   // Count submissions waiting for manager review (Under Review)
   const pendingReviewCount = (userWorkspace?.assignedWork || []).filter(
@@ -51,6 +56,11 @@ export const ManagerSidebar: React.FC = () => {
 
   const handleNavClick = (id: string) => {
     setMobileSidebarOpen(false);
+    if (!isPunchedIn && !isAttendanceLoading && id !== 'dashboard' && id !== 'record' && id !== 'settings') {
+      setManagerNav('dashboard');
+      notify('Please Punch In first to start your work session and access your workspace!', 'warning', 'Punch In Required');
+      return;
+    }
     setManagerNav(id);
   };
 

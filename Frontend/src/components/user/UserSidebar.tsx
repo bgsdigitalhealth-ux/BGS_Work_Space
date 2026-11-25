@@ -29,8 +29,13 @@ export const UserSidebar: React.FC = () => {
     unreadMessagesCount,
     mobileSidebarOpen,
     setMobileSidebarOpen,
-    members
+    members,
+    todayAttendance,
+    isAttendanceLoading,
+    notify
   } = useApp();
+
+  const isPunchedIn = todayAttendance?.status === 'punched_in';
 
   const myMember = (members || []).find(m =>
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
@@ -61,7 +66,17 @@ export const UserSidebar: React.FC = () => {
 
   const handleNavClick = (item: typeof navItems[0]) => {
     setMobileSidebarOpen(false);
+    if (!isPunchedIn && !isAttendanceLoading && item.id !== 'dashboard' && item.id !== 'record' && item.id !== 'settings') {
+      setUserNav('dashboard');
+      notify('Please Punch In first to start your work session and access your workspace!', 'warning', 'Punch In Required');
+      return;
+    }
     if (item.isAction) {
+      if (!isPunchedIn && !isAttendanceLoading) {
+        setUserNav('dashboard');
+        notify('Please Punch In first before submitting work!', 'warning', 'Punch In Required');
+        return;
+      }
       openSubmitWorkDrawer();
     } else {
       setUserNav(item.id);

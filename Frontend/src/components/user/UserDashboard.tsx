@@ -18,6 +18,7 @@ import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '
 import { UserAssignedWork } from '../../types';
 import { AttendanceWidget } from './AttendanceWidget';
 import { ActiveBreakBanner } from '../break/ActiveBreakBanner';
+import { DashboardPunchLockGate } from './DashboardPunchLockGate';
 
 export const UserDashboard: React.FC = () => {
   const { 
@@ -31,8 +32,12 @@ export const UserDashboard: React.FC = () => {
     setUserFilterTab,
     userSearchQuery,
     setUserSearchQuery,
-    handleStartUserWork
+    handleStartUserWork,
+    todayAttendance,
+    isAttendanceLoading
   } = useApp();
+
+  const isPunchedIn = todayAttendance?.status === 'punched_in';
 
   const [departmentFilter, setDepartmentFilter] = useState('All Work');
   const [teamFilter, setTeamFilter] = useState('All Teams');
@@ -131,11 +136,16 @@ export const UserDashboard: React.FC = () => {
       {/* Workspace Attendance Punch Widget */}
       <AttendanceWidget />
 
-      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
-      <ActiveBreakBanner />
+      {/* Mandatory Punch In Gate when Punched Out */}
+      <DashboardPunchLockGate />
 
-      {/* Top 5 KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
+      {isPunchedIn && <ActiveBreakBanner />}
+
+      {/* Dashboard Main Workspace Content (Disabled & Locked until Punched In) */}
+      <div className={`space-y-6 transition-all duration-300 ${(!isPunchedIn && !isAttendanceLoading) ? 'pointer-events-none select-none opacity-30 filter blur-[1.5px]' : ''}`}>
+        {/* Top 5 KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Assigned */}
         <div 
           onClick={() => setUserFilterTab('All')}
@@ -629,6 +639,7 @@ export const UserDashboard: React.FC = () => {
             )}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

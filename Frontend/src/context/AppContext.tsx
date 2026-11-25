@@ -190,6 +190,7 @@ interface AppContextType {
 
   // Attendance & Time Tracking
   todayAttendance: AttendanceRecord | null;
+  isAttendanceLoading: boolean;
   attendanceRecords: AttendanceRecord[];
   refreshTodayAttendance: () => Promise<void>;
   refreshAttendanceRecords: () => Promise<void>;
@@ -528,6 +529,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Attendance & Task Time Tracking
   const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [isAttendanceLoading, setIsAttendanceLoading] = useState<boolean>(true);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
 
   const isManagerOrAdmin = Boolean(
@@ -543,12 +545,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   );
 
   const refreshTodayAttendance = async () => {
-    if (!currentUser) return;
+    if (!currentUser) {
+      setIsAttendanceLoading(false);
+      return;
+    }
     try {
       const rec = await api.getTodayAttendance(currentUser.id, currentUser.email);
       setTodayAttendance(rec);
     } catch (e) {
       console.warn('Could not fetch attendance:', e);
+    } finally {
+      setIsAttendanceLoading(false);
     }
   };
 
@@ -1855,6 +1862,7 @@ return (
       fetchWppStatus,
       restartWpp,
       todayAttendance,
+      isAttendanceLoading,
       attendanceRecords,
       refreshTodayAttendance,
       refreshAttendanceRecords,

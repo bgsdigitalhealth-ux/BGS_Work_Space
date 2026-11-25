@@ -15,6 +15,7 @@ import {
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { AttendanceWidget } from '../user/AttendanceWidget';
 import { ActiveBreakBanner } from '../break/ActiveBreakBanner';
+import { DashboardPunchLockGate } from '../user/DashboardPunchLockGate';
 
 export const ManagerDashboard: React.FC = () => {
   const {
@@ -23,8 +24,12 @@ export const ManagerDashboard: React.FC = () => {
     members,
     setManagerNav,
     setSelectedUserTask,
-    appointments
+    appointments,
+    todayAttendance,
+    isAttendanceLoading
   } = useApp();
+
+  const isPunchedIn = todayAttendance?.status === 'punched_in';
 
   const [taskFilter, setTaskFilter] = useState<'All' | 'In Progress' | 'Under Review' | 'Completed' | 'Not Started'>('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,11 +115,16 @@ export const ManagerDashboard: React.FC = () => {
       {/* Workspace Attendance Widget (Punch In / Punch Out & Today's Time Present) */}
       <AttendanceWidget />
 
-      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
-      <ActiveBreakBanner />
+      {/* Mandatory Punch In Gate when Punched Out */}
+      <DashboardPunchLockGate />
 
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#14122d] via-[#1f1b45] to-[#2d225a] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      {/* Active Team Break Banner (Notified to team & manager until break ends) */}
+      {isPunchedIn && <ActiveBreakBanner />}
+
+      {/* Manager Dashboard Workspace Content (Disabled & Locked until Punched In) */}
+      <div className={`space-y-6 transition-all duration-300 ${(!isPunchedIn && !isAttendanceLoading) ? 'pointer-events-none select-none opacity-30 filter blur-[1.5px]' : ''}`}>
+        {/* Welcome Banner */}
+        <div className="bg-gradient-to-r from-[#14122d] via-[#1f1b45] to-[#2d225a] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-xs font-semibold text-indigo-200 mb-3 border border-white/10">
@@ -429,6 +439,7 @@ export const ManagerDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
