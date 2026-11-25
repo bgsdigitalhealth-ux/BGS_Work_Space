@@ -207,8 +207,27 @@ interface AppContextType {
   todayTeamBreaks: BreakTimeRecord[];
   refreshActiveBreaks: () => Promise<void>;
   refreshTodayBreaks: () => Promise<void>;
-  handleStartBreak: (payload: { fromTime: string; toTime: string; reason?: string }) => Promise<void>;
-  handleUpdateBreak: (breakId: string, payload: { fromTime?: string; toTime?: string; reason?: string }) => Promise<void>;
+  handleStartBreak: (payload: {
+    fromTime: string;
+    toTime: string;
+    fromTimestamp?: string;
+    toTimestamp?: string;
+    durationMinutes?: number;
+    timezoneOffset?: number;
+    reason?: string;
+  }) => Promise<void>;
+  handleUpdateBreak: (
+    breakId: string,
+    payload: {
+      fromTime?: string;
+      toTime?: string;
+      fromTimestamp?: string;
+      toTimestamp?: string;
+      durationMinutes?: number;
+      timezoneOffset?: number;
+      reason?: string;
+    }
+  ) => Promise<void>;
   handleEndBreak: (breakId: string) => Promise<void>;
   handleDeleteBreak: (breakId: string) => Promise<void>;
 }
@@ -636,7 +655,15 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [currentUser?.id, currentUser?.email, currentUser?.team, currentUser?.department]);
 
-  const handleStartBreak = async (payload: { fromTime: string; toTime: string; reason?: string }) => {
+  const handleStartBreak = async (payload: {
+    fromTime: string;
+    toTime: string;
+    fromTimestamp?: string;
+    toTimestamp?: string;
+    durationMinutes?: number;
+    timezoneOffset?: number;
+    reason?: string;
+  }) => {
     if (!currentUser) return;
     try {
       const myMem = (members || []).find(m =>
@@ -659,6 +686,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         departmentName,
         fromTime: payload.fromTime,
         toTime: payload.toTime,
+        fromTimestamp: payload.fromTimestamp,
+        toTimestamp: payload.toTimestamp,
+        durationMinutes: payload.durationMinutes,
+        timezoneOffset: payload.timezoneOffset !== undefined ? payload.timezoneOffset : new Date().getTimezoneOffset(),
         reason: payload.reason || 'Break'
       });
 
@@ -682,11 +713,23 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   };
 
-  const handleUpdateBreak = async (breakId: string, payload: { fromTime?: string; toTime?: string; reason?: string }) => {
+  const handleUpdateBreak = async (
+    breakId: string,
+    payload: {
+      fromTime?: string;
+      toTime?: string;
+      fromTimestamp?: string;
+      toTimestamp?: string;
+      durationMinutes?: number;
+      timezoneOffset?: number;
+      reason?: string;
+    }
+  ) => {
     if (!currentUser) return;
     try {
       await api.updateBreak(breakId, {
         ...payload,
+        timezoneOffset: payload.timezoneOffset !== undefined ? payload.timezoneOffset : new Date().getTimezoneOffset(),
         userId: currentUser.id
       });
       await Promise.all([refreshActiveBreaks(), refreshTodayBreaks(), refreshNotifications()]);
@@ -719,1123 +762,1123 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const handleStartTimer = async (taskId: string) => {
-    if (!currentUser) return;
-    try {
-      await api.startTaskTimer(taskId, currentUser);
-      await refreshUserWorkspace();
-      notify('Task work timer started.', 'info', 'Timer');
-    } catch (e: any) {
-      notify(e.message || 'Failed to start timer', 'error', 'Timer Error');
-    }
-  };
+  if (!currentUser) return;
+  try {
+    await api.startTaskTimer(taskId, currentUser);
+    await refreshUserWorkspace();
+    notify('Task work timer started.', 'info', 'Timer');
+  } catch (e: any) {
+    notify(e.message || 'Failed to start timer', 'error', 'Timer Error');
+  }
+};
 
-  const handlePauseTimer = async (taskId: string, reason: string) => {
-    if (!currentUser) return;
-    try {
-      await api.pauseTaskTimer(taskId, currentUser, reason);
-      await refreshUserWorkspace();
-      notify('Task timer paused.', 'info', 'Timer');
-    } catch (e: any) {
-      notify(e.message || 'Failed to pause timer', 'error', 'Timer Error');
-    }
-  };
+const handlePauseTimer = async (taskId: string, reason: string) => {
+  if (!currentUser) return;
+  try {
+    await api.pauseTaskTimer(taskId, currentUser, reason);
+    await refreshUserWorkspace();
+    notify('Task timer paused.', 'info', 'Timer');
+  } catch (e: any) {
+    notify(e.message || 'Failed to pause timer', 'error', 'Timer Error');
+  }
+};
 
-  const handleResumeTimer = async (taskId: string) => {
-    if (!currentUser) return;
-    try {
-      await api.resumeTaskTimer(taskId, currentUser);
-      await refreshUserWorkspace();
-      notify('Task timer resumed.', 'info', 'Timer');
-    } catch (e: any) {
-      notify(e.message || 'Failed to resume timer', 'error', 'Timer Error');
-    }
-  };
+const handleResumeTimer = async (taskId: string) => {
+  if (!currentUser) return;
+  try {
+    await api.resumeTaskTimer(taskId, currentUser);
+    await refreshUserWorkspace();
+    notify('Task timer resumed.', 'info', 'Timer');
+  } catch (e: any) {
+    notify(e.message || 'Failed to resume timer', 'error', 'Timer Error');
+  }
+};
 
-  const handleFinishTimer = async (taskId: string) => {
-    if (!currentUser) return;
-    try {
-      await api.finishTaskTimer(taskId, currentUser);
-      await refreshUserWorkspace();
-      notify('Task timer stopped and duration recorded.', 'success', 'Timer Finished');
-    } catch (e: any) {
-      notify(e.message || 'Failed to finish timer', 'error', 'Timer Error');
-    }
-  };
+const handleFinishTimer = async (taskId: string) => {
+  if (!currentUser) return;
+  try {
+    await api.finishTaskTimer(taskId, currentUser);
+    await refreshUserWorkspace();
+    notify('Task timer stopped and duration recorded.', 'success', 'Timer Finished');
+  } catch (e: any) {
+    notify(e.message || 'Failed to finish timer', 'error', 'Timer Error');
+  }
+};
 
-  const handleEditAssignment = async (id: string, data: any) => {
-    try {
-      const res = await api.editAssignment(id, {
-        ...data,
-        operatorId: currentUser?.id,
-        operatorName: currentUser?.name,
-        operatorRole: currentUser?.role,
-        operatorTeamRole: currentUser?.teamRole
-      });
-      if (res?.userTask) {
-        if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id || (data.taskId && selectedUserTask.taskId === data.taskId))) {
-          setSelectedUserTask(prev => prev ? { ...prev, ...res.userTask } : res.userTask);
-        }
-        setUserWorkspace(prev => {
-          if (!prev) return prev;
-          const assignedWork = (prev.assignedWork || []).map(t =>
-            (t.id === id || t.taskId === id || (data.taskId && t.taskId === data.taskId)) ? { ...t, ...res.userTask } : t
-          );
-          return { ...prev, assignedWork };
-        });
-      }
-      const refreshPromises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
-      if (selectedTeam) {
-        refreshPromises.push(fetchWorkDone(selectedTeam.id));
-      }
-      await Promise.all(refreshPromises);
-      notify('Assignment updated successfully.', 'success', 'Task Updated');
-      return res;
-    } catch (e: any) {
-      console.error('Failed to edit assignment:', e);
-      notify(e.message || 'Failed to edit assignment', 'error', 'Update Failed');
-      throw e;
-    }
-  };
-
-  // Modals & Edit States
-  const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
-  const [editingDept, setEditingDept] = useState<Department | null>(null);
-
-  const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [editingMember, setEditingMember] = useState<Member | null>(null);
-
-  const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
-  const [isAddWorkDoneOpen, setIsAddWorkDoneOpen] = useState(false);
-
-  const scrollToSection = (sectionId: string) => {
-    const el = document.getElementById(sectionId);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  // Auth Functions
-  const login = async (email: string, pass: string): Promise<{ success: boolean; requiresPasswordSetup?: boolean; name?: string; error?: string }> => {
-    try {
-      const res = await api.login(email, pass);
-      if (res.success && res.user) {
-        setCurrentUser(res.user);
-        try {
-          localStorage.setItem('workhub_user', JSON.stringify(res.user));
-        } catch (e) {
-          // ignore
-        }
-        await refreshAll();
-        return { success: true };
-      }
-      if (res.requiresPasswordSetup) {
-        return { success: false, requiresPasswordSetup: true, name: res.name || 'Team Member' };
-      }
-      return { success: false, error: res.error || 'Invalid credentials' };
-    } catch (e: any) {
-      return { success: false, error: e.message || 'Login failed' };
-    }
-  };
-
-  const createPassword = async (email: string, pass: string): Promise<boolean> => {
-    try {
-      const res = await api.createPassword(email, pass);
-      if (res.success && res.user) {
-        setCurrentUser(res.user);
-        try {
-          localStorage.setItem('workhub_user', JSON.stringify(res.user));
-        } catch (e) {
-          // ignore
-        }
-        await refreshAll();
-        return true;
-      }
-      return false;
-    } catch (e: any) {
-      alert(e.message || 'Failed to create password');
-      return false;
-    }
-  };
-
-  const logout = () => {
-    setCurrentUser(null);
-    setUserNav('dashboard');
-    setAdminNav('dashboard');
-    setMobileSidebarOpen(false);
-    disconnectSocket();
-    try {
-      localStorage.removeItem('workhub_user');
-    } catch (e) {
-      // ignore
-    }
-  };
-
-  const updateUserProfile = async (data: { name?: string; avatar?: string; currentPassword?: string; newPassword?: string }) => {
-    if (!currentUser) return { success: false, error: 'User is not logged in' };
-    try {
-      const res = await api.updateUserProfile({
-        identifier: currentUser.id || currentUser.email,
-        ...data
-      });
-      if (res.success && res.user) {
-        setCurrentUser(res.user);
-        try {
-          localStorage.setItem('workhub_user', JSON.stringify(res.user));
-        } catch (e) {
-          // ignore
-        }
-        return { success: true };
-      }
-      return { success: false, error: 'Failed to update profile' };
-    } catch (err: any) {
-      return { success: false, error: err.message || 'Failed to update profile' };
-    }
-  };
-
-  const fetchStats = async () => {
-    try {
-      const data = await api.getStats();
-      setStats(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const data = await api.getDepartments();
-      setDepartments(data);
-      if (data.length === 0) {
-        setSelectedDepartment(null);
-        setSelectedTeam(null);
-      } else if (!selectedDepartment || !data.some(d => d.id === selectedDepartment.id)) {
-        setSelectedDepartment(data[0]);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchTeams = async (deptId: string) => {
-    try {
-      const data = await api.getTeams(deptId);
-      setTeams(data);
-      if (data.length > 0) {
-        setSelectedTeam(prev => (prev && data.some(t => t.id === prev.id) ? prev : data[0]));
-      } else {
-        setSelectedTeam(null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchMembers = async (teamId: string) => {
-    try {
-      const data = await api.getMembers(teamId);
-      setMembers(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchAssignments = async (teamId: string = '') => {
-    try {
-      const data = await api.getAssignments(teamId);
-      setAssignments(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchTasks = async (teamId: string = '') => {
-    try {
-      const data = await api.getTasks(teamId);
-      setTasks(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchWorkDone = async (teamId: string) => {
-    try {
-      const data = await api.getWorkDone(teamId);
-      setWorkDone(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const refreshAppointments = async () => {
-    try {
-      const [aptList, aptStats] = await Promise.all([
-        api.getAppointments(),
-        api.getAppointmentStats()
-      ]);
-      setAppointments(aptList);
-      setAppointmentStats(aptStats);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const refreshNotifications = async () => {
-    try {
-      const role = currentUser ? currentUser.role : 'all';
-      const userId = currentUser ? currentUser.id : undefined;
-      const email = currentUser ? currentUser.email : undefined;
-      const data = await api.getNotifications(role, userId, email);
-      setNotifications(data);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleMarkNotificationRead = async (id: string) => {
-    try {
-      await api.markNotificationRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleMarkAllNotificationsRead = async () => {
-    try {
-      const role = currentUser ? currentUser.role : undefined;
-      await api.markAllNotificationsRead(role);
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleCreateAppointment = async (data: Partial<Appointment>) => {
-    try {
-      await api.createAppointment(data);
-      await refreshAppointments();
-      await refreshNotifications();
-      setIsAppointmentModalOpen(false);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleUpdateAppointment = async (id: string, data: Partial<Appointment>) => {
-    try {
-      await api.updateAppointment(id, data);
-      await refreshAppointments();
-      await refreshNotifications();
-      setIsAppointmentModalOpen(false);
-      setEditingAppointment(null);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteAppointment = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Appointment',
-      message: 'Are you sure you want to delete this appointment? This record will be removed from your calendar.',
-      confirmText: 'Delete',
-      variant: 'danger'
+const handleEditAssignment = async (id: string, data: any) => {
+  try {
+    const res = await api.editAssignment(id, {
+      ...data,
+      operatorId: currentUser?.id,
+      operatorName: currentUser?.name,
+      operatorRole: currentUser?.role,
+      operatorTeamRole: currentUser?.teamRole
     });
-    if (!ok) return;
-    try {
-      await api.deleteAppointment(id);
-      await refreshAppointments();
-      notify('Appointment deleted successfully.', 'success', 'Deleted');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to delete appointment', 'error', 'Error');
-    }
-  };
-
-  const refreshUserWorkspace = async () => {
-    try {
-      const data = await api.getUserWorkspace(currentUser?.id, currentUser?.email);
-
-      // Dynamic Multi-Team Isolation:
-      // Managers & Admins see ALL teams member works.
-      // Regular team members ONLY see assigned works of the SAME team.
-      if (currentUser && currentUser.role === 'user') {
-        const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === (currentUser.email || '').toLowerCase()) || m.id === currentUser.id);
-        const visibleTasks = filterTasksForUser(data.assignedWork || [], currentUser, myMember);
-
-        data.assignedWork = visibleTasks;
-        data.stats.totalAssigned = visibleTasks.length;
-        data.stats.inProgress = visibleTasks.filter(t => t.status === 'In Progress').length;
-        data.stats.upcomingWork = visibleTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
-        data.stats.completedWork = visibleTasks.filter(t => t.status === 'Completed').length;
-        data.stats.completionPercentage = visibleTasks.length > 0
-          ? Math.round((data.stats.completedWork / visibleTasks.length) * 100)
-          : 0;
-        data.stats.completedFractionText = `${data.stats.completedWork} of ${visibleTasks.length} Tasks`;
+    if (res?.userTask) {
+      if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id || (data.taskId && selectedUserTask.taskId === data.taskId))) {
+        setSelectedUserTask(prev => prev ? { ...prev, ...res.userTask } : res.userTask);
       }
-
-      setUserWorkspace(data);
-      if (data.assignedWork && data.assignedWork.length > 0) {
-        const matchingTask = selectedUserTask
-          ? data.assignedWork.find(t => t.id === selectedUserTask.id || (selectedUserTask.taskId && t.taskId === selectedUserTask.taskId))
-          : null;
-        if (matchingTask) {
-          setSelectedUserTask(matchingTask);
-        } else if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
-          setSelectedUserTask(data.assignedWork[0]);
-        }
-      } else {
-        setSelectedUserTask(null);
-      }
-      if (data.history && data.history.length > 0) {
-        if (!selectedHistoryItem || !data.history.some(h => h.id === selectedHistoryItem.id)) {
-          setSelectedHistoryItem(data.history[0]);
-        }
-      } else {
-        setSelectedHistoryItem(null);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const openSubmitWorkDrawer = (task?: UserAssignedWork) => {
-    if (task) {
-      setDrawerSelectedTask(task);
-    } else if (selectedUserTask) {
-      setDrawerSelectedTask(selectedUserTask);
-    } else if (userWorkspace?.assignedWork?.length) {
-      setDrawerSelectedTask(userWorkspace.assignedWork[0]);
-    }
-    setIsSubmitWorkDrawerOpen(true);
-  };
-
-  const handleSubmitWork = async (payload: { taskId: string; workStatus: string; comment: string }) => {
-    try {
-      await api.submitUserWork(payload);
-
-      // Immediately update selectedUserTask locally for responsive UI in UserWorkDetails
-      if (selectedUserTask && (selectedUserTask.id === payload.taskId || selectedUserTask.taskId === payload.taskId)) {
-        const now = new Date();
-        const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-        const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-        const fullDateTime = `${formattedDate}, ${formattedTime}`;
-
-        const updatedComments = [
-          ...(selectedUserTask.comments || []),
-          {
-            id: `c-${Date.now()}`,
-            author: currentUser?.name || 'Team Member',
-            role: 'Team Member',
-            date: fullDateTime,
-            badge: 'Submission',
-            text: payload.comment || 'Work deliverables submitted for review.'
-          }
-        ];
-
-        setSelectedUserTask({
-          ...selectedUserTask,
-          status: payload.workStatus === 'Completed' ? 'Completed' : 'Under Review',
-          progress: 100,
-          submittedDate: fullDateTime,
-          submittedAt: now.toISOString(),
-          completedDate: payload.workStatus === 'Completed' ? fullDateTime : undefined,
-          completedAt: payload.workStatus === 'Completed' ? now.toISOString() : undefined,
-          comments: updatedComments
-        });
-      }
-
-      await refreshUserWorkspace();
-      await refreshNotifications();
-      setIsSubmitWorkDrawerOpen(false);
-    } catch (e) {
-      console.error('Submit work error:', e);
-      throw e;
-    }
-  };
-
-  const handleApproveWork = async (taskId: string, comment?: string) => {
-    try {
-      await api.approveWork(taskId, comment);
-      await refreshUserWorkspace();
-      await refreshNotifications();
-      if (selectedTeam) fetchAssignments(selectedTeam.id);
-      fetchStats();
-      notify('Work successfully approved as Completed!', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to approve work.', 'error');
-    }
-  };
-
-  const handleRequestRework = async (taskId: string, feedback: string) => {
-    try {
-      await api.requestRework(taskId, feedback);
-      await refreshUserWorkspace();
-      await refreshNotifications();
-      if (selectedTeam) fetchAssignments(selectedTeam.id);
-      fetchStats();
-      notify('Rework requested successfully! User notified.', 'info');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to request rework.', 'error');
-    }
-  };
-
-  const handleAddUserComment = async (taskId: string, commentText: string, badge: string = 'Update') => {
-    try {
-      const author = currentUser ? currentUser.name : 'Team Member';
-      const role = currentUser ? (currentUser.role === 'admin' ? 'Admin' : 'Team Member') : 'Team Member';
-      await api.addUserComment(taskId, {
-        author,
-        role,
-        text: commentText,
-        badge
-      });
-      await refreshUserWorkspace();
-      await refreshNotifications();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleStartUserWork = async (taskId: string) => {
-    try {
-      await api.updateUserTaskStatus(taskId, 'In Progress');
-      await refreshUserWorkspace();
-      await refreshNotifications();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const fetchAllUsers = async () => {
-    try {
-      const u = await api.getUsers();
-      const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
-      setAllUsers(sanitized);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const refreshAll = async () => {
-    setLoading(true);
-    const promises: Promise<any>[] = [
-      fetchStats(),
-      fetchDepartments(),
-      fetchAllUsers(),
-      refreshUserWorkspace(),
-      refreshAppointments(),
-      refreshNotifications()
-    ];
-    if (selectedDepartment) {
-      promises.push(fetchTeams(selectedDepartment.id));
-    }
-    if (selectedTeam) {
-      promises.push(fetchMembers(selectedTeam.id));
-      promises.push(fetchAssignments(selectedTeam.id));
-      promises.push(fetchTasks(selectedTeam.id));
-      promises.push(fetchWorkDone(selectedTeam.id));
-    }
-    await Promise.all(promises);
-    setLoading(false);
-  };
-
-  // Initial load
-  useEffect(() => {
-    refreshAll();
-  }, []);
-
-  // Validate active session on mount and when currentUser changes
-  useEffect(() => {
-    if (!currentUser) return;
-    refreshUserWorkspace();
-    let isMounted = true;
-    api.validateSession(currentUser.id, currentUser.email).then((res) => {
-      if (!isMounted) return;
-      // Only revoke session if backend explicitly confirmed deletion in MongoDB Atlas (never on cold start / network blip)
-      if (!res.valid && res.deleted) {
-        console.warn('[Session] Session verification confirmed account deleted by admin:', res.error);
-        logout();
-        alert('Your account has been deleted by an administrator. Access denied.');
-        window.location.href = '/';
-      }
-    }).catch((err) => {
-      console.warn('[Session] Session validation notice:', err);
-    });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [currentUser?.id, currentUser?.email]);
-
-  // Real-Time Server-Sent Events (SSE) Listener for Two-Way Instant Sync
-  useEffect(() => {
-    let es: EventSource | null = null;
-    try {
-      es = new EventSource(`${API_BASE}/events`);
-      es.onmessage = (e) => {
-        try {
-          const event = JSON.parse(e.data);
-          if (event.type && event.type !== 'CONNECTED') {
-            const payload = event.payload || {};
-            // If user was deleted and matches currentUser, terminate session immediately
-            if (event.type === 'USER_DELETED') {
-              if (currentUser && (
-                (payload.id && (payload.id === currentUser.id || payload.id === (currentUser as any)._id)) ||
-                (payload.email && payload.email.toLowerCase() === (currentUser.email || '').toLowerCase())
-              )) {
-                logout();
-                alert('Your account has been deleted by an administrator. You have been logged out.');
-                window.location.href = '/';
-                return;
-              }
-            }
-            // Instant background synchronization across all active browser tabs/windows
-            refreshAll();
-          }
-        } catch (err) {
-          console.error('[SSE] Failed to parse message', err);
-        }
-      };
-    } catch (err) {
-      console.error('[SSE] EventSource connection failed', err);
-    }
-
-    return () => {
-      if (es) es.close();
-    };
-  }, [currentUser]);
-
-  // When selected department changes, load its teams
-  useEffect(() => {
-    if (selectedDepartment) {
-      fetchTeams(selectedDepartment.id);
-    } else {
-      setTeams([]);
-      setSelectedTeam(null);
-    }
-  }, [selectedDepartment]);
-
-  // When selected team changes, load members, assignments, tasks, work done
-  useEffect(() => {
-    if (selectedTeam) {
-      fetchMembers(selectedTeam.id);
-      fetchAssignments(selectedTeam.id);
-      fetchTasks(selectedTeam.id);
-      fetchWorkDone(selectedTeam.id);
-    } else {
-      setMembers([]);
-      setAssignments([]);
-      setTasks([]);
-      setWorkDone([]);
-    }
-  }, [selectedTeam]);
-
-  // Open Edit Modals
-  const openEditDepartment = (dept: Department) => {
-    setEditingDept(dept);
-    setIsAddDeptOpen(true);
-  };
-
-  const openEditTeam = (team: Team) => {
-    setEditingTeam(team);
-    setIsAddTeamOpen(true);
-  };
-
-  const openEditMember = (member: Member) => {
-    setEditingMember(member);
-    setIsAddMemberOpen(true);
-  };
-
-  // Task actions
-  const handleToggleTask = async (id: string) => {
-    try {
-      await api.toggleTask(id);
-      if (selectedTeam) fetchTasks(selectedTeam.id);
-      fetchStats();
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const handleDeleteTask = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Task',
-      message: 'Are you sure you want to delete this task?',
-      confirmText: 'Delete',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await api.deleteTask(id);
-      if (selectedTeam) fetchTasks(selectedTeam.id);
-      fetchStats();
-      notify('Task deleted successfully.', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to delete task', 'error');
-    }
-  };
-
-  const handleDeleteWorkDone = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Work Log',
-      message: 'Are you sure you want to delete this completed work entry?',
-      confirmText: 'Delete',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await api.deleteWorkDone(id);
-      if (selectedTeam) fetchWorkDone(selectedTeam.id);
-      fetchStats();
-      notify('Work entry removed successfully.', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to delete work log', 'error');
-    }
-  };
-
-  const handleDeleteAssignment = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Assigned Work',
-      message: 'Are you sure you want to delete this assigned work item?',
-      confirmText: 'Delete',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await api.deleteAssignment(id);
       setUserWorkspace(prev => {
         if (!prev) return prev;
-        const assignedWork = (prev.assignedWork || []).filter(t => t.id !== id && t.taskId !== id);
+        const assignedWork = (prev.assignedWork || []).map(t =>
+          (t.id === id || t.taskId === id || (data.taskId && t.taskId === data.taskId)) ? { ...t, ...res.userTask } : t
+        );
         return { ...prev, assignedWork };
       });
-      if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id)) {
-        setSelectedUserTask(null);
-        if (userNav === 'details') {
-          setUserNav('assigned-work');
+    }
+    const refreshPromises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
+    if (selectedTeam) {
+      refreshPromises.push(fetchWorkDone(selectedTeam.id));
+    }
+    await Promise.all(refreshPromises);
+    notify('Assignment updated successfully.', 'success', 'Task Updated');
+    return res;
+  } catch (e: any) {
+    console.error('Failed to edit assignment:', e);
+    notify(e.message || 'Failed to edit assignment', 'error', 'Update Failed');
+    throw e;
+  }
+};
+
+// Modals & Edit States
+const [isAddDeptOpen, setIsAddDeptOpen] = useState(false);
+const [editingDept, setEditingDept] = useState<Department | null>(null);
+
+const [isAddTeamOpen, setIsAddTeamOpen] = useState(false);
+const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+
+const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+const [editingMember, setEditingMember] = useState<Member | null>(null);
+
+const [isAddTaskOpen, setIsAddTaskOpen] = useState(false);
+const [isAddWorkDoneOpen, setIsAddWorkDoneOpen] = useState(false);
+
+const scrollToSection = (sectionId: string) => {
+  const el = document.getElementById(sectionId);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
+
+// Auth Functions
+const login = async (email: string, pass: string): Promise<{ success: boolean; requiresPasswordSetup?: boolean; name?: string; error?: string }> => {
+  try {
+    const res = await api.login(email, pass);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      try {
+        localStorage.setItem('workhub_user', JSON.stringify(res.user));
+      } catch (e) {
+        // ignore
+      }
+      await refreshAll();
+      return { success: true };
+    }
+    if (res.requiresPasswordSetup) {
+      return { success: false, requiresPasswordSetup: true, name: res.name || 'Team Member' };
+    }
+    return { success: false, error: res.error || 'Invalid credentials' };
+  } catch (e: any) {
+    return { success: false, error: e.message || 'Login failed' };
+  }
+};
+
+const createPassword = async (email: string, pass: string): Promise<boolean> => {
+  try {
+    const res = await api.createPassword(email, pass);
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      try {
+        localStorage.setItem('workhub_user', JSON.stringify(res.user));
+      } catch (e) {
+        // ignore
+      }
+      await refreshAll();
+      return true;
+    }
+    return false;
+  } catch (e: any) {
+    alert(e.message || 'Failed to create password');
+    return false;
+  }
+};
+
+const logout = () => {
+  setCurrentUser(null);
+  setUserNav('dashboard');
+  setAdminNav('dashboard');
+  setMobileSidebarOpen(false);
+  disconnectSocket();
+  try {
+    localStorage.removeItem('workhub_user');
+  } catch (e) {
+    // ignore
+  }
+};
+
+const updateUserProfile = async (data: { name?: string; avatar?: string; currentPassword?: string; newPassword?: string }) => {
+  if (!currentUser) return { success: false, error: 'User is not logged in' };
+  try {
+    const res = await api.updateUserProfile({
+      identifier: currentUser.id || currentUser.email,
+      ...data
+    });
+    if (res.success && res.user) {
+      setCurrentUser(res.user);
+      try {
+        localStorage.setItem('workhub_user', JSON.stringify(res.user));
+      } catch (e) {
+        // ignore
+      }
+      return { success: true };
+    }
+    return { success: false, error: 'Failed to update profile' };
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update profile' };
+  }
+};
+
+const fetchStats = async () => {
+  try {
+    const data = await api.getStats();
+    setStats(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchDepartments = async () => {
+  try {
+    const data = await api.getDepartments();
+    setDepartments(data);
+    if (data.length === 0) {
+      setSelectedDepartment(null);
+      setSelectedTeam(null);
+    } else if (!selectedDepartment || !data.some(d => d.id === selectedDepartment.id)) {
+      setSelectedDepartment(data[0]);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchTeams = async (deptId: string) => {
+  try {
+    const data = await api.getTeams(deptId);
+    setTeams(data);
+    if (data.length > 0) {
+      setSelectedTeam(prev => (prev && data.some(t => t.id === prev.id) ? prev : data[0]));
+    } else {
+      setSelectedTeam(null);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchMembers = async (teamId: string) => {
+  try {
+    const data = await api.getMembers(teamId);
+    setMembers(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchAssignments = async (teamId: string = '') => {
+  try {
+    const data = await api.getAssignments(teamId);
+    setAssignments(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchTasks = async (teamId: string = '') => {
+  try {
+    const data = await api.getTasks(teamId);
+    setTasks(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchWorkDone = async (teamId: string) => {
+  try {
+    const data = await api.getWorkDone(teamId);
+    setWorkDone(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const refreshAppointments = async () => {
+  try {
+    const [aptList, aptStats] = await Promise.all([
+      api.getAppointments(),
+      api.getAppointmentStats()
+    ]);
+    setAppointments(aptList);
+    setAppointmentStats(aptStats);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const refreshNotifications = async () => {
+  try {
+    const role = currentUser ? currentUser.role : 'all';
+    const userId = currentUser ? currentUser.id : undefined;
+    const email = currentUser ? currentUser.email : undefined;
+    const data = await api.getNotifications(role, userId, email);
+    setNotifications(data);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleMarkNotificationRead = async (id: string) => {
+  try {
+    await api.markNotificationRead(id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleMarkAllNotificationsRead = async () => {
+  try {
+    const role = currentUser ? currentUser.role : undefined;
+    await api.markAllNotificationsRead(role);
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleCreateAppointment = async (data: Partial<Appointment>) => {
+  try {
+    await api.createAppointment(data);
+    await refreshAppointments();
+    await refreshNotifications();
+    setIsAppointmentModalOpen(false);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleUpdateAppointment = async (id: string, data: Partial<Appointment>) => {
+  try {
+    await api.updateAppointment(id, data);
+    await refreshAppointments();
+    await refreshNotifications();
+    setIsAppointmentModalOpen(false);
+    setEditingAppointment(null);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleDeleteAppointment = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Appointment',
+    message: 'Are you sure you want to delete this appointment? This record will be removed from your calendar.',
+    confirmText: 'Delete',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteAppointment(id);
+    await refreshAppointments();
+    notify('Appointment deleted successfully.', 'success', 'Deleted');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to delete appointment', 'error', 'Error');
+  }
+};
+
+const refreshUserWorkspace = async () => {
+  try {
+    const data = await api.getUserWorkspace(currentUser?.id, currentUser?.email);
+
+    // Dynamic Multi-Team Isolation:
+    // Managers & Admins see ALL teams member works.
+    // Regular team members ONLY see assigned works of the SAME team.
+    if (currentUser && currentUser.role === 'user') {
+      const myMember = (members || []).find(m => (m.email && m.email.toLowerCase() === (currentUser.email || '').toLowerCase()) || m.id === currentUser.id);
+      const visibleTasks = filterTasksForUser(data.assignedWork || [], currentUser, myMember);
+
+      data.assignedWork = visibleTasks;
+      data.stats.totalAssigned = visibleTasks.length;
+      data.stats.inProgress = visibleTasks.filter(t => t.status === 'In Progress').length;
+      data.stats.upcomingWork = visibleTasks.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length;
+      data.stats.completedWork = visibleTasks.filter(t => t.status === 'Completed').length;
+      data.stats.completionPercentage = visibleTasks.length > 0
+        ? Math.round((data.stats.completedWork / visibleTasks.length) * 100)
+        : 0;
+      data.stats.completedFractionText = `${data.stats.completedWork} of ${visibleTasks.length} Tasks`;
+    }
+
+    setUserWorkspace(data);
+    if (data.assignedWork && data.assignedWork.length > 0) {
+      const matchingTask = selectedUserTask
+        ? data.assignedWork.find(t => t.id === selectedUserTask.id || (selectedUserTask.taskId && t.taskId === selectedUserTask.taskId))
+        : null;
+      if (matchingTask) {
+        setSelectedUserTask(matchingTask);
+      } else if (!selectedUserTask || !data.assignedWork.some(t => t.id === selectedUserTask.id)) {
+        setSelectedUserTask(data.assignedWork[0]);
+      }
+    } else {
+      setSelectedUserTask(null);
+    }
+    if (data.history && data.history.length > 0) {
+      if (!selectedHistoryItem || !data.history.some(h => h.id === selectedHistoryItem.id)) {
+        setSelectedHistoryItem(data.history[0]);
+      }
+    } else {
+      setSelectedHistoryItem(null);
+    }
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const openSubmitWorkDrawer = (task?: UserAssignedWork) => {
+  if (task) {
+    setDrawerSelectedTask(task);
+  } else if (selectedUserTask) {
+    setDrawerSelectedTask(selectedUserTask);
+  } else if (userWorkspace?.assignedWork?.length) {
+    setDrawerSelectedTask(userWorkspace.assignedWork[0]);
+  }
+  setIsSubmitWorkDrawerOpen(true);
+};
+
+const handleSubmitWork = async (payload: { taskId: string; workStatus: string; comment: string }) => {
+  try {
+    await api.submitUserWork(payload);
+
+    // Immediately update selectedUserTask locally for responsive UI in UserWorkDetails
+    if (selectedUserTask && (selectedUserTask.id === payload.taskId || selectedUserTask.taskId === payload.taskId)) {
+      const now = new Date();
+      const formattedDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+      const formattedTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const fullDateTime = `${formattedDate}, ${formattedTime}`;
+
+      const updatedComments = [
+        ...(selectedUserTask.comments || []),
+        {
+          id: `c-${Date.now()}`,
+          author: currentUser?.name || 'Team Member',
+          role: 'Team Member',
+          date: fullDateTime,
+          badge: 'Submission',
+          text: payload.comment || 'Work deliverables submitted for review.'
         }
-      }
-      const promises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
-      if (selectedTeam) {
-        promises.push(fetchAssignments(selectedTeam.id));
-      }
-      await Promise.all(promises);
-      notify('Assigned work item deleted.', 'success');
-    } catch (e: any) {
-      console.error('Failed to delete assignment:', e);
-      notify(e.message || 'Failed to delete assignment', 'error', 'Delete Failed');
-    }
-  };
+      ];
 
-  const handleDeleteMember = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Team Member',
-      message: 'Are you sure you want to remove this team member from the team?',
-      confirmText: 'Remove Member',
-      variant: 'danger'
+      setSelectedUserTask({
+        ...selectedUserTask,
+        status: payload.workStatus === 'Completed' ? 'Completed' : 'Under Review',
+        progress: 100,
+        submittedDate: fullDateTime,
+        submittedAt: now.toISOString(),
+        completedDate: payload.workStatus === 'Completed' ? fullDateTime : undefined,
+        completedAt: payload.workStatus === 'Completed' ? now.toISOString() : undefined,
+        comments: updatedComments
+      });
+    }
+
+    await refreshUserWorkspace();
+    await refreshNotifications();
+    setIsSubmitWorkDrawerOpen(false);
+  } catch (e) {
+    console.error('Submit work error:', e);
+    throw e;
+  }
+};
+
+const handleApproveWork = async (taskId: string, comment?: string) => {
+  try {
+    await api.approveWork(taskId, comment);
+    await refreshUserWorkspace();
+    await refreshNotifications();
+    if (selectedTeam) fetchAssignments(selectedTeam.id);
+    fetchStats();
+    notify('Work successfully approved as Completed!', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to approve work.', 'error');
+  }
+};
+
+const handleRequestRework = async (taskId: string, feedback: string) => {
+  try {
+    await api.requestRework(taskId, feedback);
+    await refreshUserWorkspace();
+    await refreshNotifications();
+    if (selectedTeam) fetchAssignments(selectedTeam.id);
+    fetchStats();
+    notify('Rework requested successfully! User notified.', 'info');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to request rework.', 'error');
+  }
+};
+
+const handleAddUserComment = async (taskId: string, commentText: string, badge: string = 'Update') => {
+  try {
+    const author = currentUser ? currentUser.name : 'Team Member';
+    const role = currentUser ? (currentUser.role === 'admin' ? 'Admin' : 'Team Member') : 'Team Member';
+    await api.addUserComment(taskId, {
+      author,
+      role,
+      text: commentText,
+      badge
     });
-    if (!ok) return;
-    try {
-      await api.deleteMember(id);
-      if (selectedTeam) fetchMembers(selectedTeam.id);
-      fetchStats();
-      notify('Team member removed successfully.', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to remove member', 'error');
+    await refreshUserWorkspace();
+    await refreshNotifications();
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const handleStartUserWork = async (taskId: string) => {
+  try {
+    await api.updateUserTaskStatus(taskId, 'In Progress');
+    await refreshUserWorkspace();
+    await refreshNotifications();
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const fetchAllUsers = async () => {
+  try {
+    const u = await api.getUsers();
+    const sanitized = (u || []).filter(user => !isBannedEmail(user.email));
+    setAllUsers(sanitized);
+  } catch (e) {
+    console.error(e);
+  }
+};
+
+const refreshAll = async () => {
+  setLoading(true);
+  const promises: Promise<any>[] = [
+    fetchStats(),
+    fetchDepartments(),
+    fetchAllUsers(),
+    refreshUserWorkspace(),
+    refreshAppointments(),
+    refreshNotifications()
+  ];
+  if (selectedDepartment) {
+    promises.push(fetchTeams(selectedDepartment.id));
+  }
+  if (selectedTeam) {
+    promises.push(fetchMembers(selectedTeam.id));
+    promises.push(fetchAssignments(selectedTeam.id));
+    promises.push(fetchTasks(selectedTeam.id));
+    promises.push(fetchWorkDone(selectedTeam.id));
+  }
+  await Promise.all(promises);
+  setLoading(false);
+};
+
+// Initial load
+useEffect(() => {
+  refreshAll();
+}, []);
+
+// Validate active session on mount and when currentUser changes
+useEffect(() => {
+  if (!currentUser) return;
+  refreshUserWorkspace();
+  let isMounted = true;
+  api.validateSession(currentUser.id, currentUser.email).then((res) => {
+    if (!isMounted) return;
+    // Only revoke session if backend explicitly confirmed deletion in MongoDB Atlas (never on cold start / network blip)
+    if (!res.valid && res.deleted) {
+      console.warn('[Session] Session verification confirmed account deleted by admin:', res.error);
+      logout();
+      alert('Your account has been deleted by an administrator. Access denied.');
+      window.location.href = '/';
     }
+  }).catch((err) => {
+    console.warn('[Session] Session validation notice:', err);
+  });
+
+  return () => {
+    isMounted = false;
   };
+}, [currentUser?.id, currentUser?.email]);
 
-  const handleDeleteDepartment = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Department',
-      message: 'Are you sure you want to delete this department? All associated teams and members will also be affected.',
-      confirmText: 'Delete Department',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await api.deleteDepartment(id);
-      await fetchDepartments();
-      fetchStats();
-      notify('Department deleted successfully.', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to delete department', 'error');
-    }
-  };
-
-  const handleDeleteTeam = async (id: string) => {
-    const ok = await confirmAction({
-      title: 'Delete Team',
-      message: 'Are you sure you want to delete this team and unlink its members?',
-      confirmText: 'Delete Team',
-      variant: 'danger'
-    });
-    if (!ok) return;
-    try {
-      await api.deleteTeam(id);
-      if (selectedDepartment) fetchTeams(selectedDepartment.id);
-      fetchStats();
-      notify('Team deleted successfully.', 'success');
-    } catch (e: any) {
-      console.error(e);
-      notify(e.message || 'Failed to delete team', 'error');
-    }
-  };
-
-  const unreadNotificationCount = notifications.filter(n => !n.read).length;
-
-  // Real-Time Messaging Unread Count Tracking
-  const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
-
-  const refreshUnreadMessagesCount = async () => {
-    if (!currentUser) {
-      setUnreadMessagesCount(0);
-      return;
-    }
-    try {
-      const res = await api.getUnreadMessagesCount(currentUser.id);
-      setUnreadMessagesCount(res.count || 0);
-    } catch (err) {
-      console.warn('Failed to fetch unread messages count:', err);
-    }
-  };
-
-  useEffect(() => {
-    if (currentUser) {
-      refreshUnreadMessagesCount();
-      connectSocketUser(currentUser);
-      const socket = getSocket();
-
-      const handleUpdate = () => {
-        refreshUnreadMessagesCount();
-      };
-
-      const handleMeetingEvent = () => {
-        refreshNotifications();
-        refreshAppointments();
-      };
-
-      const handleSessionTerminated = (data?: { reason?: string }) => {
-        console.warn('[Socket.IO] Session terminated by administrator:', data?.reason);
-        logout();
-        alert(data?.reason || 'Your account has been deleted by an administrator.');
-        window.location.href = '/';
-      };
-
-      const handleUserDeleted = (data?: { id?: string; email?: string }) => {
-        if (!data) return;
-        if (currentUser && (
-          (data.id && (data.id === currentUser.id || data.id === (currentUser as any)._id)) ||
-          (data.email && data.email.toLowerCase() === (currentUser.email || '').toLowerCase())
-        )) {
-          logout();
-          alert('Your account has been deleted by an administrator. You have been logged out.');
-          window.location.href = '/';
-        } else {
+// Real-Time Server-Sent Events (SSE) Listener for Two-Way Instant Sync
+useEffect(() => {
+  let es: EventSource | null = null;
+  try {
+    es = new EventSource(`${API_BASE}/events`);
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type && event.type !== 'CONNECTED') {
+          const payload = event.payload || {};
+          // If user was deleted and matches currentUser, terminate session immediately
+          if (event.type === 'USER_DELETED') {
+            if (currentUser && (
+              (payload.id && (payload.id === currentUser.id || payload.id === (currentUser as any)._id)) ||
+              (payload.email && payload.email.toLowerCase() === (currentUser.email || '').toLowerCase())
+            )) {
+              logout();
+              alert('Your account has been deleted by an administrator. You have been logged out.');
+              window.location.href = '/';
+              return;
+            }
+          }
+          // Instant background synchronization across all active browser tabs/windows
           refreshAll();
         }
-      };
+      } catch (err) {
+        console.error('[SSE] Failed to parse message', err);
+      }
+    };
+  } catch (err) {
+    console.error('[SSE] EventSource connection failed', err);
+  }
 
-      const handleRealtimeEntityChange = () => {
-        refreshAll();
-      };
+  return () => {
+    if (es) es.close();
+  };
+}, [currentUser]);
 
-      const handleAdminNotification = (payload: any) => {
-        refreshNotifications();
-        refreshAppointments();
-        refreshAll();
-        if (currentUser?.role === 'admin') {
-          setAdminToast({
-            id: String(Date.now()),
-            title: payload?.title || 'New Form Submitted',
-            message: payload?.message || 'A new request has arrived.',
-            timestamp: new Date()
-          });
-        }
-      };
+// When selected department changes, load its teams
+useEffect(() => {
+  if (selectedDepartment) {
+    fetchTeams(selectedDepartment.id);
+  } else {
+    setTeams([]);
+    setSelectedTeam(null);
+  }
+}, [selectedDepartment]);
 
-      const handleReceiverNotification = (payload: any) => {
-        refreshNotifications();
-        refreshAppointments();
-        refreshUserWorkspace();
-        setUserToast({
-          id: String(Date.now()),
-          title: payload?.title || 'New Request Received 📋',
-          message: payload?.message || 'You have received a new request.',
-          timestamp: new Date()
-        });
-      };
+// When selected team changes, load members, assignments, tasks, work done
+useEffect(() => {
+  if (selectedTeam) {
+    fetchMembers(selectedTeam.id);
+    fetchAssignments(selectedTeam.id);
+    fetchTasks(selectedTeam.id);
+    fetchWorkDone(selectedTeam.id);
+  } else {
+    setMembers([]);
+    setAssignments([]);
+    setTasks([]);
+    setWorkDone([]);
+  }
+}, [selectedTeam]);
 
-      const handleNewNotification = () => {
-        refreshNotifications();
-      };
+// Open Edit Modals
+const openEditDepartment = (dept: Department) => {
+  setEditingDept(dept);
+  setIsAddDeptOpen(true);
+};
 
-      const handleWppStatus = (data: any) => {
-        setWppStatus((prev: any) => ({ ...(prev || {}), ...data }));
-      };
+const openEditTeam = (team: Team) => {
+  setEditingTeam(team);
+  setIsAddTeamOpen(true);
+};
 
-      const handleWppAlert = (data: any) => {
-        setAdminToast({
-          id: `wpp-alt-${Date.now()}`,
-          title: data.title || '⚠️ WhatsApp Disconnected',
-          message: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
-          timestamp: new Date()
-        });
-        if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
-          try {
-            new Notification(data.title || 'WhatsApp Disconnected', {
-              body: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
-              icon: '/favicon.ico'
-            });
-          } catch (e) {
-            // ignore
-          }
-        }
-      };
+const openEditMember = (member: Member) => {
+  setEditingMember(member);
+  setIsAddMemberOpen(true);
+};
 
-      socket.on('admin_notification', handleAdminNotification);
-      socket.on('receiver_notification', handleReceiverNotification);
-      socket.on('new_notification', handleNewNotification);
-      socket.on('notification_received', handleNewNotification);
-      socket.on('wpp_status', handleWppStatus);
-      socket.on('wpp_message_sent', fetchWppStatus);
-      socket.on('wpp_disconnection_alert', handleWppAlert);
+// Task actions
+const handleToggleTask = async (id: string) => {
+  try {
+    await api.toggleTask(id);
+    if (selectedTeam) fetchTasks(selectedTeam.id);
+    fetchStats();
+  } catch (e) {
+    console.error(e);
+  }
+};
 
-      socket.on('conversation_updated', handleUpdate);
-      socket.on('new_message', handleUpdate);
-      socket.on('messages_read', handleUpdate);
-      socket.on('meeting_invitation', handleMeetingEvent);
-      socket.on('meeting_popup', handleMeetingEvent);
-      socket.on('session_terminated', handleSessionTerminated);
-      socket.on('user_deleted', handleUserDeleted);
-      socket.on('member_deleted', handleRealtimeEntityChange);
-      socket.on('org_changed', handleRealtimeEntityChange);
-      socket.on('assignment_deleted', handleRealtimeEntityChange);
-      socket.on('task_deleted', handleRealtimeEntityChange);
-      socket.on('appointment_deleted', handleRealtimeEntityChange);
-      socket.on('work_changed', handleRealtimeEntityChange);
-      socket.on('work_done_deleted', handleRealtimeEntityChange);
-      socket.on('ATTENDANCE_UPDATED', () => {
-        refreshTodayAttendance();
-        refreshAttendanceRecords();
-      });
-      socket.on('BREAK_STARTED', (data?: any) => {
-        refreshActiveBreaks();
-        refreshTodayBreaks();
-        refreshNotifications();
-        if (data?.userName && data?.userId !== currentUser?.id) {
-          notify(`☕ ${data.userName} is on Break (${data.fromTime} - ${data.toTime})`, 'info', 'Team Break');
-        }
-      });
-      socket.on('BREAK_UPDATED', () => {
-        refreshActiveBreaks();
-        refreshTodayBreaks();
-        refreshNotifications();
-      });
-      socket.on('BREAK_ENDED', () => {
-        refreshActiveBreaks();
-        refreshTodayBreaks();
-        refreshNotifications();
-      });
-      socket.on('BREAK_DELETED', () => {
-        refreshActiveBreaks();
-        refreshTodayBreaks();
-        refreshNotifications();
-      });
-      socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
-      socket.on('ASSIGNMENT_UPDATED', () => {
-        refreshUserWorkspace();
-        fetchAssignments();
-      });
+const handleDeleteTask = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Task',
+    message: 'Are you sure you want to delete this task?',
+    confirmText: 'Delete',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteTask(id);
+    if (selectedTeam) fetchTasks(selectedTeam.id);
+    fetchStats();
+    notify('Task deleted successfully.', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to delete task', 'error');
+  }
+};
 
-      return () => {
-        socket.off('admin_notification', handleAdminNotification);
-        socket.off('receiver_notification', handleReceiverNotification);
-        socket.off('new_notification', handleNewNotification);
-        socket.off('notification_received', handleNewNotification);
-        socket.off('wpp_status', handleWppStatus);
-        socket.off('wpp_message_sent', fetchWppStatus);
-        socket.off('wpp_disconnection_alert', handleWppAlert);
+const handleDeleteWorkDone = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Work Log',
+    message: 'Are you sure you want to delete this completed work entry?',
+    confirmText: 'Delete',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteWorkDone(id);
+    if (selectedTeam) fetchWorkDone(selectedTeam.id);
+    fetchStats();
+    notify('Work entry removed successfully.', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to delete work log', 'error');
+  }
+};
 
-        socket.off('conversation_updated', handleUpdate);
-        socket.off('new_message', handleUpdate);
-        socket.off('messages_read', handleUpdate);
-        socket.off('meeting_invitation', handleMeetingEvent);
-        socket.off('meeting_popup', handleMeetingEvent);
-        socket.off('session_terminated', handleSessionTerminated);
-        socket.off('user_deleted', handleUserDeleted);
-        socket.off('member_deleted', handleRealtimeEntityChange);
-        socket.off('org_changed', handleRealtimeEntityChange);
-        socket.off('assignment_deleted', handleRealtimeEntityChange);
-        socket.off('task_deleted', handleRealtimeEntityChange);
-        socket.off('appointment_deleted', handleRealtimeEntityChange);
-        socket.off('work_changed', handleRealtimeEntityChange);
-        socket.off('work_done_deleted', handleRealtimeEntityChange);
-        socket.off('BREAK_STARTED');
-        socket.off('BREAK_UPDATED');
-        socket.off('BREAK_ENDED');
-        socket.off('BREAK_DELETED');
-      };
-    } else {
-      setUnreadMessagesCount(0);
+const handleDeleteAssignment = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Assigned Work',
+    message: 'Are you sure you want to delete this assigned work item?',
+    confirmText: 'Delete',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteAssignment(id);
+    setUserWorkspace(prev => {
+      if (!prev) return prev;
+      const assignedWork = (prev.assignedWork || []).filter(t => t.id !== id && t.taskId !== id);
+      return { ...prev, assignedWork };
+    });
+    if (selectedUserTask && (selectedUserTask.id === id || selectedUserTask.taskId === id)) {
+      setSelectedUserTask(null);
+      if (userNav === 'details') {
+        setUserNav('assigned-work');
+      }
     }
-  }, [currentUser]);
+    const promises: Promise<any>[] = [refreshUserWorkspace(), fetchAssignments(), fetchTasks()];
+    if (selectedTeam) {
+      promises.push(fetchAssignments(selectedTeam.id));
+    }
+    await Promise.all(promises);
+    notify('Assigned work item deleted.', 'success');
+  } catch (e: any) {
+    console.error('Failed to delete assignment:', e);
+    notify(e.message || 'Failed to delete assignment', 'error', 'Delete Failed');
+  }
+};
 
-  return (
-    <AppContext.Provider
-      value={{
-        currentUser,
-        setCurrentUser,
-        login,
-        createPassword,
-        logout,
-        updateUserProfile,
-        portalMode,
-        setPortalMode,
-        adminNav,
-        setAdminNav,
-        mobileSidebarOpen,
-        setMobileSidebarOpen,
-        departments,
-        selectedDepartment,
-        setSelectedDepartment,
-        teams,
-        selectedTeam,
-        setSelectedTeam,
-        members,
-        assignments,
-        tasks,
-        workDone,
-        stats,
-        allUsers,
-        fetchAllUsers,
-        activeTab,
-        setActiveTab,
-        teamSubTab,
-        setTeamSubTab,
-        loading,
-        refreshAll,
-        isAddDeptOpen,
-        setIsAddDeptOpen,
-        editingDept,
-        setEditingDept,
-        openEditDepartment,
-        isAddTeamOpen,
-        setIsAddTeamOpen,
-        editingTeam,
-        setEditingTeam,
-        openEditTeam,
-        isAddMemberOpen,
-        setIsAddMemberOpen,
-        editingMember,
-        setEditingMember,
-        openEditMember,
-        isAddTaskOpen,
-        setIsAddTaskOpen,
-        isAddWorkDoneOpen,
-        setIsAddWorkDoneOpen,
-        handleToggleTask,
-        handleDeleteTask,
-        handleDeleteWorkDone,
-        handleDeleteAssignment,
-        handleDeleteMember,
-        handleDeleteDepartment,
-        handleDeleteTeam,
-        userNav,
-        setUserNav,
-        managerNav,
-        setManagerNav,
-        toastNotification,
-        toasts,
-        notify,
-        dismissToast,
-        clearNotification,
-        confirmModal,
-        confirmAction,
-        closeConfirmModal,
-        selectedUserTask,
-        setSelectedUserTask,
-        selectedHistoryItem,
-        setSelectedHistoryItem,
-        userWorkspace,
-        refreshUserWorkspace,
-        isSubmitWorkDrawerOpen,
-        setIsSubmitWorkDrawerOpen,
-        drawerSelectedTask,
-        openSubmitWorkDrawer,
-        userFilterTab,
-        setUserFilterTab,
-        userSearchQuery,
-        setUserSearchQuery,
-        handleSubmitWork,
-        handleAddUserComment,
-        handleStartUserWork,
-        handleApproveWork,
-        handleRequestRework,
-        appointments,
-        appointmentStats,
-        selectedAppointmentDate,
-        setSelectedAppointmentDate,
-        appointmentFilterTab,
-        setAppointmentFilterTab,
-        appointmentSearchQuery,
-        setAppointmentSearchQuery,
-        isAppointmentModalOpen,
-        setIsAppointmentModalOpen,
-        editingAppointment,
-        setEditingAppointment,
-        handleCreateAppointment,
-        handleUpdateAppointment,
-        handleDeleteAppointment,
-        refreshAppointments,
-        notifications,
-        unreadNotificationCount,
-        handleMarkNotificationRead,
-        handleMarkAllNotificationsRead,
-        refreshNotifications,
-        unreadMessagesCount,
-        refreshUnreadMessagesCount,
-        scrollToSection,
-        adminToast,
-        setAdminToast,
-        userToast,
-        setUserToast,
-        wppStatus,
-        fetchWppStatus,
-        restartWpp,
-        todayAttendance,
-        attendanceRecords,
-        refreshTodayAttendance,
-        refreshAttendanceRecords,
-        handlePunchIn,
-        handlePunchOut,
-        handleStartTimer,
-        handlePauseTimer,
-        handleResumeTimer,
-        handleFinishTimer,
-        handleEditAssignment,
-        isManagerOrAdmin,
-        activeTeamBreaks,
-        todayTeamBreaks,
-        refreshActiveBreaks,
-        refreshTodayBreaks,
-        handleStartBreak,
-        handleUpdateBreak,
-        handleEndBreak,
-        handleDeleteBreak
-      }}
-    >
-      {children}
-    </AppContext.Provider>
-  );
+const handleDeleteMember = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Team Member',
+    message: 'Are you sure you want to remove this team member from the team?',
+    confirmText: 'Remove Member',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteMember(id);
+    if (selectedTeam) fetchMembers(selectedTeam.id);
+    fetchStats();
+    notify('Team member removed successfully.', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to remove member', 'error');
+  }
+};
+
+const handleDeleteDepartment = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Department',
+    message: 'Are you sure you want to delete this department? All associated teams and members will also be affected.',
+    confirmText: 'Delete Department',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteDepartment(id);
+    await fetchDepartments();
+    fetchStats();
+    notify('Department deleted successfully.', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to delete department', 'error');
+  }
+};
+
+const handleDeleteTeam = async (id: string) => {
+  const ok = await confirmAction({
+    title: 'Delete Team',
+    message: 'Are you sure you want to delete this team and unlink its members?',
+    confirmText: 'Delete Team',
+    variant: 'danger'
+  });
+  if (!ok) return;
+  try {
+    await api.deleteTeam(id);
+    if (selectedDepartment) fetchTeams(selectedDepartment.id);
+    fetchStats();
+    notify('Team deleted successfully.', 'success');
+  } catch (e: any) {
+    console.error(e);
+    notify(e.message || 'Failed to delete team', 'error');
+  }
+};
+
+const unreadNotificationCount = notifications.filter(n => !n.read).length;
+
+// Real-Time Messaging Unread Count Tracking
+const [unreadMessagesCount, setUnreadMessagesCount] = useState<number>(0);
+
+const refreshUnreadMessagesCount = async () => {
+  if (!currentUser) {
+    setUnreadMessagesCount(0);
+    return;
+  }
+  try {
+    const res = await api.getUnreadMessagesCount(currentUser.id);
+    setUnreadMessagesCount(res.count || 0);
+  } catch (err) {
+    console.warn('Failed to fetch unread messages count:', err);
+  }
+};
+
+useEffect(() => {
+  if (currentUser) {
+    refreshUnreadMessagesCount();
+    connectSocketUser(currentUser);
+    const socket = getSocket();
+
+    const handleUpdate = () => {
+      refreshUnreadMessagesCount();
+    };
+
+    const handleMeetingEvent = () => {
+      refreshNotifications();
+      refreshAppointments();
+    };
+
+    const handleSessionTerminated = (data?: { reason?: string }) => {
+      console.warn('[Socket.IO] Session terminated by administrator:', data?.reason);
+      logout();
+      alert(data?.reason || 'Your account has been deleted by an administrator.');
+      window.location.href = '/';
+    };
+
+    const handleUserDeleted = (data?: { id?: string; email?: string }) => {
+      if (!data) return;
+      if (currentUser && (
+        (data.id && (data.id === currentUser.id || data.id === (currentUser as any)._id)) ||
+        (data.email && data.email.toLowerCase() === (currentUser.email || '').toLowerCase())
+      )) {
+        logout();
+        alert('Your account has been deleted by an administrator. You have been logged out.');
+        window.location.href = '/';
+      } else {
+        refreshAll();
+      }
+    };
+
+    const handleRealtimeEntityChange = () => {
+      refreshAll();
+    };
+
+    const handleAdminNotification = (payload: any) => {
+      refreshNotifications();
+      refreshAppointments();
+      refreshAll();
+      if (currentUser?.role === 'admin') {
+        setAdminToast({
+          id: String(Date.now()),
+          title: payload?.title || 'New Form Submitted',
+          message: payload?.message || 'A new request has arrived.',
+          timestamp: new Date()
+        });
+      }
+    };
+
+    const handleReceiverNotification = (payload: any) => {
+      refreshNotifications();
+      refreshAppointments();
+      refreshUserWorkspace();
+      setUserToast({
+        id: String(Date.now()),
+        title: payload?.title || 'New Request Received 📋',
+        message: payload?.message || 'You have received a new request.',
+        timestamp: new Date()
+      });
+    };
+
+    const handleNewNotification = () => {
+      refreshNotifications();
+    };
+
+    const handleWppStatus = (data: any) => {
+      setWppStatus((prev: any) => ({ ...(prev || {}), ...data }));
+    };
+
+    const handleWppAlert = (data: any) => {
+      setAdminToast({
+        id: `wpp-alt-${Date.now()}`,
+        title: data.title || '⚠️ WhatsApp Disconnected',
+        message: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
+        timestamp: new Date()
+      });
+      if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification(data.title || 'WhatsApp Disconnected', {
+            body: data.message || 'WhatsApp session disconnected. Auto-reconnection in progress.',
+            icon: '/favicon.ico'
+          });
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+
+    socket.on('admin_notification', handleAdminNotification);
+    socket.on('receiver_notification', handleReceiverNotification);
+    socket.on('new_notification', handleNewNotification);
+    socket.on('notification_received', handleNewNotification);
+    socket.on('wpp_status', handleWppStatus);
+    socket.on('wpp_message_sent', fetchWppStatus);
+    socket.on('wpp_disconnection_alert', handleWppAlert);
+
+    socket.on('conversation_updated', handleUpdate);
+    socket.on('new_message', handleUpdate);
+    socket.on('messages_read', handleUpdate);
+    socket.on('meeting_invitation', handleMeetingEvent);
+    socket.on('meeting_popup', handleMeetingEvent);
+    socket.on('session_terminated', handleSessionTerminated);
+    socket.on('user_deleted', handleUserDeleted);
+    socket.on('member_deleted', handleRealtimeEntityChange);
+    socket.on('org_changed', handleRealtimeEntityChange);
+    socket.on('assignment_deleted', handleRealtimeEntityChange);
+    socket.on('task_deleted', handleRealtimeEntityChange);
+    socket.on('appointment_deleted', handleRealtimeEntityChange);
+    socket.on('work_changed', handleRealtimeEntityChange);
+    socket.on('work_done_deleted', handleRealtimeEntityChange);
+    socket.on('ATTENDANCE_UPDATED', () => {
+      refreshTodayAttendance();
+      refreshAttendanceRecords();
+    });
+    socket.on('BREAK_STARTED', (data?: any) => {
+      refreshActiveBreaks();
+      refreshTodayBreaks();
+      refreshNotifications();
+      if (data?.userName && data?.userId !== currentUser?.id) {
+        notify(`☕ ${data.userName} is on Break (${data.fromTime} - ${data.toTime})`, 'info', 'Team Break');
+      }
+    });
+    socket.on('BREAK_UPDATED', () => {
+      refreshActiveBreaks();
+      refreshTodayBreaks();
+      refreshNotifications();
+    });
+    socket.on('BREAK_ENDED', () => {
+      refreshActiveBreaks();
+      refreshTodayBreaks();
+      refreshNotifications();
+    });
+    socket.on('BREAK_DELETED', () => {
+      refreshActiveBreaks();
+      refreshTodayBreaks();
+      refreshNotifications();
+    });
+    socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
+    socket.on('ASSIGNMENT_UPDATED', () => {
+      refreshUserWorkspace();
+      fetchAssignments();
+    });
+
+    return () => {
+      socket.off('admin_notification', handleAdminNotification);
+      socket.off('receiver_notification', handleReceiverNotification);
+      socket.off('new_notification', handleNewNotification);
+      socket.off('notification_received', handleNewNotification);
+      socket.off('wpp_status', handleWppStatus);
+      socket.off('wpp_message_sent', fetchWppStatus);
+      socket.off('wpp_disconnection_alert', handleWppAlert);
+
+      socket.off('conversation_updated', handleUpdate);
+      socket.off('new_message', handleUpdate);
+      socket.off('messages_read', handleUpdate);
+      socket.off('meeting_invitation', handleMeetingEvent);
+      socket.off('meeting_popup', handleMeetingEvent);
+      socket.off('session_terminated', handleSessionTerminated);
+      socket.off('user_deleted', handleUserDeleted);
+      socket.off('member_deleted', handleRealtimeEntityChange);
+      socket.off('org_changed', handleRealtimeEntityChange);
+      socket.off('assignment_deleted', handleRealtimeEntityChange);
+      socket.off('task_deleted', handleRealtimeEntityChange);
+      socket.off('appointment_deleted', handleRealtimeEntityChange);
+      socket.off('work_changed', handleRealtimeEntityChange);
+      socket.off('work_done_deleted', handleRealtimeEntityChange);
+      socket.off('BREAK_STARTED');
+      socket.off('BREAK_UPDATED');
+      socket.off('BREAK_ENDED');
+      socket.off('BREAK_DELETED');
+    };
+  } else {
+    setUnreadMessagesCount(0);
+  }
+}, [currentUser]);
+
+return (
+  <AppContext.Provider
+    value={{
+      currentUser,
+      setCurrentUser,
+      login,
+      createPassword,
+      logout,
+      updateUserProfile,
+      portalMode,
+      setPortalMode,
+      adminNav,
+      setAdminNav,
+      mobileSidebarOpen,
+      setMobileSidebarOpen,
+      departments,
+      selectedDepartment,
+      setSelectedDepartment,
+      teams,
+      selectedTeam,
+      setSelectedTeam,
+      members,
+      assignments,
+      tasks,
+      workDone,
+      stats,
+      allUsers,
+      fetchAllUsers,
+      activeTab,
+      setActiveTab,
+      teamSubTab,
+      setTeamSubTab,
+      loading,
+      refreshAll,
+      isAddDeptOpen,
+      setIsAddDeptOpen,
+      editingDept,
+      setEditingDept,
+      openEditDepartment,
+      isAddTeamOpen,
+      setIsAddTeamOpen,
+      editingTeam,
+      setEditingTeam,
+      openEditTeam,
+      isAddMemberOpen,
+      setIsAddMemberOpen,
+      editingMember,
+      setEditingMember,
+      openEditMember,
+      isAddTaskOpen,
+      setIsAddTaskOpen,
+      isAddWorkDoneOpen,
+      setIsAddWorkDoneOpen,
+      handleToggleTask,
+      handleDeleteTask,
+      handleDeleteWorkDone,
+      handleDeleteAssignment,
+      handleDeleteMember,
+      handleDeleteDepartment,
+      handleDeleteTeam,
+      userNav,
+      setUserNav,
+      managerNav,
+      setManagerNav,
+      toastNotification,
+      toasts,
+      notify,
+      dismissToast,
+      clearNotification,
+      confirmModal,
+      confirmAction,
+      closeConfirmModal,
+      selectedUserTask,
+      setSelectedUserTask,
+      selectedHistoryItem,
+      setSelectedHistoryItem,
+      userWorkspace,
+      refreshUserWorkspace,
+      isSubmitWorkDrawerOpen,
+      setIsSubmitWorkDrawerOpen,
+      drawerSelectedTask,
+      openSubmitWorkDrawer,
+      userFilterTab,
+      setUserFilterTab,
+      userSearchQuery,
+      setUserSearchQuery,
+      handleSubmitWork,
+      handleAddUserComment,
+      handleStartUserWork,
+      handleApproveWork,
+      handleRequestRework,
+      appointments,
+      appointmentStats,
+      selectedAppointmentDate,
+      setSelectedAppointmentDate,
+      appointmentFilterTab,
+      setAppointmentFilterTab,
+      appointmentSearchQuery,
+      setAppointmentSearchQuery,
+      isAppointmentModalOpen,
+      setIsAppointmentModalOpen,
+      editingAppointment,
+      setEditingAppointment,
+      handleCreateAppointment,
+      handleUpdateAppointment,
+      handleDeleteAppointment,
+      refreshAppointments,
+      notifications,
+      unreadNotificationCount,
+      handleMarkNotificationRead,
+      handleMarkAllNotificationsRead,
+      refreshNotifications,
+      unreadMessagesCount,
+      refreshUnreadMessagesCount,
+      scrollToSection,
+      adminToast,
+      setAdminToast,
+      userToast,
+      setUserToast,
+      wppStatus,
+      fetchWppStatus,
+      restartWpp,
+      todayAttendance,
+      attendanceRecords,
+      refreshTodayAttendance,
+      refreshAttendanceRecords,
+      handlePunchIn,
+      handlePunchOut,
+      handleStartTimer,
+      handlePauseTimer,
+      handleResumeTimer,
+      handleFinishTimer,
+      handleEditAssignment,
+      isManagerOrAdmin,
+      activeTeamBreaks,
+      todayTeamBreaks,
+      refreshActiveBreaks,
+      refreshTodayBreaks,
+      handleStartBreak,
+      handleUpdateBreak,
+      handleEndBreak,
+      handleDeleteBreak
+    }}
+  >
+    {children}
+  </AppContext.Provider>
+);
 };
 
 export const useApp = () => {

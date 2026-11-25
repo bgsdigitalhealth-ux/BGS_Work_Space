@@ -5868,9 +5868,8 @@ const deleteReportEntry = async (id, user) => {
 // BREAK TIME MANAGEMENT
 // =========================================================================
 
-const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
+const parseTimeToTodayDate = (timeStr, baseDate = new Date(), timezoneOffset = null) => {
   if (!timeStr) return new Date();
-  const date = new Date(baseDate);
   const clean = String(timeStr).trim().toUpperCase();
 
   // Check 12-hour or 24-hour time format (e.g. "11:34 AM", "12:04 PM", "1:15 AM", "14:30")
@@ -5886,6 +5885,17 @@ const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
     } else if (!meridiem && baseDate.getHours() >= 12 && hours < 12) {
       hours += 12;
     }
+
+    if (timezoneOffset !== null && typeof timezoneOffset === 'number' && !isNaN(timezoneOffset)) {
+      // client timezone offset in minutes (e.g. -330 for UTC+5:30)
+      // UTC Minutes = Local Minutes + timezoneOffset
+      const now = new Date(baseDate);
+      const utcDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0));
+      utcDate.setUTCMinutes(hours * 60 + minutes + timezoneOffset);
+      return utcDate;
+    }
+
+    const date = new Date(baseDate);
     date.setHours(hours, minutes, 0, 0);
     return date;
   }
@@ -6006,6 +6016,10 @@ const recordBreak = async ({
   departmentName = '',
   fromTime,
   toTime,
+  fromTimestamp,
+  toTimestamp,
+  durationMinutes,
+  timezoneOffset,
   reason = 'Break'
 }) => {
   if (!userName || !fromTime || !toTime) {
@@ -6015,8 +6029,14 @@ const recordBreak = async ({
   if (!memoryStore.breaks) memoryStore.breaks = [];
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
-  const fromTs = parseTimeToTodayDate(fromTime);
-  let toTs = parseTimeToTodayDate(toTime);
+
+  let fromTs = (fromTimestamp && !isNaN(new Date(fromTimestamp).getTime()))
+    ? new Date(fromTimestamp)
+    : parseTimeToTodayDate(fromTime, now, timezoneOffset);
+
+  let toTs = (toTimestamp && !isNaN(new Date(toTimestamp).getTime()))
+    ? new Date(toTimestamp)
+    : parseTimeToTodayDate(toTime, now, timezoneOffset);
 
   // If toTs <= fromTs, roll over to the next day
   if (toTs.getTime() <= fromTs.getTime()) {
@@ -6046,6 +6066,7 @@ const recordBreak = async ({
     toTime: String(toTime).trim(),
     fromTimestamp: fromTs,
     toTimestamp: toTs,
+    durationMinutes: durationMinutes || Math.round((toTs.getTime() - fromTs.getTime()) / (60 * 1000)),
     reason: reason || 'Break',
     status: 'active',
     createdAt: now.toISOString()
@@ -6149,23 +6170,30 @@ const endBreakEarly = async (breakId, { userId } = {}) => {
   return record;
 };
 
-const updateBreak = async (breakId, { fromTime, toTime, reason, userId } = {}) => {
+const updateBreak = async (breakId, { fromTime, toTime, fromTimestamp, toTimestamp, durationMinutes, timezoneOffset, reason, userId } = {}) => {
   if (!memoryStore.breaks) memoryStore.breaks = [];
   const record = memoryStore.breaks.find(b => b.id === breakId || b.customId === breakId || b._id === breakId);
   if (!record) throw new Error('Break record not found');
 
   if (fromTime) {
     record.fromTime = String(fromTime).trim();
-    record.fromTimestamp = parseTimeToTodayDate(record.fromTime);
+    if (fromTimestamp && !isNaN(new Date(fromTimestamp).getTime())) {
+      record.fromTimestamp = new Date(fromTimestamp);
+    } else {
+      record.fromTimestamp = parseTimeToTodayDate(record.fromTime, new Date(), timezoneOffset);
+    }
   }
   if (toTime) {
     record.toTime = String(toTime).trim();
-    let toTs = parseTimeToTodayDate(record.toTime);
-    if (toTs.getTime() <= new Date(record.fromTimestamp).getTime()) {
-      toTs = new Date(toTs.getTime() + 24 * 60 * 60 * 1000);
+    let toDate = (toTimestamp && !isNaN(new Date(toTimestamp).getTime()))
+      ? new Date(toTimestamp)
+      : parseTimeToTodayDate(record.toTime, new Date(), timezoneOffset);
+    if (toDate.getTime() <= new Date(record.fromTimestamp).getTime()) {
+      toDate = new Date(toDate.getTime() + 24 * 60 * 60 * 1000);
     }
-    record.toTimestamp = toTs;
-    if (toTs.getTime() > Date.now()) {
+    record.toTimestamp = toDate;
+    record.durationMinutes = durationMinutes || Math.round((toDate.getTime() - new Date(record.fromTimestamp).getTime()) / (60 * 1000));
+    if (toDate.getTime() > Date.now()) {
       record.status = 'active';
     }
   }

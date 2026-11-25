@@ -35,8 +35,50 @@ export const ActiveBreakBanner: React.FC = () => {
     else setUserNav('break-time');
   };
 
-  const formatRemaining = (toTimestamp: string | Date) => {
-    const endMs = new Date(toTimestamp).getTime();
+  const parseTimeInput = (str?: string) => {
+    if (!str) return null;
+    const clean = str.trim().toUpperCase();
+    const match = clean.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/);
+    if (!match) return null;
+    let rawH = parseInt(match[1], 10);
+    const m = parseInt(match[2], 10);
+    const meridiemRaw = match[3] as 'AM' | 'PM' | undefined;
+    const meridiem = meridiemRaw || (rawH >= 12 ? 'PM' : 'AM');
+    let h24 = rawH;
+    if (meridiem === 'PM') {
+      if (rawH < 12) h24 = rawH + 12;
+      else h24 = 12;
+    } else if (meridiem === 'AM') {
+      if (rawH === 12) h24 = 0;
+      else h24 = rawH;
+    }
+    return { hours24: h24, minutes: m };
+  };
+
+  const formatRemaining = (toTimestamp: string | Date, fromTimeStr?: string, toTimeStr?: string) => {
+    const now = new Date();
+    let endMs = new Date(toTimestamp).getTime();
+
+    // Guard against cloud server UTC offset drift
+    if (toTimeStr) {
+      const pEnd = parseTimeInput(toTimeStr);
+      if (pEnd) {
+        let localEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pEnd.hours24, pEnd.minutes, 0, 0);
+        if (fromTimeStr) {
+          const pStart = parseTimeInput(fromTimeStr);
+          if (pStart) {
+            const localStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pStart.hours24, pStart.minutes, 0, 0);
+            if (localEnd.getTime() <= localStart.getTime()) {
+              localEnd = new Date(localEnd.getTime() + 24 * 60 * 60 * 1000);
+            }
+          }
+        }
+        if (Math.abs(endMs - localEnd.getTime()) > 60 * 60 * 1000) {
+          endMs = localEnd.getTime();
+        }
+      }
+    }
+
     const diff = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
     if (diff <= 0) {
       setTimeout(() => refreshActiveBreaks(), 500);
@@ -46,7 +88,7 @@ export const ActiveBreakBanner: React.FC = () => {
     const minutes = Math.floor((diff % 3600) / 60);
     const seconds = diff % 60;
     if (hours > 0) {
-      return `${hours}h ${minutes}m ${seconds}s left`;
+      return `${hours}h ${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s left`;
     }
     return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s left`;
   };
@@ -56,7 +98,7 @@ export const ActiveBreakBanner: React.FC = () => {
       {activeTeamBreaks.map((brk: BreakTimeRecord) => {
         const isMe = currentUser?.id && (brk.userId === currentUser.id || brk.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
         const isManagerOrAdmin = currentUser?.role === 'manager' || currentUser?.role === 'admin';
-        const remainingText = formatRemaining(brk.toTimestamp);
+        const remainingText = formatRemaining(brk.toTimestamp, brk.fromTime, brk.toTime);
 
         return (
           <div

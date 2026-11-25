@@ -623,7 +623,23 @@ router.get('/breaks/today', async (req, res) => {
 
 router.post('/breaks', async (req, res) => {
   try {
-    const { userId, userName, userEmail, userRole, teamId, teamName, departmentId, departmentName, fromTime, toTime, reason } = req.body;
+    const {
+      userId,
+      userName,
+      userEmail,
+      userRole,
+      teamId,
+      teamName,
+      departmentId,
+      departmentName,
+      fromTime,
+      toTime,
+      fromTimestamp,
+      toTimestamp,
+      durationMinutes,
+      timezoneOffset,
+      reason
+    } = req.body;
     if (!userName || !fromTime || !toTime) {
       return res.status(400).json({ error: 'Name, fromTime, and toTime are required' });
     }
@@ -638,6 +654,10 @@ router.post('/breaks', async (req, res) => {
       departmentName,
       fromTime,
       toTime,
+      fromTimestamp,
+      toTimestamp,
+      durationMinutes,
+      timezoneOffset,
       reason
     });
     broadcast('BREAK_STARTED', result);
@@ -664,8 +684,26 @@ router.post('/breaks', async (req, res) => {
 router.put('/breaks/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { fromTime, toTime, reason, userId } = req.body;
-    const result = await dataService.updateBreak(id, { fromTime, toTime, reason, userId });
+    const {
+      fromTime,
+      toTime,
+      fromTimestamp,
+      toTimestamp,
+      durationMinutes,
+      timezoneOffset,
+      reason,
+      userId
+    } = req.body;
+    const result = await dataService.updateBreak(id, {
+      fromTime,
+      toTime,
+      fromTimestamp,
+      toTimestamp,
+      durationMinutes,
+      timezoneOffset,
+      reason,
+      userId
+    });
     broadcast('BREAK_UPDATED', result);
     broadcast('NOTIFICATION_RECEIVED', {
       type: 'break_updated',

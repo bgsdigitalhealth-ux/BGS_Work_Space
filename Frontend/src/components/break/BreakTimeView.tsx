@@ -261,6 +261,35 @@ export const BreakTimeView: React.FC = () => {
     const finalFrom = parsedStart ? parsedStart.displayStr : fromTime.trim();
     const finalTo = parsedEnd ? parsedEnd.displayStr : toTime.trim();
 
+    // Compute exact local ISO timestamps with user timezone
+    const now = new Date();
+    const startObj = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      parsedStart ? parsedStart.hours24 : now.getHours(),
+      parsedStart ? parsedStart.minutes : now.getMinutes(),
+      0,
+      0
+    );
+    let endObj = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+      parsedEnd ? parsedEnd.hours24 : now.getHours(),
+      parsedEnd ? parsedEnd.minutes : now.getMinutes(),
+      0,
+      0
+    );
+    if (endObj.getTime() <= startObj.getTime()) {
+      endObj = new Date(endObj.getTime() + 24 * 60 * 60 * 1000);
+    }
+
+    const fromTimestamp = startObj.toISOString();
+    const toTimestamp = endObj.toISOString();
+    const durationMinutes = Math.round((endObj.getTime() - startObj.getTime()) / (60 * 1000));
+    const timezoneOffset = now.getTimezoneOffset();
+
     setIsSubmitting(true);
     try {
       const finalReason = reason.trim() || 'Break';
@@ -269,6 +298,10 @@ export const BreakTimeView: React.FC = () => {
         await handleUpdateBreak(editingBreakId, {
           fromTime: finalFrom,
           toTime: finalTo,
+          fromTimestamp,
+          toTimestamp,
+          durationMinutes,
+          timezoneOffset,
           reason: finalReason
         });
         setEditingBreakId(null);
@@ -276,6 +309,10 @@ export const BreakTimeView: React.FC = () => {
         await handleStartBreak({
           fromTime: finalFrom,
           toTime: finalTo,
+          fromTimestamp,
+          toTimestamp,
+          durationMinutes,
+          timezoneOffset,
           reason: finalReason
         });
       }
@@ -286,13 +323,38 @@ export const BreakTimeView: React.FC = () => {
     }
   };
 
-  const formatRemaining = (toTimestamp: string | Date) => {
-    const diff = Math.max(0, Math.floor((new Date(toTimestamp).getTime() - Date.now()) / 1000));
+  // Calculates exact remaining time respecting local timezone and user duration
+  const formatRemaining = (toTimestamp: string | Date, fromTimeStr?: string, toTimeStr?: string) => {
+    const now = new Date();
+    let endMs = new Date(toTimestamp).getTime();
+
+    // Guard against server UTC timezone offset drift if from/to strings exist
+    if (toTimeStr) {
+      const pEnd = parseTimeInput(toTimeStr);
+      if (pEnd) {
+        let localEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pEnd.hours24, pEnd.minutes, 0, 0);
+        if (fromTimeStr) {
+          const pStart = parseTimeInput(fromTimeStr);
+          if (pStart) {
+            const localStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), pStart.hours24, pStart.minutes, 0, 0);
+            if (localEnd.getTime() <= localStart.getTime()) {
+              localEnd = new Date(localEnd.getTime() + 24 * 60 * 60 * 1000);
+            }
+          }
+        }
+        // If discrepancy is greater than 1 hour (timezone offset difference), lock to localEnd
+        if (Math.abs(endMs - localEnd.getTime()) > 60 * 60 * 1000) {
+          endMs = localEnd.getTime();
+        }
+      }
+    }
+
+    const diff = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
     if (diff <= 0) return 'Ending now';
     const hours = Math.floor(diff / 3600);
     const mins = Math.floor((diff % 3600) / 60);
     const secs = diff % 60;
-    if (hours > 0) return `${hours}h ${mins}m ${secs}s`;
+    if (hours > 0) return `${hours}h ${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
   };
 
@@ -576,7 +638,7 @@ export const BreakTimeView: React.FC = () => {
                   editingBreakId
                     ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700'
                     : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
-                }`}
+                  }`}
               >
                 {isSubmitting ? (
                   <span>Saving Notice...</span>
@@ -638,7 +700,7 @@ export const BreakTimeView: React.FC = () => {
                   <Clock className="w-4 h-4 text-white" />
                   <span>Time Remaining:</span>
                   <strong className="text-white bg-black/20 px-2 py-0.5 rounded-md">
-                    {formatRemaining(myActiveBreak.toTimestamp)}
+                    {formatRemaining(myActiveBreak.toTimestamp, myActiveBreak.fromTime, myActiveBreak.toTime)}
                   </strong>
                 </div>
               </div>
@@ -725,7 +787,7 @@ export const BreakTimeView: React.FC = () => {
                     <div className="text-right shrink-0">
                       <div className="text-[11px] font-bold text-amber-700 flex items-center gap-1 justify-end">
                         <Clock className="w-3 h-3" />
-                        {formatRemaining(b.toTimestamp)}
+                        {formatRemaining(b.toTimestamp, b.fromTime, b.toTime)}
                       </div>
                       <div className="text-[10px] text-slate-400">Active Notice</div>
                     </div>
@@ -829,7 +891,7 @@ export const BreakTimeView: React.FC = () => {
                         {isActive ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                            Active ({formatRemaining(b.toTimestamp)})
+                            Active ({formatRemaining(b.toTimestamp, b.fromTime, b.toTime)})
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">

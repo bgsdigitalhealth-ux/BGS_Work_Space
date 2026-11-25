@@ -261,6 +261,10 @@ export const api = {
     departmentName?: string;
     fromTime: string;
     toTime: string;
+    fromTimestamp?: string;
+    toTimestamp?: string;
+    durationMinutes?: number;
+    timezoneOffset?: number;
     reason?: string;
   }): Promise<BreakTimeRecord> => {
     const res = await fetch(`${API_BASE}/breaks`, {
@@ -274,7 +278,16 @@ export const api = {
     }
     return res.json();
   },
-  updateBreak: async (id: string, data: { fromTime?: string; toTime?: string; reason?: string; userId?: string }): Promise<BreakTimeRecord> => {
+  updateBreak: async (id: string, data: {
+    fromTime?: string;
+    toTime?: string;
+    fromTimestamp?: string;
+    toTimestamp?: string;
+    durationMinutes?: number;
+    timezoneOffset?: number;
+    reason?: string;
+    userId?: string;
+  }): Promise<BreakTimeRecord> => {
     const res = await fetch(`${API_BASE}/breaks/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
