@@ -23,7 +23,9 @@ import {
   Video,
   Copy,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  Briefcase,
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -569,6 +571,128 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     }
   };
 
+  // Extra Work Request Form State (Outside Person Assigns Extra Work)
+  const [extraSenderName, setExtraSenderName] = useState('');
+  const [extraSenderEmail, setExtraSenderEmail] = useState('');
+  const [extraSenderNumber, setExtraSenderNumber] = useState('');
+  const [extraReceiverEmail, setExtraReceiverEmail] = useState('');
+  const [extraReceiverName, setExtraReceiverName] = useState('');
+  const [extraReceiverInfo, setExtraReceiverInfo] = useState<{
+    name: string;
+    team?: string;
+    department?: string;
+    role?: string;
+  } | null>(null);
+  const [isVerifyingReceiver, setIsVerifyingReceiver] = useState(false);
+  const [extraReceiverError, setExtraReceiverError] = useState('');
+  const [extraWorkTitle, setExtraWorkTitle] = useState('');
+  const [extraWorkDescription, setExtraWorkDescription] = useState('');
+  const [extraPriority, setExtraPriority] = useState<'High' | 'Medium' | 'Low'>('High');
+  const [extraDueDate, setExtraDueDate] = useState('');
+  const [extraErrors, setExtraErrors] = useState<{
+    senderName?: string;
+    senderEmail?: string;
+    receiverEmail?: string;
+    title?: string;
+    description?: string;
+  }>({});
+
+  const handleVerifyExtraReceiver = async (emailOverride?: string) => {
+    const emailToTest = (emailOverride !== undefined ? emailOverride : extraReceiverEmail).trim().toLowerCase();
+    if (!emailToTest) {
+      setExtraReceiverError('Please enter an employee email address.');
+      setExtraReceiverInfo(null);
+      return false;
+    }
+    setIsVerifyingReceiver(true);
+    setExtraReceiverError('');
+    try {
+      const res = await api.verifyReceiverEmail(emailToTest);
+      if (res.exists && res.user) {
+        setExtraReceiverInfo({
+          name: res.user.name || 'Team Member',
+          team: res.user.team || 'Assigned Team',
+          department: res.user.department || 'Operations',
+          role: res.user.role || res.user.title || 'Member'
+        });
+        setExtraReceiverName(res.user.name || '');
+        setExtraReceiverError('');
+        return true;
+      } else {
+        setExtraReceiverError('Invalid receiver email. User is not registered in the system.');
+        setExtraReceiverInfo(null);
+        return false;
+      }
+    } catch (err: any) {
+      setExtraReceiverError('Invalid receiver email. User is not registered in the system.');
+      setExtraReceiverInfo(null);
+      return false;
+    } finally {
+      setIsVerifyingReceiver(false);
+    }
+  };
+
+  const handleExtraWorkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const errors: typeof extraErrors = {};
+
+    if (!extraSenderName.trim()) {
+      errors.senderName = 'Sender Name is required';
+    }
+    if (!extraSenderEmail.trim()) {
+      errors.senderEmail = 'Sender Email is required';
+    } else if (!emailRegex.test(extraSenderEmail.trim())) {
+      errors.senderEmail = 'Invalid sender email address';
+    }
+    if (!extraReceiverEmail.trim()) {
+      errors.receiverEmail = 'Receiver Email is required';
+    } else if (!emailRegex.test(extraReceiverEmail.trim())) {
+      errors.receiverEmail = 'Invalid receiver email address';
+    }
+    if (!extraWorkTitle.trim()) {
+      errors.title = 'Work Title is required';
+    }
+    if (!extraWorkDescription.trim()) {
+      errors.description = 'Work Description is required';
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setExtraErrors(errors);
+      return;
+    }
+    setExtraErrors({});
+
+    // Verify receiver email in real-time if not already verified
+    let isReceiverValid = extraReceiverInfo !== null;
+    if (!isReceiverValid) {
+      isReceiverValid = await handleVerifyExtraReceiver();
+      if (!isReceiverValid) return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await api.createWorkRequest({
+        senderName: extraSenderName.trim(),
+        senderEmail: extraSenderEmail.trim(),
+        senderNumber: extraSenderNumber.trim(),
+        receiverEmail: extraReceiverEmail.trim(),
+        title: extraWorkTitle.trim(),
+        description: extraWorkDescription.trim(),
+        priority: extraPriority,
+        dueDate: extraDueDate
+      });
+
+      const ref = res.workRequest?.referenceId || `WRK-REQ-${Math.floor(1000 + Math.random() * 9000)}`;
+      setReferenceId(ref);
+      setRequestFormSubmitted(true);
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit extra work request');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Work Request Categories matching user's chip reference screenshot verbatim
   const requestTypes = [
     {
@@ -594,6 +718,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
       icon: Info,
       color: 'bg-emerald-50 text-[#00a884] border-emerald-100',
       badge: 'General Information'
+    },
+    {
+      id: 'extra-work',
+      title: 'Assign Extra Work',
+      desc: 'Assign work request directly to a team member',
+      icon: Briefcase,
+      color: 'bg-indigo-50 text-[#5a36e6] border-indigo-100',
+      badge: 'Work Assignment'
     }
   ];
 
@@ -668,6 +800,18 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
     setInfoDepartment('');
     setInfoDescription('');
     setInfoErrors({});
+    setExtraSenderName('');
+    setExtraSenderEmail('');
+    setExtraSenderNumber('');
+    setExtraReceiverEmail('');
+    setExtraReceiverName('');
+    setExtraReceiverInfo(null);
+    setExtraReceiverError('');
+    setExtraWorkTitle('');
+    setExtraWorkDescription('');
+    setExtraPriority('High');
+    setExtraDueDate('');
+    setExtraErrors({});
   };
 
   // Department Icon Mapper supporting string names or React elements
@@ -2791,6 +2935,306 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onLogin }) => {
                       className="px-8 py-2.5 rounded-xl bg-[#133926] hover:bg-[#0c2519] text-white font-medium text-xs sm:text-sm font-inter transition-all cursor-pointer shadow-xs disabled:opacity-50"
                     >
                       {isSubmitting ? 'Submitting...' : 'Submit'}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : selectedRequestType.id === 'extra-work' ? (
+            /* ============================================================== */
+            /* DEDICATED "ASSIGN EXTRA WORK" FORM                             */
+            /* Outside Person Assigns Extra Work to a Receiver               */
+            /* ============================================================== */
+            <div className="w-full max-w-xl my-auto rounded-3xl overflow-hidden relative shadow-2xl border border-indigo-100 bg-white p-5 sm:p-8 animate-in zoom-in-95 duration-200 transition-all max-h-[90vh] overflow-y-auto">
+              {/* Header with Title and Close Icon */}
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-[#5a36e6]">
+                    <Briefcase className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight">
+                      Assign Extra Work
+                    </h2>
+                    <p className="text-xs text-gray-500">
+                      Submit task request directly to a team member • Requires Manager approval
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetRequestForm}
+                  className="text-gray-400 hover:text-gray-700 p-1.5 rounded-full hover:bg-black/5 transition cursor-pointer"
+                  title="Close"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {requestFormSubmitted ? (
+                /* Success Confirmation View */
+                <div className="bg-indigo-50/40 rounded-2xl p-6 sm:p-8 border border-indigo-100 text-center space-y-4 my-2 animate-in zoom-in-95 duration-200">
+                  <div className="w-16 h-16 rounded-full bg-indigo-100 text-[#5a36e6] flex items-center justify-center mx-auto shadow-sm">
+                    <CheckCircle2 className="w-9 h-9" />
+                  </div>
+                  <div>
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 mb-2">
+                      <Clock className="w-3.5 h-3.5" />
+                      Pending Manager Approval
+                    </span>
+                    <h3 className="text-2xl font-bold text-gray-900">
+                      Work Request Submitted!
+                    </h3>
+                    <p className="text-xs text-gray-600 mt-1.5 max-w-md mx-auto leading-relaxed">
+                      Your extra work request has been routed to <strong>{extraReceiverName || extraReceiverEmail}</strong> and forwarded to their Manager's dashboard for verification.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-white border border-indigo-100 max-w-md mx-auto text-left text-xs space-y-2">
+                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                      <span className="text-gray-500">Reference ID:</span>
+                      <span className="font-mono font-bold text-indigo-700">{referenceId}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Task Title:</span>
+                      <span className="font-bold text-gray-800 truncate max-w-[200px]">{extraWorkTitle}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Target Assignee:</span>
+                      <span className="font-semibold text-gray-800">{extraReceiverName || extraReceiverEmail}</span>
+                    </div>
+                    {extraReceiverInfo?.team && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Team / Dept:</span>
+                        <span className="font-medium text-gray-600">{extraReceiverInfo.team} • {extraReceiverInfo.department}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-gray-500">Priority:</span>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">{extraPriority}</span>
+                    </div>
+                    {extraDueDate && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-500">Target Due Date:</span>
+                        <span className="font-medium text-gray-800">{extraDueDate}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={resetRequestForm}
+                      className="px-6 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4a2bd0] text-white font-bold text-xs shadow-md transition cursor-pointer"
+                    >
+                      Close & Finish
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* Extra Work Submission Form */
+                <form onSubmit={handleExtraWorkSubmit} className="space-y-4">
+                  {/* Outside Sender Information */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-indigo-600" />
+                      1. Your Information (Requester / Client)
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Your Full Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={extraSenderName}
+                          onChange={(e) => setExtraSenderName(e.target.value)}
+                          placeholder="e.g. John Doe / Client Rep"
+                          className={`w-full px-3 py-2 text-xs rounded-xl border bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 ${extraErrors.senderName ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
+                        />
+                        {extraErrors.senderName && <p className="text-[10px] text-red-500 mt-0.5">{extraErrors.senderName}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1">
+                          Your Email Address <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={extraSenderEmail}
+                          onChange={(e) => setExtraSenderEmail(e.target.value)}
+                          placeholder="client@external.com"
+                          className={`w-full px-3 py-2 text-xs rounded-xl border bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 ${extraErrors.senderEmail ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
+                        />
+                        {extraErrors.senderEmail && <p className="text-[10px] text-red-500 mt-0.5">{extraErrors.senderEmail}</p>}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Phone / WhatsApp Number (Optional)
+                      </label>
+                      <input
+                        type="tel"
+                        value={extraSenderNumber}
+                        onChange={(e) => setExtraSenderNumber(e.target.value)}
+                        placeholder="e.g. +91 9876543210"
+                        className="w-full px-3 py-2 text-xs rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Target Receiver Information (With Live Verification) */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                      <Mail className="w-3.5 h-3.5 text-indigo-600" />
+                      2. Assign To Team Member (Receiver)
+                    </h3>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Receiver Employee Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <input
+                          type="email"
+                          value={extraReceiverEmail}
+                          onChange={(e) => {
+                            setExtraReceiverEmail(e.target.value);
+                            setExtraReceiverInfo(null);
+                            setExtraReceiverError('');
+                          }}
+                          onBlur={() => {
+                            if (extraReceiverEmail.trim()) handleVerifyExtraReceiver();
+                          }}
+                          placeholder="employee@bgshealth.com"
+                          className={`flex-1 px-3 py-2 text-xs rounded-xl border bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 ${extraErrors.receiverEmail || extraReceiverError ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleVerifyExtraReceiver()}
+                          disabled={isVerifyingReceiver || !extraReceiverEmail.trim()}
+                          className="px-3.5 py-2 rounded-xl bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-bold transition cursor-pointer disabled:opacity-50"
+                        >
+                          {isVerifyingReceiver ? 'Checking...' : 'Verify'}
+                        </button>
+                      </div>
+                      {extraReceiverError && <p className="text-[10px] text-red-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" /> {extraReceiverError}</p>}
+                      {extraErrors.receiverEmail && <p className="text-[10px] text-red-500 mt-0.5">{extraErrors.receiverEmail}</p>}
+
+                      {extraReceiverInfo && (
+                        <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between animate-in fade-in duration-200">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                            <div>
+                              <strong className="font-bold">{extraReceiverInfo.name}</strong> ({extraReceiverInfo.role})
+                              <p className="text-[10px] text-emerald-700/80">{extraReceiverInfo.team} • {extraReceiverInfo.department}</p>
+                            </div>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-200/60 text-emerald-900 text-[10px] font-bold">
+                            Verified User
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Work Task Details */}
+                  <div className="bg-slate-50/70 p-4 rounded-2xl border border-slate-100 space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 flex items-center gap-1.5">
+                      <ClipboardCheck className="w-3.5 h-3.5 text-indigo-600" />
+                      3. Extra Work Details
+                    </h3>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Work Title / Task Name <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={extraWorkTitle}
+                        onChange={(e) => setExtraWorkTitle(e.target.value)}
+                        placeholder="e.g. Prepare Quarterly Analytical Report"
+                        className={`w-full px-3 py-2 text-xs rounded-xl border bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 ${extraErrors.title ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
+                      />
+                      {extraErrors.title && <p className="text-[10px] text-red-500 mt-0.5">{extraErrors.title}</p>}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-1">
+                        Detailed Description & Instructions <span className="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={extraWorkDescription}
+                        onChange={(e) => setExtraWorkDescription(e.target.value)}
+                        placeholder="Provide full requirements, deliverables, and any relevant links or references..."
+                        className={`w-full px-3 py-2 text-xs rounded-xl border bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20 ${extraErrors.description ? 'border-red-400 bg-red-50/30' : 'border-gray-200'}`}
+                      />
+                      {extraErrors.description && <p className="text-[10px] text-red-500 mt-0.5">{extraErrors.description}</p>}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                          Priority Level
+                        </label>
+                        <div className="flex gap-2">
+                          {(['High', 'Medium', 'Low'] as const).map((p) => (
+                            <button
+                              key={p}
+                              type="button"
+                              onClick={() => setExtraPriority(p)}
+                              className={`flex-1 py-1.5 text-xs font-bold rounded-xl border transition cursor-pointer ${
+                                extraPriority === p
+                                  ? p === 'High'
+                                    ? 'bg-red-500 text-white border-red-500 shadow-xs'
+                                    : p === 'Medium'
+                                    ? 'bg-amber-500 text-white border-amber-500 shadow-xs'
+                                    : 'bg-emerald-500 text-white border-emerald-500 shadow-xs'
+                                  : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                              }`}
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+                          Target Due Date
+                        </label>
+                        <input
+                          type="date"
+                          value={extraDueDate}
+                          onChange={(e) => setExtraDueDate(e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-gray-200 bg-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500/20"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manager Approval Notice Callout */}
+                  <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200/70 text-amber-900 text-xs flex items-start gap-2.5">
+                    <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[11px] leading-relaxed">
+                      <strong>Manager Supervision Gate:</strong> This request will be immediately visible on both the receiver's dashboard (as Pending) and the Manager's dashboard. It will only become an active assigned task once the Manager approves it.
+                    </p>
+                  </div>
+
+                  {/* Modal Action Buttons */}
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={resetRequestForm}
+                      className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-800 transition cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="px-6 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4927cb] text-white font-bold text-xs shadow-lg shadow-indigo-900/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                    >
+                      <Send className="w-3.5 h-3.5" />
+                      <span>{isSubmitting ? 'Submitting...' : 'Submit Work Request'}</span>
                     </button>
                   </div>
                 </form>

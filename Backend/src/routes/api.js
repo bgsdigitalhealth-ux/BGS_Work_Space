@@ -757,6 +757,71 @@ router.delete('/breaks/:id', async (req, res) => {
   }
 });
 
+// --- External Work Requests (Assign Extra Work) ---
+router.post('/work-requests', async (req, res) => {
+  try {
+    const result = await dataService.createWorkRequest(req.body);
+    broadcast('WORK_REQUEST_CREATED', result);
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'work_request_created',
+      referenceId: result.referenceId,
+      receiverId: result.receiverId,
+      managerId: result.managerId
+    });
+    res.status(201).json({ success: true, workRequest: result });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.get('/work-requests', async (req, res) => {
+  try {
+    const { userId, userEmail, userRole, status, managerId } = req.query;
+    const list = await dataService.getWorkRequests({ userId, userEmail, userRole, status, managerId });
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/work-requests/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { managerId, managerName, managerEmail } = req.body;
+    const result = await dataService.approveWorkRequest(id, { managerId, managerName, managerEmail });
+    broadcast('WORK_REQUEST_APPROVED', result);
+    if (result.assignment) {
+      broadcast('ASSIGNMENT_CREATED', result.assignment);
+      broadcast('TASK_ASSIGNED', result.assignment);
+    }
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'work_request_approved',
+      id,
+      receiverId: result.workRequest?.receiverId
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+router.post('/work-requests/:id/reject', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { managerId, managerName, reason } = req.body;
+    const result = await dataService.rejectWorkRequest(id, { managerId, managerName, reason });
+    broadcast('WORK_REQUEST_REJECTED', result);
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'work_request_rejected',
+      id,
+      receiverId: result.workRequest?.receiverId
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 // --- Task Time Tracking (Start, Pause, Resume, Finish) ---
 router.post('/tasks/:id/timer/start', async (req, res) => {
   try {

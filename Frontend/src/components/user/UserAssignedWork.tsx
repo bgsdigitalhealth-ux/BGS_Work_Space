@@ -51,7 +51,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     handleResumeTimer,
     handleFinishTimer,
     handleDeleteAssignment,
-    members
+    members,
+    workRequests
   } = useApp();
 
   const myMember = (members || []).find(m =>
@@ -72,6 +73,13 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   const assignedList = !isManager
     ? rawAssignedList.filter(t => isTaskAssignedToUser(t, currentUser, myMember))
     : rawAssignedList;
+
+  const myEmail = (currentUser?.email || '').trim().toLowerCase();
+  const pendingIncomingRequests = (workRequests || []).filter(w =>
+    w.status === 'Pending Manager Approval' &&
+    ((currentUser?.id && w.receiverId === currentUser.id) ||
+     (myEmail && w.receiverEmail && w.receiverEmail.toLowerCase() === myEmail))
+  );
 
   const displayTitle = !isManager
     ? (currentUser?.name ? `${currentUser.name}'s Work` : 'My Assigned Work')
@@ -578,6 +586,44 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
           </div>
         </div>
       </div>
+
+      {/* Incoming Work Requests (Pending Manager Approval) */}
+      {pendingIncomingRequests.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-purple-500/10 border-2 border-amber-300/80 rounded-2xl p-4 sm:p-5 shadow-xs space-y-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0">
+              <Clock className="w-4 h-4 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">
+                Incoming Extra Work Requests ({pendingIncomingRequests.length})
+              </h3>
+              <p className="text-[11px] text-slate-600">
+                Awaiting your manager's approval. Once approved, tasks will automatically appear below.
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+            {pendingIncomingRequests.map(req => (
+              <div key={req.id} className="bg-white p-3.5 rounded-xl border border-amber-200 shadow-2xs space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                    ⏳ Pending Manager Approval
+                  </span>
+                  <span className="text-[10px] font-mono text-slate-400">{req.referenceId}</span>
+                </div>
+                <h4 className="text-xs font-bold text-slate-900">{req.title}</h4>
+                <p className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg">{req.description}</p>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
+                  <span>From: <strong>{req.senderName}</strong></span>
+                  {req.dueDate && <span>Due: {req.dueDate}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Filter & Search Bar - Shared across all three views */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">

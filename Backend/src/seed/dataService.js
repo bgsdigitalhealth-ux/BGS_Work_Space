@@ -15,6 +15,7 @@ const Message = require('../models/Message');
 const Meeting = require('../models/Meeting');
 const Attendance = require('../models/Attendance');
 const BreakTime = require('../models/BreakTime');
+const WorkRequest = require('../models/WorkRequest');
 const TimeLog = require('../models/TimeLog');
 const ReportEntry = require('../models/ReportEntry');
 const initialData = require('./seedData');
@@ -426,6 +427,16 @@ const loadFromMongo = async () => {
         const id = n.customId || n._id.toString();
         if (!memoryStore.notifications.some(x => x.id === id)) {
           memoryStore.notifications.push({ ...n, id });
+        }
+      }
+    }
+    const wrs = await WorkRequest.find().lean();
+    if (wrs && wrs.length > 0) {
+      if (!memoryStore.workRequests) memoryStore.workRequests = [];
+      for (const wr of wrs) {
+        const id = wr.customId || wr._id.toString();
+        if (!memoryStore.workRequests.some(x => x.id === id || x.referenceId === wr.referenceId)) {
+          memoryStore.workRequests.push({ ...wr, id });
         }
       }
     }
@@ -3297,6 +3308,13 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
     list = list.filter(n => n.recipientRole === 'admin' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail === cleanEmail));
   } else if (role === 'user') {
     list = list.filter(n => {
+      const isBreakNotif = (n.title && n.title.includes('Break')) || (n.message && n.message.includes('break'));
+      if (isBreakNotif) {
+        // Break notifications must strictly belong to this individual user
+        if (cleanUserId && n.recipientUserId === cleanUserId) return true;
+        if (cleanEmail && n.recipientEmail && n.recipientEmail.toLowerCase() === cleanEmail) return true;
+        return false;
+      }
       if (n.recipientRole === 'all') return true;
       if (cleanUserId && n.recipientUserId === cleanUserId) return true;
       if (cleanEmail && n.recipientEmail && n.recipientEmail.toLowerCase() === cleanEmail) return true;
@@ -6236,6 +6254,311 @@ const deleteBreak = async (breakId, { userId, userRole } = {}) => {
   return deleted;
 };
 
+// --- Helper: Find Appropriate Manager for Receiver Person ---
+const findManagerForReceiver = (receiverUser, receiverMember) => {
+  const teamId = receiverMember?.teamId || receiverUser?.teamId || receiverUser?.team;
+  const deptId = receiverMember?.departmentId || receiverUser?.departmentId || receiverUser?.department;
+
+  // 1. Look for manager in same team
+  const teamManager = (memoryStore.users || []).find(u => {
+    if (u.role !== 'manager') return false;
+    if (teamId && (u.teamId === teamId || u.team === teamId)) return true;
+    return false;
+  });
+  if (teamManager) return teamManager;
+
+  // 2. Look for manager in same department
+  const deptManager = (memoryStore.users || []).find(u => {
+    if (u.role !== 'manager') return false;
+    if (deptId && (u.departmentId === deptId || u.department === deptId)) return true;
+    return false;
+  });
+  if (deptManager) return deptManager;
+
+  // 3. Fallback to any user with role 'manager'
+  const anyManager = (memoryStore.users || []).find(u => u.role === 'manager');
+  if (anyManager) return anyManager;
+
+  // 4. Default to admin/operations supervisor
+  const admin = (memoryStore.users || []).find(u => u.role === 'admin') || (memoryStore.admins || [])[0];
+  return admin || { id: 'admin-1', name: 'Operations Manager', email: 'admin@bgshealth.com', role: 'manager' };
+};
+
+// --- Work Request (External Person Assigns Extra Work) ---
+const createWorkRequest = async (data) => {
+  const senderName = (data.senderName || '').trim();
+  const senderEmail = (data.senderEmail || '').trim().toLowerCase();
+  const senderNumber = (data.senderNumber || '').trim();
+  const receiverEmail = (data.receiverEmail || '').trim().toLowerCase();
+  const title = (data.title || '').trim();
+  const description = (data.description || '').trim();
+  const priority = data.priority || 'High';
+  const dueDate = data.dueDate || '';
+
+  if (!senderName || !senderEmail) {
+    throw new Error('Sender name and email are required');
+  }
+  if (!receiverEmail) {
+    throw new Error('Receiver email is required');
+  }
+  if (!title) {
+    throw new Error('Work title is required');
+  }
+
+  // 1. Verify receiver exists in registered users
+  const receiverVerification = await verifyReceiverEmail(receiverEmail);
+  if (!receiverVerification.exists || !receiverVerification.user) {
+    throw new Error('Invalid receiver email: user is not registered in the system.');
+  }
+
+  const recUser = receiverVerification.user;
+  const recMember = (memoryStore.members || []).find(m =>
+    (m.email && m.email.toLowerCase() === receiverEmail) ||
+    (recUser.id && (m.id === recUser.id || m.userId === recUser.id))
+  );
+
+  const manager = findManagerForReceiver(recUser, recMember);
+
+  const referenceId = `WRK-REQ-${Math.floor(100000 + Math.random() * 900000)}`;
+  const customId = `workreq-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`;
+
+  const workReq = {
+    id: customId,
+    customId,
+    referenceId,
+    formType: 'Extra Work Assignment',
+    title,
+    description,
+    priority,
+    dueDate,
+    senderName,
+    senderEmail,
+    senderNumber,
+    receiverId: recUser.id || recMember?.id || 'usr-receiver',
+    receiverName: recUser.name || recMember?.name || 'Receiver',
+    receiverEmail: receiverEmail,
+    receiverRole: recUser.role || recMember?.role || 'Team Member',
+    teamId: recMember?.teamId || recUser.teamId || '',
+    teamName: recUser.team || recMember?.role || 'Assigned Team',
+    departmentId: recMember?.departmentId || recUser.departmentId || '',
+    departmentName: recUser.department || 'Operations',
+    managerId: manager.id || manager.customId || 'mgr-1',
+    managerName: manager.name || 'Manager',
+    managerEmail: manager.email || '',
+    status: 'Pending Manager Approval',
+    createdAt: new Date().toISOString()
+  };
+
+  if (!memoryStore.workRequests) memoryStore.workRequests = [];
+  memoryStore.workRequests.unshift(workReq);
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await WorkRequest.create(workReq);
+    } catch (e) {
+      console.warn('Mongo WorkRequest create error:', e.message);
+    }
+  }
+
+  // 2. Notify Receiver Person (Status: Pending Manager Approval)
+  try {
+    createNotification({
+      recipientRole: recUser.role || 'user',
+      recipientUserId: workReq.receiverId,
+      recipientEmail: workReq.receiverEmail,
+      referenceId: workReq.referenceId,
+      title: `📋 Incoming Extra Work Request: "${workReq.title}"`,
+      message: `${workReq.senderName} (${workReq.senderEmail}) sent you an external work request. Status: Pending Manager Approval.`,
+      link: 'my-work'
+    });
+  } catch (err) {
+    console.warn('Receiver notification error:', err.message);
+  }
+
+  // 3. Notify Manager Dashboard (Manager Approval Required)
+  try {
+    createNotification({
+      recipientRole: manager.role || 'manager',
+      recipientUserId: workReq.managerId,
+      recipientEmail: workReq.managerEmail,
+      referenceId: workReq.referenceId,
+      title: `⚠️ External Work Request Awaiting Approval`,
+      message: `New external work request "${workReq.title}" for ${workReq.receiverName} from ${workReq.senderName}. Manager approval required.`,
+      link: 'manager-dashboard'
+    });
+  } catch (err) {
+    console.warn('Manager notification error:', err.message);
+  }
+
+  return workReq;
+};
+
+const getWorkRequests = async ({ userId, userEmail, userRole, status, managerId } = {}) => {
+  if (!memoryStore.workRequests) memoryStore.workRequests = [];
+  let list = memoryStore.workRequests;
+
+  const cleanEmail = (userEmail || '').trim().toLowerCase();
+  const cleanUserId = (userId || '').trim();
+
+  // Scoped views:
+  if (userRole === 'user' && (cleanEmail || cleanUserId)) {
+    list = list.filter(w =>
+      (cleanUserId && (w.receiverId === cleanUserId || w.senderEmail === cleanEmail)) ||
+      (cleanEmail && (w.receiverEmail.toLowerCase() === cleanEmail || w.senderEmail === cleanEmail))
+    );
+  } else if (userRole === 'manager' && (cleanEmail || cleanUserId)) {
+    list = list.filter(w =>
+      (cleanUserId && w.managerId === cleanUserId) ||
+      (cleanEmail && w.managerEmail?.toLowerCase() === cleanEmail) ||
+      w.status === 'Pending Manager Approval'
+    );
+  }
+
+  if (status && status !== 'All') {
+    list = list.filter(w => w.status === status);
+  }
+
+  return list;
+};
+
+const approveWorkRequest = async (id, { managerId, managerName, managerEmail } = {}) => {
+  if (!memoryStore.workRequests) memoryStore.workRequests = [];
+  const req = memoryStore.workRequests.find(w => w.id === id || w.customId === id || w.referenceId === id);
+  if (!req) {
+    throw new Error('Work request not found');
+  }
+
+  if (req.status === 'Approved') {
+    return { success: true, message: 'Work request already approved', workRequest: req };
+  }
+
+  req.status = 'Approved';
+  req.approvedAt = new Date().toISOString();
+  req.approvedBy = managerName || 'Manager';
+  if (managerId) req.managerId = managerId;
+  if (managerName) req.managerName = managerName;
+  if (managerEmail) req.managerEmail = managerEmail;
+
+  // AUTOMATIC ASSIGNMENT: Turn approved work request into active assignment for receiver!
+  let createdAssign = null;
+  try {
+    createdAssign = await createAssignment({
+      workTitle: req.title,
+      workDescription: `${req.description || ''}\n\n[External Work Request Details]\nSender: ${req.senderName} (${req.senderEmail}${req.senderNumber ? ` • ${req.senderNumber}` : ''})\nApproved by Manager: ${req.approvedBy}\nReference ID: ${req.referenceId}`,
+      priority: req.priority || 'High',
+      dueDate: req.dueDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: 'In Progress',
+      assignerId: req.managerId || managerId || 'manager',
+      assignerName: req.approvedBy,
+      assignerRole: 'manager',
+      assignerEmail: req.managerEmail,
+      assigneeId: req.receiverId,
+      assigneeName: req.receiverName,
+      assigneeEmail: req.receiverEmail,
+      memberId: req.receiverId,
+      teamId: req.teamId || '',
+      teamName: req.teamName || '',
+      departmentId: req.departmentId || '',
+      departmentName: req.departmentName || '',
+      assignmentType: 'manager_to_user'
+    });
+
+    if (createdAssign && createdAssign.id) {
+      req.assignedTaskId = createdAssign.id;
+    }
+  } catch (err) {
+    console.error('Automatic assignment creation error during approval:', err);
+  }
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await WorkRequest.findOneAndUpdate(
+        { $or: [{ customId: req.id }, { referenceId: req.referenceId }] },
+        {
+          $set: {
+            status: 'Approved',
+            approvedAt: req.approvedAt,
+            approvedBy: req.approvedBy,
+            assignedTaskId: req.assignedTaskId
+          }
+        }
+      );
+    } catch (e) {
+      console.warn('Mongo WorkRequest approve error:', e.message);
+    }
+  }
+
+  // Notify Receiver Person: Manager Approved & Assigned the Work
+  try {
+    createNotification({
+      recipientRole: req.receiverRole || 'user',
+      recipientUserId: req.receiverId,
+      recipientEmail: req.receiverEmail,
+      referenceId: req.referenceId,
+      title: `🎉 External Work Request Approved & Assigned`,
+      message: `Manager ${req.approvedBy} approved "${req.title}" from ${req.senderName}. It is now in your active assigned work!`,
+      link: 'my-work'
+    });
+  } catch (err) {
+    console.warn('Receiver approval notification error:', err.message);
+  }
+
+  return { success: true, workRequest: req, assignment: createdAssign };
+};
+
+const rejectWorkRequest = async (id, { managerId, managerName, reason } = {}) => {
+  if (!memoryStore.workRequests) memoryStore.workRequests = [];
+  const req = memoryStore.workRequests.find(w => w.id === id || w.customId === id || w.referenceId === id);
+  if (!req) {
+    throw new Error('Work request not found');
+  }
+
+  req.status = 'Rejected';
+  req.rejectedAt = new Date().toISOString();
+  req.rejectedBy = managerName || 'Manager';
+  req.rejectionReason = reason || 'Work request rejected by manager';
+
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await WorkRequest.findOneAndUpdate(
+        { $or: [{ customId: req.id }, { referenceId: req.referenceId }] },
+        {
+          $set: {
+            status: 'Rejected',
+            rejectedAt: req.rejectedAt,
+            rejectedBy: req.rejectedBy,
+            rejectionReason: req.rejectionReason
+          }
+        }
+      );
+    } catch (e) {
+      console.warn('Mongo WorkRequest reject error:', e.message);
+    }
+  }
+
+  // Notify Receiver Person: Work Request Declined
+  try {
+    createNotification({
+      recipientRole: req.receiverRole || 'user',
+      recipientUserId: req.receiverId,
+      recipientEmail: req.receiverEmail,
+      referenceId: req.referenceId,
+      title: `❌ Work Request Declined by Manager`,
+      message: `The external work request "${req.title}" from ${req.senderName} was declined by Manager ${req.rejectedBy}.`,
+      link: 'my-work'
+    });
+  } catch (err) {
+    console.warn('Receiver rejection notification error:', err.message);
+  }
+
+  return { success: true, workRequest: req };
+};
+
 module.exports = {
   clearAllData,
   initMongoSeed,
@@ -6330,5 +6653,10 @@ module.exports = {
   recordBreak,
   updateBreak,
   endBreakEarly,
-  deleteBreak
+  deleteBreak,
+  // External Work Requests (Assign Extra Work)
+  createWorkRequest,
+  getWorkRequests,
+  approveWorkRequest,
+  rejectWorkRequest
 };

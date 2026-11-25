@@ -1,4 +1,4 @@
-import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, BreakTimeRecord, TimelineEvent, ReportItem, ReportResponse } from '../types';
+import { Department, Team, Member, Assignment, Task, WorkDone, DashboardStats, EligibleUser, Conversation, ChatMessage, AttendanceRecord, BreakTimeRecord, TimelineEvent, ReportItem, ReportResponse, WorkRequest } from '../types';
 
 // Support production backend on Render via VITE_API_URL (Cloudflare Pages) or fallback to local proxy /api
 const rawBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/+$/, '');
@@ -1006,5 +1006,75 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to send test alert');
     return res.json();
+  },
+
+  // External Work Requests (Assign Extra Work)
+  createWorkRequest: async (payload: {
+    senderName: string;
+    senderEmail: string;
+    senderNumber?: string;
+    receiverEmail: string;
+    title: string;
+    description: string;
+    priority?: string;
+    dueDate?: string;
+  }): Promise<{ success: boolean; workRequest: WorkRequest }> => {
+    const res = await fetch(`${API_BASE}/work-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to submit work request');
+    return data;
+  },
+
+  getWorkRequests: async (params?: {
+    userId?: string;
+    userEmail?: string;
+    userRole?: string;
+    status?: string;
+    managerId?: string;
+  }): Promise<WorkRequest[]> => {
+    const searchParams = new URLSearchParams();
+    if (params?.userId) searchParams.append('userId', params.userId);
+    if (params?.userEmail) searchParams.append('userEmail', params.userEmail);
+    if (params?.userRole) searchParams.append('userRole', params.userRole);
+    if (params?.status) searchParams.append('status', params.status);
+    if (params?.managerId) searchParams.append('managerId', params.managerId);
+
+    const res = await fetch(`${API_BASE}/work-requests?${searchParams.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch work requests');
+    return res.json();
+  },
+
+  approveWorkRequest: async (id: string, payload?: {
+    managerId?: string;
+    managerName?: string;
+    managerEmail?: string;
+  }): Promise<{ success: boolean; workRequest: WorkRequest; assignment?: any }> => {
+    const res = await fetch(`${API_BASE}/work-requests/${id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to approve work request');
+    return data;
+  },
+
+  rejectWorkRequest: async (id: string, payload?: {
+    managerId?: string;
+    managerName?: string;
+    reason?: string;
+  }): Promise<{ success: boolean; workRequest: WorkRequest }> => {
+    const res = await fetch(`${API_BASE}/work-requests/${id}/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload || {})
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to reject work request');
+    return data;
   }
 };

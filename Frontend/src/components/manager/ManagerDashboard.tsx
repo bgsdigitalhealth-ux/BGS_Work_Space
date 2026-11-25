@@ -10,7 +10,9 @@ import {
   Briefcase,
   ShieldCheck,
   ChevronRight,
-  ClipboardCheck
+  ClipboardCheck,
+  Check,
+  X
 } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../../context/AppContext';
 import { AttendanceWidget } from '../user/AttendanceWidget';
@@ -26,13 +28,18 @@ export const ManagerDashboard: React.FC = () => {
     setSelectedUserTask,
     appointments,
     todayAttendance,
-    isAttendanceLoading
+    isAttendanceLoading,
+    workRequests,
+    handleApproveWorkRequest,
+    handleRejectWorkRequest
   } = useApp();
 
   const isPunchedIn = todayAttendance?.status === 'punched_in';
 
   const [taskFilter, setTaskFilter] = useState<'All' | 'In Progress' | 'Under Review' | 'Completed' | 'Not Started'>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
 
   // Identify manager's team and member context
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
@@ -71,6 +78,16 @@ export const ManagerDashboard: React.FC = () => {
 
   // Upcoming meetings (next 7 days)
   const upcomingMeetings = (appointments || []).filter(a => a.status === 'Scheduled' || a.status === 'Upcoming').slice(0, 3);
+
+  // Pending External Work Requests awaiting Manager Approval
+  const pendingWorkRequests = (workRequests || []).filter(w => {
+    if (w.status !== 'Pending Manager Approval') return false;
+    if (memberEmails.size > 0 && w.receiverEmail && memberEmails.has(w.receiverEmail.toLowerCase())) return true;
+    if (managerTeamId && w.teamId && w.teamId === managerTeamId) return true;
+    if (w.managerId && currentUser?.id && w.managerId === currentUser.id) return true;
+    if (w.managerEmail && currentUser?.email && w.managerEmail.toLowerCase() === currentUser.email.toLowerCase()) return true;
+    return true; // Workspace supervisor fallback
+  });
 
   // Filtered task list
   const filteredTasks = teamTasks.filter(t => {
@@ -235,6 +252,126 @@ export const ManagerDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* External Work Requests Awaiting Approval Section */}
+      {pendingWorkRequests.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-purple-500/10 border-2 border-amber-300/80 rounded-3xl p-6 shadow-md space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-sm">
+                <AlertCircle className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">
+                    External Work Requests Awaiting Approval
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white shadow-xs">
+                    {pendingWorkRequests.length} Pending
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Outside clients or requesters have submitted work for your team members. Approve to automatically assign to their workspace.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingWorkRequests.map(req => (
+              <div
+                key={req.id}
+                className="bg-white rounded-2xl p-5 border border-amber-200 shadow-xs flex flex-col justify-between hover:shadow-md transition space-y-4"
+              >
+                <div className="space-y-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                      Pending Approval
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-slate-400">
+                      {req.referenceId}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-snug">
+                      {req.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 line-clamp-3 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      {req.description || 'No additional instructions provided.'}
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1">
+                    <div className="p-2 rounded-xl bg-indigo-50/50 border border-indigo-100/60">
+                      <p className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">Outside Requester</p>
+                      <p className="font-bold text-slate-800 truncate">{req.senderName}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{req.senderEmail}</p>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-emerald-50/50 border border-emerald-100/60">
+                      <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Target Assignee</p>
+                      <p className="font-bold text-slate-800 truncate">{req.receiverName}</p>
+                      <p className="text-[10px] text-slate-500 truncate">{req.receiverEmail}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-[11px]">Priority:</span>
+                      {getPriorityBadge(req.priority)}
+                    </div>
+                    {req.dueDate && (
+                      <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Due: {req.dueDate}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 flex items-center gap-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    disabled={approvingId === req.id || rejectingId === req.id}
+                    onClick={async () => {
+                      setApprovingId(req.id);
+                      try {
+                        await handleApproveWorkRequest(req.id);
+                      } finally {
+                        setApprovingId(null);
+                      }
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-[#5a36e6] hover:bg-[#4828ce] text-white font-bold text-xs shadow-sm transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>{approvingId === req.id ? 'Approving & Assigning...' : 'Approve & Assign Work'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={approvingId === req.id || rejectingId === req.id}
+                    onClick={async () => {
+                      const reason = window.prompt('Optional: Enter rejection reason for receiver:') || '';
+                      setRejectingId(req.id);
+                      try {
+                        await handleRejectWorkRequest(req.id, reason);
+                      } finally {
+                        setRejectingId(null);
+                      }
+                    }}
+                    className="py-2 px-3 rounded-xl bg-white hover:bg-red-50 text-red-600 border border-red-200 font-bold text-xs transition flex items-center justify-center gap-1 cursor-pointer disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" />
+                    <span>Reject</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Grid: Active Team Work (Left 8 cols) & Team Meetings / Quick Stats (Right 4 cols) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -15,7 +15,8 @@ import {
   User,
   type Notification,
   AttendanceRecord,
-  BreakTimeRecord
+  BreakTimeRecord,
+  WorkRequest
 } from '../types';
 import { api, API_BASE } from '../services/api';
 import { getSocket, connectSocketUser, disconnectSocket } from '../services/socket';
@@ -231,6 +232,12 @@ interface AppContextType {
   ) => Promise<void>;
   handleEndBreak: (breakId: string) => Promise<void>;
   handleDeleteBreak: (breakId: string) => Promise<void>;
+
+  // External Work Requests (Assign Extra Work)
+  workRequests: WorkRequest[];
+  refreshWorkRequests: () => Promise<void>;
+  handleApproveWorkRequest: (id: string) => Promise<void>;
+  handleRejectWorkRequest: (id: string, reason?: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -655,12 +662,33 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (currentUser) {
       refreshActiveBreaks();
       refreshTodayBreaks();
+      refreshWorkRequests();
       const interval = setInterval(() => {
         refreshActiveBreaks();
+        refreshWorkRequests();
       }, 5000);
       return () => clearInterval(interval);
     }
   }, [currentUser?.id, currentUser?.email, currentUser?.team, currentUser?.department]);
+
+  // External Work Requests (Assign Extra Work)
+  const [workRequests, setWorkRequests] = useState<WorkRequest[]>([]);
+
+  const refreshWorkRequests = async () => {
+    if (!currentUser) return;
+    try {
+      const userRole = currentUser.role || 'user';
+      const list = await api.getWorkRequests({
+        userId: currentUser.id,
+        userEmail: currentUser.email,
+        userRole,
+        managerId: userRole === 'manager' ? currentUser.id : undefined
+      });
+      setWorkRequests(list || []);
+    } catch (e) {
+      console.warn('Could not fetch work requests:', e);
+    }
+  };
 
   const handleStartBreak = async (payload: {
     fromTime: string;
@@ -764,6 +792,46 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       notify('Break record deleted successfully.', 'success', 'Break Time');
     } catch (e: any) {
       notify(e.message || 'Failed to delete break', 'error', 'Break Error');
+      throw e;
+    }
+  };
+
+  const handleApproveWorkRequest = async (id: string) => {
+    if (!currentUser) return;
+    try {
+      await api.approveWorkRequest(id, {
+        managerId: currentUser.id,
+        managerName: currentUser.name,
+        managerEmail: currentUser.email
+      });
+      await Promise.all([
+        refreshWorkRequests(),
+        refreshUserWorkspace(),
+        fetchAssignments(),
+        refreshNotifications()
+      ]);
+      notify('External work request approved and assigned successfully!', 'success', 'Work Assignment');
+    } catch (e: any) {
+      notify(e.message || 'Failed to approve work request', 'error', 'Approval Error');
+      throw e;
+    }
+  };
+
+  const handleRejectWorkRequest = async (id: string, reason?: string) => {
+    if (!currentUser) return;
+    try {
+      await api.rejectWorkRequest(id, {
+        managerId: currentUser.id,
+        managerName: currentUser.name,
+        reason
+      });
+      await Promise.all([
+        refreshWorkRequests(),
+        refreshNotifications()
+      ]);
+      notify('Work request declined.', 'info', 'Work Request');
+    } catch (e: any) {
+      notify(e.message || 'Failed to reject work request', 'error', 'Error');
       throw e;
     }
   };
@@ -1700,6 +1768,20 @@ useEffect(() => {
       refreshTodayBreaks();
       refreshNotifications();
     });
+    socket.on('WORK_REQUEST_CREATED', () => {
+      refreshWorkRequests();
+      refreshNotifications();
+    });
+    socket.on('WORK_REQUEST_APPROVED', () => {
+      refreshWorkRequests();
+      refreshUserWorkspace();
+      fetchAssignments();
+      refreshNotifications();
+    });
+    socket.on('WORK_REQUEST_REJECTED', () => {
+      refreshWorkRequests();
+      refreshNotifications();
+    });
     socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
     socket.on('ASSIGNMENT_UPDATED', () => {
       refreshUserWorkspace();
@@ -1733,6 +1815,9 @@ useEffect(() => {
       socket.off('BREAK_UPDATED');
       socket.off('BREAK_ENDED');
       socket.off('BREAK_DELETED');
+      socket.off('WORK_REQUEST_CREATED');
+      socket.off('WORK_REQUEST_APPROVED');
+      socket.off('WORK_REQUEST_REJECTED');
     };
   } else {
     setUnreadMessagesCount(0);
@@ -1881,7 +1966,11 @@ return (
       handleStartBreak,
       handleUpdateBreak,
       handleEndBreak,
-      handleDeleteBreak
+      handleDeleteBreak,
+      workRequests,
+      refreshWorkRequests,
+      handleApproveWorkRequest,
+      handleRejectWorkRequest
     }}
   >
     {children}

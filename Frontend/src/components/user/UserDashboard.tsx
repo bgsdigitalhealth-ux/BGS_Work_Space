@@ -12,7 +12,8 @@ import {
   Share2, 
   BarChart3, 
   Send,
-  ChevronDown
+  ChevronDown,
+  ShieldCheck
 } from 'lucide-react';
 import { useApp, isUserManager, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 import { UserAssignedWork } from '../../types';
@@ -34,7 +35,8 @@ export const UserDashboard: React.FC = () => {
     setUserSearchQuery,
     handleStartUserWork,
     todayAttendance,
-    isAttendanceLoading
+    isAttendanceLoading,
+    workRequests
   } = useApp();
 
   const isPunchedIn = todayAttendance?.status === 'punched_in';
@@ -59,6 +61,13 @@ export const UserDashboard: React.FC = () => {
   const isViewingTeam = isManager && managerScope === 'team';
   const assignedList = isViewingTeam ? rawAssigned : myAssignedList;
   const availableTeams = Array.from(new Set(assignedList.map(t => t.team).filter(Boolean)));
+
+  // Incoming External Work Requests Awaiting Manager Approval for this receiver
+  const pendingIncomingRequests = (workRequests || []).filter(w =>
+    w.status === 'Pending Manager Approval' &&
+    ((currentUser?.id && w.receiverId === currentUser.id) ||
+     (myEmail && w.receiverEmail && w.receiverEmail.toLowerCase() === myEmail))
+  );
 
   const historyList = userWorkspace?.history || [];
 
@@ -236,6 +245,92 @@ export const UserDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Incoming External Work Requests Awaiting Manager Approval */}
+      {pendingIncomingRequests.length > 0 && (
+        <div className="w-full bg-gradient-to-r from-amber-500/10 via-indigo-500/5 to-purple-500/10 border-2 border-amber-300/80 rounded-3xl p-6 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-amber-200/60">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                <Clock className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">
+                    Incoming Work Requests
+                  </h2>
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-black bg-amber-500 text-white shadow-xs">
+                    {pendingIncomingRequests.length} Awaiting Manager Approval
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  An outside person submitted work for you. It is awaiting your Manager's approval before becoming an active assignment.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {pendingIncomingRequests.map(req => (
+              <div
+                key={req.id}
+                className="bg-white rounded-2xl p-5 border border-amber-200 shadow-xs flex flex-col justify-between space-y-3"
+              >
+                <div className="space-y-2.5">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-900 border border-amber-200 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-700" />
+                      Pending Manager Approval
+                    </span>
+                    <span className="text-[11px] font-mono font-bold text-slate-400">
+                      {req.referenceId}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h3 className="text-base font-black text-slate-900 leading-snug">
+                      {req.title}
+                    </h3>
+                    <p className="text-xs text-slate-600 mt-1 line-clamp-3 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                      {req.description || 'No additional instructions provided.'}
+                    </p>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs">
+                    <p className="text-[10px] uppercase font-bold text-indigo-500 tracking-wider">Outside Requester</p>
+                    <p className="font-bold text-slate-800">{req.senderName} ({req.senderEmail})</p>
+                    {req.senderNumber && <p className="text-[10px] text-slate-500 mt-0.5">Phone: {req.senderNumber}</p>}
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-500 text-[11px]">Priority:</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        req.priority === 'High' ? 'bg-red-50 text-red-600 border border-red-200' :
+                        req.priority === 'Medium' ? 'bg-amber-50 text-amber-600 border border-amber-200' :
+                        'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                      }`}>
+                        {req.priority}
+                      </span>
+                    </div>
+                    {req.dueDate && (
+                      <div className="flex items-center gap-1 text-[11px] text-slate-500">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span>Due: {req.dueDate}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center gap-1.5">
+                  <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>Forwarded to <strong>{req.managerName || 'Your Manager'}</strong> for approval.</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Main Grid: My Assigned Work Table */}
       <div className="w-full">

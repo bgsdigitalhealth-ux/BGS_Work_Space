@@ -125,6 +125,71 @@
   "appointments": [],
   "notifications": [
     {
+      "id": "notif-1795603569740-8",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "WRK-REQ-612300",
+      "title": "❌ Work Request Declined by Manager",
+      "message": "The external work request \"Unsolicited Marketing Design\" from Random Vendor was declined by Manager Manager.",
+      "timestamp": "25 Nov 2026, 04:16 PM",
+      "read": false,
+      "link": "my-work",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795603569739-686",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "WRK-REQ-612300",
+      "title": "⚠️ External Work Request Awaiting Approval",
+      "message": "New external work request \"Unsolicited Marketing Design\" for DR. Sajjan from Random Vendor. Manager approval required.",
+      "timestamp": "25 Nov 2026, 04:16 PM",
+      "read": false,
+      "link": "manager-dashboard",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795603569737-394",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "WRK-REQ-757370",
+      "title": "🎉 External Work Request Approved & Assigned",
+      "message": "Manager DR. Sajjan approved \"Urgent Q4 Financial Audit Prep\" from Acme Corp Partner. It is now in your active assigned work!",
+      "timestamp": "25 Nov 2026, 04:16 PM",
+      "read": false,
+      "link": "my-work",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795603569692-882",
+      "recipientRole": "user",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "",
+      "referenceId": "",
+      "title": "New Work Assigned",
+      "message": "DR. Sajjan (Team Member) assigned: \"Urgent Q4 Financial Audit Prep\" to you.",
+      "timestamp": "25 Nov 2026, 04:16 PM",
+      "read": false,
+      "link": "assigned-work",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795603569691-872",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "WRK-REQ-757370",
+      "title": "⚠️ External Work Request Awaiting Approval",
+      "message": "New external work request \"Urgent Q4 Financial Audit Prep\" for DR. Sajjan from Acme Corp Partner. Manager approval required.",
+      "timestamp": "25 Nov 2026, 04:16 PM",
+      "read": false,
+      "link": "manager-dashboard",
+      "actionUrl": ""
+    },
+    {
       "id": "notif-1795589289780-710",
       "recipientRole": "manager",
       "recipientUserId": "usr-1795150363087-258",
@@ -422,5 +487,6 @@
   "attendance": [],
   "timeLogs": [],
   "reportEntries": [],
-  "breaks": []
+  "breaks": [],
+  "workRequests": []
 }

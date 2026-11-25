@@ -491,6 +491,39 @@ export interface VideoMeeting {
   createdAt?: string;
 }
 
+export interface WorkRequest {
+  id: string;
+  customId?: string;
+  referenceId: string;
+  formType: string;
+  title: string;
+  description: string;
+  priority: 'High' | 'Medium' | 'Low';
+  dueDate?: string;
+  senderName: string;
+  senderEmail: string;
+  senderNumber?: string;
+  receiverId: string;
+  receiverName: string;
+  receiverEmail: string;
+  receiverRole?: string;
+  teamId?: string;
+  teamName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  managerId?: string;
+  managerName?: string;
+  managerEmail?: string;
+  status: 'Pending Manager Approval' | 'Approved' | 'Rejected';
+  approvedAt?: string;
+  approvedBy?: string;
+  assignedTaskId?: string;
+  rejectedAt?: string;
+  rejectedBy?: string;
+  rejectionReason?: string;
+  createdAt: string;
+}
+
 
 
 
