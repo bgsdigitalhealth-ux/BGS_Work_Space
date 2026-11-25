@@ -108,7 +108,10 @@ export const App: React.FC = () => {
           <Header />
 
           <main className="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-6">
-            {adminNav === 'appointments' ? (
+            <AttendanceWidget />
+            {(adminNav === 'record' || adminNav === 'records') ? (
+              <UserAttendanceRecords />
+            ) : adminNav === 'appointments' ? (
               <AdminAppointments />
             ) : adminNav === 'messages' ? (
               <MessagesView />
@@ -161,7 +164,9 @@ export const App: React.FC = () => {
           <UserHeader />
 
           <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
+            <AttendanceWidget />
             {/* Conditional View by managerNav */}
+            {(managerNav === 'record' || managerNav === 'records') && <UserAttendanceRecords />}
             {managerNav === 'dashboard' && <ManagerDashboard />}
             {managerNav === 'team' && <UserTeamView />}
             {managerNav === 'assign-work' && <UserAssignWork />}

@@ -35,6 +35,7 @@ export const ManagerSidebar: React.FC = () => {
 
   const navItems = [
     { id: 'dashboard', label: 'Team Dashboard', icon: LayoutDashboard },
+    { id: 'record', label: 'Attendance Record', icon: CalendarCheck },
     { id: 'team', label: 'Team Management', icon: Users },
     { id: 'assign-work', label: 'Assign Work', icon: Send },
     { id: 'my-work', label: 'My Work', icon: Briefcase },

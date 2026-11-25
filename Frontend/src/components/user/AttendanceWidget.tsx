@@ -3,7 +3,7 @@ import { LogIn, LogOut, Clock, CheckCircle2, CalendarCheck } from 'lucide-react'
 import { useApp } from '../../context/AppContext';
 
 export const AttendanceWidget: React.FC = () => {
-  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav, setAdminNav, portalMode } = useApp();
+  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav, setAdminNav, setManagerNav, portalMode, currentUser } = useApp();
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
@@ -85,7 +85,9 @@ export const AttendanceWidget: React.FC = () => {
         <button
           type="button"
           onClick={() => {
-            if (portalMode === 'admin') {
+            if (currentUser?.role === 'manager') {
+              setManagerNav('record');
+            } else if (portalMode === 'admin') {
               setAdminNav('record');
             } else {
               setUserNav('record');
