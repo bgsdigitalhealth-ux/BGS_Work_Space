@@ -1,24 +1,24 @@
 import React, { useState } from 'react';
-import { 
-  Calendar as CalendarIcon, 
-  Clock, 
-  CheckCircle2, 
-  AlertCircle, 
-  XCircle, 
-  Plus, 
-  ChevronLeft, 
-  ChevronRight, 
-  MapPin, 
+import {
+  Calendar as CalendarIcon,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
   CalendarCheck,
   Video
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const UserAppointments: React.FC = () => {
-  const { 
-    appointments, 
-    appointmentStats, 
-    selectedAppointmentDate, 
+  const {
+    appointments,
+    appointmentStats,
+    selectedAppointmentDate,
     setSelectedAppointmentDate,
     handleCreateAppointment,
     handleUpdateAppointment,
@@ -46,9 +46,9 @@ export const UserAppointments: React.FC = () => {
   };
 
   // User appointments (either requested by current user or assigned to them)
-  const userAppointments = appointments.filter(apt => 
-    apt.userId === currentUser?.id || 
-    apt.requestedBy === currentUser?.name || 
+  const userAppointments = appointments.filter(apt =>
+    apt.userId === currentUser?.id ||
+    apt.requestedBy === currentUser?.name ||
     (currentUser?.email && (apt as any).email === currentUser.email) ||
     !apt.userId
   );
@@ -69,8 +69,8 @@ export const UserAppointments: React.FC = () => {
     if (!formTitle.trim()) return;
 
     setIsSubmitting(true);
-    const [dept, team] = formDeptTeam.includes('/') 
-      ? formDeptTeam.split('/').map(s => s.trim()) 
+    const [dept, team] = formDeptTeam.includes('/')
+      ? formDeptTeam.split('/').map(s => s.trim())
       : [formDeptTeam, 'General'];
 
     await handleCreateAppointment({
@@ -132,7 +132,7 @@ export const UserAppointments: React.FC = () => {
         </div>
 
         {/* Today */}
-        <div 
+        <div
           onClick={() => setActiveTab('Today')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -146,7 +146,7 @@ export const UserAppointments: React.FC = () => {
         </div>
 
         {/* Upcoming */}
-        <div 
+        <div
           onClick={() => setActiveTab('Upcoming')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -160,7 +160,7 @@ export const UserAppointments: React.FC = () => {
         </div>
 
         {/* Completed */}
-        <div 
+        <div
           onClick={() => setActiveTab('Completed')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -174,7 +174,7 @@ export const UserAppointments: React.FC = () => {
         </div>
 
         {/* Cancelled */}
-        <div 
+        <div
           onClick={() => setActiveTab('Cancelled')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -227,11 +227,10 @@ export const UserAppointments: React.FC = () => {
                 <button
                   key={day}
                   onClick={() => setSelectedAppointmentDate(dateStr)}
-                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative ${
-                    isSelected
-                      ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`h-8 w-8 mx-auto rounded-full flex flex-col items-center justify-center font-semibold text-xs transition relative ${isSelected
+                    ? 'bg-[#5a36e6] text-white shadow-md shadow-indigo-600/30'
+                    : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <span>{day}</span>
                   {hasEvents && !isSelected && (
@@ -257,11 +256,10 @@ export const UserAppointments: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${
-                  activeTab === tab.id
-                    ? 'bg-[#5a36e6] text-white shadow-sm'
-                    : 'hover:text-gray-800'
-                }`}
+                className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap ${activeTab === tab.id
+                  ? 'bg-[#5a36e6] text-white shadow-sm'
+                  : 'hover:text-gray-800'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -281,8 +279,8 @@ export const UserAppointments: React.FC = () => {
                 const isToday = apt.isToday || apt.date === new Date().toISOString().split('T')[0];
 
                 return (
-                  <div 
-                    key={apt.id} 
+                  <div
+                    key={apt.id}
                     className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center justify-between gap-4 hover:shadow-md transition group"
                   >
                     <div className="flex items-center gap-3.5">
@@ -320,15 +318,14 @@ export const UserAppointments: React.FC = () => {
                           <Video className="w-3.5 h-3.5" /> Join Call
                         </a>
                       )}
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                        isToday 
-                          ? 'bg-purple-50 text-[#5a36e6] border border-purple-200' 
-                          : apt.status === 'Completed'
+                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isToday
+                        ? 'bg-purple-50 text-[#5a36e6] border border-purple-200'
+                        : apt.status === 'Completed'
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
                           : apt.status === 'Cancelled'
-                          ? 'bg-rose-50 text-rose-600 border border-rose-200'
-                          : 'bg-amber-50 text-amber-600 border border-amber-200'
-                      }`}>
+                            ? 'bg-rose-50 text-rose-600 border border-rose-200'
+                            : 'bg-amber-50 text-amber-600 border border-amber-200'
+                        }`}>
                         {isToday ? 'Today' : apt.status}
                       </span>
                       {apt.status !== 'Cancelled' ? (

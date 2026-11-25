@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  Shield,
   LayoutDashboard,
   Briefcase,
   CalendarCheck,
@@ -15,6 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { AcuLogo } from '../common/AcuLogo';
 
 export const ManagerSidebar: React.FC = () => {
   const {
@@ -72,12 +72,17 @@ export const ManagerSidebar: React.FC = () => {
               className="flex items-center gap-3 cursor-pointer select-none"
               onClick={() => handleNavClick('dashboard')}
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#704fe6] to-[#4f32c2] flex items-center justify-center shadow-lg shadow-indigo-900/50 shrink-0">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
+              <AcuLogo size="md" />
               <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-wide text-white leading-none truncate font-formal">WorkHub</h1>
-                <p className="text-xs text-indigo-300 font-medium tracking-wide mt-1 truncate">Manager Workspace</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white font-bold text-2xl font-calligraphy tracking-wide leading-tight truncate">
+                    ACU
+                  </span>
+                  <span className="text-white font-extrabold text-sm leading-tight truncate tracking-tight">
+                    Workspace
+                  </span>
+                </div>
+                <p className="text-[10px] tracking-wider text-indigo-300 font-semibold uppercase mt-0.5 truncate">Manager Workspace</p>
               </div>
             </div>
 

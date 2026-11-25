@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import {
-  Shield,
   LayoutDashboard,
   Building2,
   Users,
@@ -19,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { AcuLogo } from './common/AcuLogo';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -64,13 +64,18 @@ export const Sidebar: React.FC = () => {
             className="flex items-center gap-3 cursor-pointer select-none"
             onClick={() => handleNavAction(() => setAdminNav('dashboard'))}
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-900/30 shrink-0">
-              <Shield className="w-5 h-5 text-white" />
-            </div>
+            <AcuLogo size="md" />
             <div className="min-w-0">
-              <h1 className="text-white font-bold text-xl font-formal tracking-wide leading-tight truncate">WorkHub</h1>
-              <span className="text-[11px] font-semibold tracking-wider text-indigo-300 uppercase truncate block">
-                {currentUser?.role === 'manager' ? 'Manager Panel' : 'Admin Panel'}
+              <div className="flex items-center gap-1.5">
+                <span className="text-white font-bold text-2xl font-calligraphy tracking-wide leading-tight truncate">
+                  ACU
+                </span>
+                <span className="text-white font-extrabold text-sm leading-tight truncate tracking-tight">
+                  Workspace
+                </span>
+              </div>
+              <span className="text-[10px] font-semibold tracking-wider text-indigo-300 uppercase truncate block mt-0.5">
+                {currentUser?.role === 'manager' ? 'Manager Panel' : 'Executive Panel'}
               </span>
             </div>
           </div>

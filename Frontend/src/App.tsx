@@ -39,15 +39,15 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { ConfirmModal } from './components/common/ConfirmModal';
 
 export const App: React.FC = () => {
-  const { 
-    currentUser, 
-    userNav, 
-    managerNav, 
-    adminNav, 
+  const {
+    currentUser,
+    userNav,
+    managerNav,
+    adminNav,
     toasts,
     dismissToast,
     confirmModal,
-    closeConfirmModal 
+    closeConfirmModal
   } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 

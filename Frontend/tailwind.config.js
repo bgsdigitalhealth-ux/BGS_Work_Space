@@ -8,14 +8,14 @@ export default {
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        heading: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
+        heading: ['"Playfair Display"', '"Great Vibes"', 'serif'],
         button: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         nav: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'sans-serif'],
         number: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
         inter: ['Inter', 'sans-serif'],
         jakarta: ['"Plus Jakarta Sans"', 'sans-serif'],
         manrope: ['Manrope', 'sans-serif'],
-        calligraphy: ['"Pinyon Script"', '"Great Vibes"', 'cursive'],
+        calligraphy: ['"Great Vibes"', '"Pinyon Script"', '"Parisienne"', '"Alex Brush"', 'cursive'],
         formal: ['"Playfair Display"', 'Georgia', 'serif'],
       },
       colors: {

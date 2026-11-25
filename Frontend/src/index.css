@@ -4,11 +4,16 @@
 
 @layer utilities {
   .font-calligraphy {
-    font-family: 'Pinyon Script', 'Great Vibes', cursive !important;
+    font-family: 'Great Vibes', 'Pinyon Script', 'Parisienne', 'Alex Brush', cursive !important;
   }
   .font-formal {
     font-family: 'Playfair Display', Georgia, serif !important;
   }
+}
+
+/* Fancy Calligraphy Typography across website headings */
+h1, h2, h3, .heading-calligraphy {
+  font-family: 'Playfair Display', 'Great Vibes', Georgia, serif;
 }
 
 @layer base {

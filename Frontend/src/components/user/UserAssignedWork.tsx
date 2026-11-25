@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Paperclip,
   LayoutGrid,
+  Kanban,
   List,
   Play,
   Pause,
@@ -33,7 +34,7 @@ import { PauseReasonModal } from './PauseReasonModal';
 import { EditTaskModal } from './EditTaskModal';
 
 interface UserAssignedWorkProps {
-  initialView?: 'cards' | 'list' | 'details';
+  initialView?: 'cards' | 'kanban' | 'list' | 'details';
   title?: string;
 }
 
@@ -77,14 +78,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     ? (currentUser?.name ? `${currentUser.name}'s Work` : 'My Assigned Work')
     : title;
 
-  // View modes: 'cards' | 'list' | 'details'
-  const [viewMode, setViewMode] = useState<'cards' | 'list' | 'details'>(() => {
-    if (initialView && (initialView === 'cards' || initialView === 'list' || initialView === 'details')) return initialView;
+  // View modes: 'cards' | 'kanban' | 'list' | 'details'
+  const [viewMode, setViewMode] = useState<'cards' | 'kanban' | 'list' | 'details'>(() => {
+    if (initialView && (initialView === 'cards' || initialView === 'kanban' || initialView === 'list' || initialView === 'details')) return initialView;
     if (userNav === 'details') return 'details';
     return 'cards';
   });
 
-  const [previousViewMode, setPreviousViewMode] = useState<'cards' | 'list'>('cards');
+  const [previousViewMode, setPreviousViewMode] = useState<'cards' | 'kanban' | 'list'>('cards');
 
   // Keep viewMode synchronized with userNav
   useEffect(() => {
@@ -117,6 +118,29 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     if (teamFilter !== 'All' && task.team !== teamFilter) return false;
     return true;
   });
+
+  // Helper matching priority and search for Kanban columns
+  const matchesPriorityAndSearch = (task: UserAssignedWorkType) => {
+    if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
+    if (departmentFilter !== 'All' && task.department !== departmentFilter) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchTitle = (task.title || '').toLowerCase().includes(q);
+      const matchDesc = (task.description || '').toLowerCase().includes(q);
+      const matchDept = (task.department || '').toLowerCase().includes(q);
+      const matchTeam = (task.team || '').toLowerCase().includes(q);
+      const matchAssignee = (task.assigneeName || '').toLowerCase().includes(q);
+      const matchId = (task.taskId || task.id || '').toLowerCase().includes(q);
+      if (!matchTitle && !matchDesc && !matchDept && !matchTeam && !matchAssignee && !matchId) return false;
+    }
+    return true;
+  };
+
+  // Kanban partitioned columns (from teamFilteredTasks)
+  const kanbanTodo = teamFilteredTasks.filter(t => (t.status === 'Not Started' || (t.status as any) === 'To Do' || !t.status) && matchesPriorityAndSearch(t));
+  const kanbanInProgress = teamFilteredTasks.filter(t => t.status === 'In Progress' && matchesPriorityAndSearch(t));
+  const kanbanUnderReview = teamFilteredTasks.filter(t => (t.status === 'Under Review' || (t.status as any) === 'In Review') && matchesPriorityAndSearch(t));
+  const kanbanCompleted = teamFilteredTasks.filter(t => t.status === 'Completed' && matchesPriorityAndSearch(t));
 
   // KPI stats computed strictly from teamFilteredTasks (Dashboard counts follow the same filter)
   const totalCount = teamFilteredTasks.length;
@@ -409,23 +433,22 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 )}
               </div>
               <p className="text-xs text-gray-500 font-medium mt-0.5">
-                Switch seamlessly between Card and List views. Dashboard metrics reflect selected team filters in real time.
+                Switch seamlessly between Card, List, and Kanban views. Dashboard metrics reflect selected team filters in real time.
               </p>
             </div>
           </div>
 
           {/* View Mode Switcher + Action Button */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* View Switcher: Card | List */}
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
+            {/* View Switcher: Card | List | Kanban */}
             <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/70">
               <button
                 type="button"
                 onClick={() => setViewMode('cards')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === 'cards'
-                    ? 'bg-white text-[#5a36e6] shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === 'cards'
+                  ? 'bg-white text-[#5a36e6] shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 title="Card View"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
@@ -434,15 +457,26 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                  viewMode === 'list'
-                    ? 'bg-white text-[#5a36e6] shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === 'list'
+                  ? 'bg-white text-[#5a36e6] shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
                 title="List View"
               >
                 <List className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">List</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('kanban')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${viewMode === 'kanban'
+                  ? 'bg-white text-[#5a36e6] shadow-xs'
+                  : 'text-gray-600 hover:text-gray-900'
+                  }`}
+                title="Kanban Board View"
+              >
+                <Kanban className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kanban</span>
               </button>
             </div>
 
@@ -450,7 +484,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             <button
               type="button"
               onClick={() => setUserNav('assign-work')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 cursor-pointer whitespace-nowrap"
             >
               <Send className="w-3.5 h-3.5" />
               <span>+ Assign Work</span>
@@ -467,16 +501,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleTotalWorkClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTotalWorkClick(); } }}
             title="Click to view all tasks"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isTotalActive
-                ? 'bg-indigo-50/80 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
-                : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 hover:border-slate-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isTotalActive
+              ? 'bg-indigo-50/80 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
+              : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 hover:border-slate-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isTotalActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-indigo-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isTotalActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-indigo-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
+                }`}>
                 <ClipboardList className="w-4 h-4" />
               </div>
               <div>
@@ -484,9 +516,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-slate-900">{totalCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isTotalActive ? 'text-[#5a36e6]' : 'text-slate-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isTotalActive ? 'text-[#5a36e6]' : 'text-slate-300'
+              }`} />
           </div>
 
           {/* In Progress */}
@@ -496,16 +527,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleInProgressClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleInProgressClick(); } }}
             title="Click to filter by In Progress work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isInProgressActive
-                ? 'bg-purple-100/90 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
-                : 'bg-purple-50/50 border-purple-100 hover:bg-purple-100/60 hover:border-purple-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isInProgressActive
+              ? 'bg-purple-100/90 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
+              : 'bg-purple-50/50 border-purple-100 hover:bg-purple-100/60 hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isInProgressActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-purple-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isInProgressActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-purple-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
+                }`}>
                 <Clock className="w-4 h-4" />
               </div>
               <div>
@@ -513,9 +542,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-purple-900">{inProgressCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isInProgressActive ? 'text-[#5a36e6]' : 'text-purple-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isInProgressActive ? 'text-[#5a36e6]' : 'text-purple-300'
+              }`} />
           </div>
 
           {/* To Do / Pending */}
@@ -525,16 +553,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleTodoClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTodoClick(); } }}
             title="Click to filter by To Do / Pending work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isTodoActive
-                ? 'bg-blue-100/90 border-blue-600 ring-2 ring-blue-500/25 shadow-sm'
-                : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/60 hover:border-blue-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isTodoActive
+              ? 'bg-blue-100/90 border-blue-600 ring-2 ring-blue-500/25 shadow-sm'
+              : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/60 hover:border-blue-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isTodoActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isTodoActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                }`}>
                 <AlertCircle className="w-4 h-4" />
               </div>
               <div>
@@ -542,9 +568,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-blue-900">{todoCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isTodoActive ? 'text-blue-600' : 'text-blue-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isTodoActive ? 'text-blue-600' : 'text-blue-300'
+              }`} />
           </div>
 
           {/* High Priority */}
@@ -554,16 +579,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleHighPriorityClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHighPriorityClick(); } }}
             title="Click to filter by High Priority work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isHighPriorityActive
-                ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-500/25 shadow-sm'
-                : 'bg-rose-50/50 border-rose-100 hover:bg-rose-100/60 hover:border-rose-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isHighPriorityActive
+              ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-500/25 shadow-sm'
+              : 'bg-rose-50/50 border-rose-100 hover:bg-rose-100/60 hover:border-rose-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isHighPriorityActive ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-100 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isHighPriorityActive ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-100 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
+                }`}>
                 <Tag className="w-4 h-4" />
               </div>
               <div>
@@ -571,42 +594,50 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-rose-900">{highPriorityCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isHighPriorityActive ? 'text-rose-600' : 'text-rose-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isHighPriorityActive ? 'text-rose-600' : 'text-rose-300'
+              }`} />
           </div>
         </div>
       </div>
 
       {/* Filter & Search Bar - Shared across all three views */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Status Tabs (shown for Card & List views) */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
-          {(['All', 'To Do', 'In Progress', 'Under Review', 'Completed'] as const).map(st => {
-            const count = st === 'All' ? totalCount :
-              st === 'To Do' ? todoCount :
-                st === 'In Progress' ? inProgressCount :
-                  st === 'Under Review' ? underReviewCount : completedCount;
+        {/* Status Tabs (shown for Card & List views; Kanban naturally organizes by status) */}
+        {viewMode !== 'kanban' ? (
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
+            {(['All', 'To Do', 'In Progress', 'Under Review', 'Completed'] as const).map(st => {
+              const count = st === 'All' ? totalCount :
+                st === 'To Do' ? todoCount :
+                  st === 'In Progress' ? inProgressCount :
+                    st === 'Under Review' ? underReviewCount : completedCount;
 
-            return (
-              <button
-                key={st}
-                type="button"
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${statusFilter === st
-                  ? 'bg-[#5a36e6] text-white shadow-sm shadow-indigo-600/30'
-                  : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }`}
-              >
-                <span>{st}</span>
-                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
-                  }`}>
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${statusFilter === st
+                    ? 'bg-[#5a36e6] text-white shadow-sm shadow-indigo-600/30'
+                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    }`}
+                >
+                  <span>{st}</span>
+                  <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${statusFilter === st ? 'bg-white/20 text-white' : 'bg-gray-200 text-gray-700'
+                    }`}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 text-[#5a36e6] flex items-center justify-center shrink-0">
+              <Kanban className="w-3.5 h-3.5" />
+            </div>
+            <span>Interactive Workflow Columns (4 Stages)</span>
+          </div>
+        )}
 
         {/* Filter Controls Row */}
         <div className="flex items-center gap-2.5 flex-wrap">
@@ -737,7 +768,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
                               task.assignmentType === 'user_to_user' ? 'User → User' :
-                              task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Assigned Work'}
+                                task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Assigned Work'}
                           </span>
                         )}
                       </div>
@@ -956,6 +987,301 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------- */}
+      {/* 3. KANBAN BOARD VIEW (4 Lifecycle Columns)           */}
+      {/* ---------------------------------------------------- */}
+      {viewMode === 'kanban' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+          {/* Column 1: To Do */}
+          <div className="bg-slate-50/80 rounded-2xl border border-slate-200/90 p-4 flex flex-col gap-3 min-h-[460px]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-800">To Do</h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">
+                {kanbanTodo.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1">
+              {kanbanTodo.map(task => (
+                <div
+                  key={task.id}
+                  onClick={() => handleCardClick(task)}
+                  className="bg-white rounded-xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-[#5a36e6]/60 p-3.5 cursor-pointer transition-all space-y-2 group"
+                >
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                      {task.taskId || task.id}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${getPriorityStyle(task.priority).badge}`}>
+                        {task.priority}
+                      </span>
+                      {isManagerOrAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModalTask(task);
+                          }}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-[#5a36e6] transition"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors line-clamp-2">
+                    {task.title}
+                  </h4>
+                  {task.description && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      <span>{formatTaskDueDate(task.dueDate) || 'Pending'}</span>
+                    </span>
+                    <span className="font-semibold text-gray-700 truncate max-w-[100px]">{task.assigneeName || 'Assignee'}</span>
+                  </div>
+
+                  <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                    {renderTimerControls(task)}
+                  </div>
+                </div>
+              ))}
+
+              {kanbanTodo.length === 0 && (
+                <div className="py-12 px-3 text-center rounded-xl border border-dashed border-slate-200 bg-white/50 flex flex-col items-center justify-center">
+                  <p className="text-xs font-semibold text-slate-400">No tasks in To Do</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Tasks will appear here when pending</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Column 2: In Progress */}
+          <div className="bg-indigo-50/50 rounded-2xl border border-indigo-200/80 p-4 flex flex-col gap-3 min-h-[460px]">
+            <div className="flex items-center justify-between pb-3 border-b border-indigo-200">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#5a36e6]" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950">In Progress</h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-100 text-[#5a36e6]">
+                {kanbanInProgress.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1">
+              {kanbanInProgress.map(task => (
+                <div
+                  key={task.id}
+                  onClick={() => handleCardClick(task)}
+                  className="bg-white rounded-xl border border-indigo-200 shadow-2xs hover:shadow-md hover:border-[#5a36e6] p-3.5 cursor-pointer transition-all space-y-2 group"
+                >
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-50 text-[#5a36e6]">
+                      {task.taskId || task.id}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${getPriorityStyle(task.priority).badge}`}>
+                        {task.priority}
+                      </span>
+                      {isManagerOrAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModalTask(task);
+                          }}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-[#5a36e6] transition"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors line-clamp-2">
+                    {task.title}
+                  </h4>
+                  {task.description && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      <span>{formatTaskDueDate(task.dueDate) || 'Pending'}</span>
+                    </span>
+                    <span className="font-semibold text-gray-700 truncate max-w-[100px]">{task.assigneeName || 'Assignee'}</span>
+                  </div>
+
+                  <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                    {renderTimerControls(task)}
+                  </div>
+                </div>
+              ))}
+
+              {kanbanInProgress.length === 0 && (
+                <div className="py-12 px-3 text-center rounded-xl border border-dashed border-indigo-200 bg-white/50 flex flex-col items-center justify-center">
+                  <p className="text-xs font-semibold text-indigo-400">No tasks in In Progress</p>
+                  <p className="text-[10px] text-indigo-400 mt-0.5">Start work timer to move tasks here</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Column 3: Under Review */}
+          <div className="bg-amber-50/50 rounded-2xl border border-amber-200/80 p-4 flex flex-col gap-3 min-h-[460px]">
+            <div className="flex items-center justify-between pb-3 border-b border-amber-200">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-amber-950">Under Review</h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700">
+                {kanbanUnderReview.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1">
+              {kanbanUnderReview.map(task => (
+                <div
+                  key={task.id}
+                  onClick={() => handleCardClick(task)}
+                  className="bg-white rounded-xl border border-amber-200 shadow-2xs hover:shadow-md hover:border-amber-400 p-3.5 cursor-pointer transition-all space-y-2 group"
+                >
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-800">
+                      {task.taskId || task.id}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className={`px-2 py-0.2 rounded-full text-[10px] font-bold border ${getPriorityStyle(task.priority).badge}`}>
+                        {task.priority}
+                      </span>
+                      {isManagerOrAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModalTask(task);
+                          }}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-[#5a36e6] transition"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors line-clamp-2">
+                    {task.title}
+                  </h4>
+                  {task.description && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      <span>{formatTaskDueDate(task.dueDate) || 'Pending'}</span>
+                    </span>
+                    <span className="font-semibold text-gray-700 truncate max-w-[100px]">{task.assigneeName || 'Assignee'}</span>
+                  </div>
+
+                  <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                    {renderTimerControls(task)}
+                  </div>
+                </div>
+              ))}
+
+              {kanbanUnderReview.length === 0 && (
+                <div className="py-12 px-3 text-center rounded-xl border border-dashed border-amber-200 bg-white/50 flex flex-col items-center justify-center">
+                  <p className="text-xs font-semibold text-amber-400">No tasks under review</p>
+                  <p className="text-[10px] text-amber-400 mt-0.5">Submitted deliverables appear here</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Column 4: Completed */}
+          <div className="bg-emerald-50/50 rounded-2xl border border-emerald-200/80 p-4 flex flex-col gap-3 min-h-[460px]">
+            <div className="flex items-center justify-between pb-3 border-b border-emerald-200">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
+                <h3 className="text-xs font-black uppercase tracking-wider text-emerald-950">Completed</h3>
+              </div>
+              <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">
+                {kanbanCompleted.length}
+              </span>
+            </div>
+
+            <div className="space-y-3 flex-1">
+              {kanbanCompleted.map(task => (
+                <div
+                  key={task.id}
+                  onClick={() => handleCardClick(task)}
+                  className="bg-white rounded-xl border border-emerald-200 shadow-2xs hover:shadow-md hover:border-emerald-400 p-3.5 cursor-pointer transition-all space-y-2 group opacity-90"
+                >
+                  <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                    <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-800">
+                      {task.taskId || task.id}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <span className="px-2 py-0.2 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700">
+                        Done
+                      </span>
+                      {isManagerOrAdmin && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditModalTask(task);
+                          }}
+                          className="p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-[#5a36e6] transition"
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs font-bold text-gray-900 group-hover:text-[#5a36e6] transition-colors line-clamp-2">
+                    {task.title}
+                  </h4>
+                  {task.description && (
+                    <p className="text-[11px] text-gray-500 line-clamp-2">{task.description}</p>
+                  )}
+
+                  <div className="pt-2 border-t border-gray-100 text-[10px] text-gray-500 flex items-center justify-between">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-gray-400" />
+                      <span>{formatTaskDueDate(task.dueDate) || 'Done'}</span>
+                    </span>
+                    <span className="font-semibold text-gray-700 truncate max-w-[100px]">{task.assigneeName || 'Assignee'}</span>
+                  </div>
+
+                  <div className="pt-1" onClick={(e) => e.stopPropagation()}>
+                    {renderTimerControls(task)}
+                  </div>
+                </div>
+              ))}
+
+              {kanbanCompleted.length === 0 && (
+                <div className="py-12 px-3 text-center rounded-xl border border-dashed border-emerald-200 bg-white/50 flex flex-col items-center justify-center">
+                  <p className="text-xs font-semibold text-emerald-400">No completed tasks yet</p>
+                  <p className="text-[10px] text-emerald-400 mt-0.5">Finished deliverables will list here</p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
