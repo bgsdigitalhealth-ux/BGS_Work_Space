@@ -212,20 +212,40 @@ export const api = {
   },
 
   // Break Time Management
-  getActiveBreaks: async (teamId?: string, teamName?: string, userId?: string): Promise<BreakTimeRecord[]> => {
+  getActiveBreaks: async (
+    teamId?: string,
+    teamName?: string,
+    userId?: string,
+    departmentId?: string,
+    departmentName?: string,
+    userRole?: string
+  ): Promise<BreakTimeRecord[]> => {
     const params = new URLSearchParams();
     if (teamId) params.append('teamId', teamId);
     if (teamName) params.append('teamName', teamName);
     if (userId) params.append('userId', userId);
+    if (departmentId) params.append('departmentId', departmentId);
+    if (departmentName) params.append('departmentName', departmentName);
+    if (userRole) params.append('userRole', userRole);
     const res = await fetch(`${API_BASE}/breaks/active?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch active breaks');
     return res.json();
   },
-  getTodayBreaks: async (teamId?: string, teamName?: string, userId?: string): Promise<BreakTimeRecord[]> => {
+  getTodayBreaks: async (
+    teamId?: string,
+    teamName?: string,
+    userId?: string,
+    departmentId?: string,
+    departmentName?: string,
+    userRole?: string
+  ): Promise<BreakTimeRecord[]> => {
     const params = new URLSearchParams();
     if (teamId) params.append('teamId', teamId);
     if (teamName) params.append('teamName', teamName);
     if (userId) params.append('userId', userId);
+    if (departmentId) params.append('departmentId', departmentId);
+    if (departmentName) params.append('departmentName', departmentName);
+    if (userRole) params.append('userRole', userRole);
     const res = await fetch(`${API_BASE}/breaks/today?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch today breaks');
     return res.json();
@@ -275,6 +295,18 @@ export const api = {
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || 'Failed to end break');
+    }
+    return res.json();
+  },
+  deleteBreak: async (id: string, userId?: string, userRole?: string): Promise<{ success: boolean; id: string }> => {
+    const res = await fetch(`${API_BASE}/breaks/${id}`, {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId, userRole })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => null);
+      throw new Error(err?.error || 'Failed to delete break');
     }
     return res.json();
   },

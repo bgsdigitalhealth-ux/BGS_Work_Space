@@ -603,8 +603,8 @@ router.post('/attendance/punch-out', async (req, res) => {
 // --- Break Time Management ---
 router.get('/breaks/active', async (req, res) => {
   try {
-    const { teamId, teamName, userId } = req.query;
-    const breaks = await dataService.getActiveBreaks({ teamId, teamName, userId });
+    const { teamId, teamName, departmentId, departmentName, userId, userRole } = req.query;
+    const breaks = await dataService.getActiveBreaks({ teamId, teamName, departmentId, departmentName, userId, userRole });
     res.json(breaks);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -613,8 +613,8 @@ router.get('/breaks/active', async (req, res) => {
 
 router.get('/breaks/today', async (req, res) => {
   try {
-    const { teamId, teamName, userId } = req.query;
-    const breaks = await dataService.getTodayBreaks({ teamId, teamName, userId });
+    const { teamId, teamName, departmentId, departmentName, userId, userRole } = req.query;
+    const breaks = await dataService.getTodayBreaks({ teamId, teamName, departmentId, departmentName, userId, userRole });
     res.json(breaks);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -650,6 +650,11 @@ router.post('/breaks', async (req, res) => {
       fromTime: result.fromTime,
       toTime: result.toTime
     });
+    broadcast('NEW_NOTIFICATION', {
+      type: 'break',
+      title: `☕ ${result.userName} is on Break (${result.reason})`,
+      message: `${result.userName} is taking a ${result.reason} from ${result.fromTime} to ${result.toTime}.`
+    });
     res.status(201).json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -671,6 +676,11 @@ router.put('/breaks/:id', async (req, res) => {
       fromTime: result.fromTime,
       toTime: result.toTime
     });
+    broadcast('NEW_NOTIFICATION', {
+      type: 'break_updated',
+      title: `☕ ${result.userName} Updated Break Schedule`,
+      message: `${result.userName} modified break to ${result.fromTime} - ${result.toTime}.`
+    });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -683,7 +693,27 @@ router.put('/breaks/:id/end', async (req, res) => {
     const { userId } = req.body;
     const result = await dataService.endBreakEarly(id, { userId });
     broadcast('BREAK_ENDED', result);
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'break_ended',
+      userName: result.userName
+    });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/breaks/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, userRole } = req.body || {};
+    const result = await dataService.deleteBreak(id, { userId, userRole });
+    broadcast('BREAK_DELETED', { id, breakRecord: result });
+    broadcast('NOTIFICATION_RECEIVED', {
+      type: 'break_deleted',
+      id
+    });
+    res.json({ success: true, message: 'Break deleted successfully', id, result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

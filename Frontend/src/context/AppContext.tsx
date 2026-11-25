@@ -210,6 +210,7 @@ interface AppContextType {
   handleStartBreak: (payload: { fromTime: string; toTime: string; reason?: string }) => Promise<void>;
   handleUpdateBreak: (breakId: string, payload: { fromTime?: string; toTime?: string; reason?: string }) => Promise<void>;
   handleEndBreak: (breakId: string) => Promise<void>;
+  handleDeleteBreak: (breakId: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -593,9 +594,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
         (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
       );
-      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || currentUser.team || '';
       const teamName = currentUser.team || myMem?.role || '';
-      const list = await api.getActiveBreaks(teamId, teamName, currentUser.id);
+      const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || currentUser.department || '';
+      const departmentName = currentUser.department || '';
+      const userRole = currentUser.role || 'user';
+      const list = await api.getActiveBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole);
       setActiveTeamBreaks(list || []);
     } catch (e) {
       console.warn('Could not fetch active breaks:', e);
@@ -609,9 +613,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
         (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
       );
-      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || currentUser.team || '';
       const teamName = currentUser.team || myMem?.role || '';
-      const list = await api.getTodayBreaks(teamId, teamName, currentUser.id);
+      const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || currentUser.department || '';
+      const departmentName = currentUser.department || '';
+      const userRole = currentUser.role || 'user';
+      const list = await api.getTodayBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole);
       setTodayTeamBreaks(list || []);
     } catch (e) {
       console.warn('Could not fetch today breaks:', e);
@@ -624,10 +631,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       refreshTodayBreaks();
       const interval = setInterval(() => {
         refreshActiveBreaks();
-      }, 10000);
+      }, 5000);
       return () => clearInterval(interval);
     }
-  }, [currentUser?.id, currentUser?.email, currentUser?.team]);
+  }, [currentUser?.id, currentUser?.email, currentUser?.team, currentUser?.department]);
 
   const handleStartBreak = async (payload: { fromTime: string; toTime: string; reason?: string }) => {
     if (!currentUser) return;
@@ -636,9 +643,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         (currentUser.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
         (currentUser.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
       );
-      const teamId = myMem?.teamId || (currentUser as any)?.teamId || '';
+      const teamId = myMem?.teamId || (currentUser as any)?.teamId || currentUser.team || '';
       const teamName = currentUser.team || myMem?.role || '';
-      const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || '';
+      const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || currentUser.department || '';
       const departmentName = currentUser.department || '';
 
       await api.recordBreak({
@@ -655,8 +662,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         reason: payload.reason || 'Break'
       });
 
-      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
-      notify(`Break started from ${payload.fromTime} to ${payload.toTime}`, 'success', 'Break Time');
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks(), refreshNotifications()]);
+      notify(`Break notice scheduled (${payload.fromTime} - ${payload.toTime}).`, 'success', 'Break Time');
     } catch (e: any) {
       notify(e.message || 'Failed to start break', 'error', 'Break Error');
       throw e;
@@ -667,7 +674,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (!currentUser) return;
     try {
       await api.endBreakEarly(breakId, currentUser.id);
-      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks(), refreshNotifications()]);
       notify('Break ended successfully. Welcome back!', 'success', 'Break Time');
     } catch (e: any) {
       notify(e.message || 'Failed to end break', 'error', 'Break Error');
@@ -682,10 +689,31 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         ...payload,
         userId: currentUser.id
       });
-      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks()]);
-      notify('Break time schedule updated.', 'success', 'Break Time');
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks(), refreshNotifications()]);
+      notify('Break time schedule updated successfully.', 'success', 'Break Time');
     } catch (e: any) {
       notify(e.message || 'Failed to update break', 'error', 'Break Error');
+      throw e;
+    }
+  };
+
+  const handleDeleteBreak = async (breakId: string) => {
+    if (!currentUser) return;
+    const confirmed = await confirmAction({
+      title: 'Delete Break Record',
+      message: 'Are you sure you want to delete this break record? This action will remove it permanently.',
+      confirmText: 'Delete Break',
+      cancelText: 'Keep',
+      variant: 'danger'
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.deleteBreak(breakId, currentUser.id, currentUser.role);
+      await Promise.all([refreshActiveBreaks(), refreshTodayBreaks(), refreshNotifications()]);
+      notify('Break record deleted successfully.', 'success', 'Break Time');
+    } catch (e: any) {
+      notify(e.message || 'Failed to delete break', 'error', 'Break Error');
       throw e;
     }
   };
@@ -1599,17 +1627,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshTodayAttendance();
         refreshAttendanceRecords();
       });
-      socket.on('BREAK_STARTED', () => {
+      socket.on('BREAK_STARTED', (data?: any) => {
         refreshActiveBreaks();
         refreshTodayBreaks();
+        refreshNotifications();
+        if (data?.userName && data?.userId !== currentUser?.id) {
+          notify(`☕ ${data.userName} is on Break (${data.fromTime} - ${data.toTime})`, 'info', 'Team Break');
+        }
       });
       socket.on('BREAK_UPDATED', () => {
         refreshActiveBreaks();
         refreshTodayBreaks();
+        refreshNotifications();
       });
       socket.on('BREAK_ENDED', () => {
         refreshActiveBreaks();
         refreshTodayBreaks();
+        refreshNotifications();
+      });
+      socket.on('BREAK_DELETED', () => {
+        refreshActiveBreaks();
+        refreshTodayBreaks();
+        refreshNotifications();
       });
       socket.on('TASK_TIMER_UPDATED', refreshUserWorkspace);
       socket.on('ASSIGNMENT_UPDATED', () => {
@@ -1643,6 +1682,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         socket.off('BREAK_STARTED');
         socket.off('BREAK_UPDATED');
         socket.off('BREAK_ENDED');
+        socket.off('BREAK_DELETED');
       };
     } else {
       setUnreadMessagesCount(0);
@@ -1789,7 +1829,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         refreshTodayBreaks,
         handleStartBreak,
         handleUpdateBreak,
-        handleEndBreak
+        handleEndBreak,
+        handleDeleteBreak
       }}
     >
       {children}

@@ -5873,16 +5873,16 @@ const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
   const date = new Date(baseDate);
   const clean = String(timeStr).trim().toUpperCase();
 
-  // Check 12-hour or 24-hour time format (e.g. "12:30 PM", "1:15 AM", "14:30")
+  // Check 12-hour or 24-hour time format (e.g. "11:34 AM", "12:04 PM", "1:15 AM", "14:30")
   const match = clean.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)?$/);
   if (match) {
     let hours = parseInt(match[1], 10);
     const minutes = parseInt(match[2], 10);
     const meridiem = match[4];
-    if (meridiem === 'PM' && hours < 12) {
-      hours += 12;
-    } else if (meridiem === 'AM' && hours === 12) {
-      hours = 0;
+    if (meridiem === 'PM') {
+      if (hours < 12) hours += 12; // 1 PM -> 13, 11 PM -> 23, 12 PM -> 12 (noon)
+    } else if (meridiem === 'AM') {
+      if (hours === 12) hours = 0; // 12 AM -> 0 (midnight)
     } else if (!meridiem && baseDate.getHours() >= 12 && hours < 12) {
       hours += 12;
     }
@@ -5895,7 +5895,7 @@ const parseTimeToTodayDate = (timeStr, baseDate = new Date()) => {
   return new Date();
 };
 
-const getActiveBreaks = async ({ teamId, teamName, userId } = {}) => {
+const getActiveBreaks = async ({ teamId, teamName, departmentId, departmentName, userId, userRole } = {}) => {
   if (!memoryStore.breaks) memoryStore.breaks = [];
   const now = new Date();
 
@@ -5922,39 +5922,74 @@ const getActiveBreaks = async ({ teamId, teamName, userId } = {}) => {
     }
   }
 
-  // Strictly isolate active breaks:
-  // Must be active and toTimestamp in the future
+  // Active breaks must have toTimestamp in the future
   let activeList = memoryStore.breaks.filter(b => b.status === 'active' && new Date(b.toTimestamp).getTime() > now.getTime());
 
-  if (teamId || teamName) {
-    activeList = activeList.filter(b => {
+  // 1. Admin sees all active breaks
+  if (userRole === 'admin') {
+    return activeList;
+  }
+
+  // 2. Manager sees breaks across their team, department, or managed workspace
+  if (userRole === 'manager') {
+    return activeList.filter(b => {
+      if (userId && b.userId === userId) return true;
+      if (departmentId && b.departmentId && b.departmentId === departmentId) return true;
+      if (departmentName && b.departmentName && b.departmentName.toLowerCase() === departmentName.toLowerCase()) return true;
       if (teamId && b.teamId && b.teamId === teamId) return true;
       if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      // In manager view, also see any user breaks within their supervised organization
+      return true;
+    });
+  }
+
+  // 3. User sees:
+  // - Self
+  // - Members in same team
+  // - Members in same department
+  // - Any manager or admin in the department/workspace
+  if (teamId || teamName || departmentId || departmentName || userId) {
+    return activeList.filter(b => {
       if (userId && b.userId === userId) return true;
+      if (teamId && b.teamId && b.teamId === teamId) return true;
+      if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      if (departmentId && b.departmentId && b.departmentId === departmentId) return true;
+      if (departmentName && b.departmentName && b.departmentName.toLowerCase() === departmentName.toLowerCase()) return true;
+      if (b.userRole === 'manager' || b.userRole === 'admin') return true;
       return false;
     });
-  } else if (userId) {
-    activeList = activeList.filter(b => b.userId === userId);
   }
 
   return activeList;
 };
 
-const getTodayBreaks = async ({ teamId, teamName, userId } = {}) => {
+const getTodayBreaks = async ({ teamId, teamName, departmentId, departmentName, userId, userRole } = {}) => {
   if (!memoryStore.breaks) memoryStore.breaks = [];
   const today = new Date().toISOString().split('T')[0];
 
   let list = memoryStore.breaks.filter(b => b.date === today);
 
-  if (teamId || teamName) {
+  if (userRole === 'admin') {
+    // Admin sees all breaks today
+  } else if (userRole === 'manager') {
     list = list.filter(b => {
+      if (userId && b.userId === userId) return true;
+      if (departmentId && b.departmentId && b.departmentId === departmentId) return true;
+      if (departmentName && b.departmentName && b.departmentName.toLowerCase() === departmentName.toLowerCase()) return true;
       if (teamId && b.teamId && b.teamId === teamId) return true;
       if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      return true;
+    });
+  } else if (teamId || teamName || departmentId || departmentName || userId) {
+    list = list.filter(b => {
       if (userId && b.userId === userId) return true;
+      if (teamId && b.teamId && b.teamId === teamId) return true;
+      if (teamName && b.teamName && b.teamName.toLowerCase() === teamName.toLowerCase()) return true;
+      if (departmentId && b.departmentId && b.departmentId === departmentId) return true;
+      if (departmentName && b.departmentName && b.departmentName.toLowerCase() === departmentName.toLowerCase()) return true;
+      if (b.userRole === 'manager' || b.userRole === 'admin') return true;
       return false;
     });
-  } else if (userId) {
-    list = list.filter(b => b.userId === userId);
   }
 
   return list.sort((a, b) => new Date(b.createdAt || b.fromTimestamp).getTime() - new Date(a.createdAt || a.fromTimestamp).getTime());
@@ -5983,7 +6018,7 @@ const recordBreak = async ({
   const fromTs = parseTimeToTodayDate(fromTime);
   let toTs = parseTimeToTodayDate(toTime);
 
-  // If toTs <= fromTs, roll over to the next hour or day
+  // If toTs <= fromTs, roll over to the next day
   if (toTs.getTime() <= fromTs.getTime()) {
     toTs = new Date(toTs.getTime() + 24 * 60 * 60 * 1000);
   }
@@ -6027,12 +6062,16 @@ const recordBreak = async ({
     }
   }
 
-  // Team-isolated notification: only notify members and managers of this specific team
+  // Cross-role notification: notify team members, managers, admins, and self
   try {
     const cleanTeam = (teamName || '').toLowerCase().trim();
+    const cleanDept = (departmentName || '').toLowerCase().trim();
+
+    // 1. Notify team members in the same team or department
     const targetMembers = (memoryStore.members || []).filter(m => {
       if (m.userId === userId || (userEmail && m.email?.toLowerCase() === userEmail.toLowerCase())) return false;
       if (teamId && m.teamId && m.teamId === teamId) return true;
+      if (departmentId && m.departmentId && m.departmentId === departmentId) return true;
       if (cleanTeam && m.role && m.role.toLowerCase().includes(cleanTeam)) return true;
       return false;
     });
@@ -6045,18 +6084,14 @@ const recordBreak = async ({
         referenceId: breakRecord.id,
         title: `☕ ${userName} is on Break (${reason})`,
         message: `${userName} is taking a ${reason} from ${fromTime} to ${toTime}.`,
-        link: '/break-time'
+        link: 'break-time'
       });
     }
 
-    // Also notify managers of that team
+    // 2. Notify all managers and admins so they stay informed in real-time
     const targetManagers = (memoryStore.users || []).filter(u => {
       if (u.id === userId || (userEmail && u.email?.toLowerCase() === userEmail.toLowerCase())) return false;
-      if (u.role === 'manager' || u.role === 'admin') {
-        if (teamId && (u.teamId === teamId || u.team === teamName)) return true;
-        if (cleanTeam && u.team && u.team.toLowerCase() === cleanTeam) return true;
-        if (u.role === 'admin') return true;
-      }
+      if (u.role === 'manager' || u.role === 'admin') return true;
       return false;
     });
 
@@ -6067,10 +6102,21 @@ const recordBreak = async ({
         recipientEmail: mgr.email,
         referenceId: breakRecord.id,
         title: `☕ ${userName} is on Break (${reason})`,
-        message: `${userName} from ${teamName || 'your team'} is on break until ${toTime}.`,
-        link: '/break-time'
+        message: `${userName} (${teamName || 'Workspace'}) is on break until ${toTime}.`,
+        link: 'break-time'
       });
     }
+
+    // 3. Self-confirmation notification
+    createNotification({
+      recipientRole: userRole,
+      recipientUserId: userId,
+      recipientEmail: userEmail,
+      referenceId: breakRecord.id,
+      title: `☕ Your Break is Active (${reason})`,
+      message: `Your break notice is live from ${fromTime} to ${toTime}. Your team and manager are notified.`,
+      link: 'break-time'
+    });
   } catch (err) {
     console.warn('Break notifications error:', err.message);
   }
@@ -6086,7 +6132,7 @@ const endBreakEarly = async (breakId, { userId } = {}) => {
 
   record.status = 'completed';
   record.toTimestamp = now;
-  record.toTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+  record.toTime = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   saveStore();
 
   if (getStatus()) {
@@ -6150,6 +6196,34 @@ const updateBreak = async (breakId, { fromTime, toTime, reason, userId } = {}) =
   }
 
   return record;
+};
+
+const deleteBreak = async (breakId, { userId, userRole } = {}) => {
+  if (!memoryStore.breaks) memoryStore.breaks = [];
+  const idx = memoryStore.breaks.findIndex(b => b.id === breakId || b.customId === breakId || b._id === breakId);
+  if (idx === -1) {
+    throw new Error('Break record not found');
+  }
+
+  const deleted = memoryStore.breaks.splice(idx, 1)[0];
+  saveStore();
+
+  // Also remove associated notifications
+  if (memoryStore.notifications) {
+    memoryStore.notifications = memoryStore.notifications.filter(n => n.referenceId !== breakId);
+    saveStore();
+  }
+
+  if (getStatus()) {
+    try {
+      await BreakTime.deleteOne(buildIdQuery(breakId));
+      await Notification.deleteMany({ referenceId: breakId });
+    } catch (e) {
+      console.warn('Mongo deleteBreak error:', e.message);
+    }
+  }
+
+  return deleted;
 };
 
 module.exports = {
@@ -6245,5 +6319,6 @@ module.exports = {
   getTodayBreaks,
   recordBreak,
   updateBreak,
-  endBreakEarly
+  endBreakEarly,
+  deleteBreak
 };

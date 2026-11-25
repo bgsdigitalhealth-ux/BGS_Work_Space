@@ -32,6 +32,7 @@ import { ManagerTimelineView } from './components/user/ManagerTimelineView';
 import { ReportsView } from './components/user/ReportsView';
 import { UserAttendanceRecords } from './components/user/UserAttendanceRecords';
 import { AttendanceWidget } from './components/user/AttendanceWidget';
+import { ActiveBreakBanner } from './components/break/ActiveBreakBanner';
 import { BreakTimeView } from './components/break/BreakTimeView';
 import { LoginPage } from './components/auth/LoginPage';
 import { LandingPage } from './components/landing/LandingPage';
@@ -110,6 +111,7 @@ export const App: React.FC = () => {
 
           <main className="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-6">
             <AttendanceWidget />
+            {adminNav !== 'break-time' && <ActiveBreakBanner />}
             {(adminNav === 'record' || adminNav === 'records') ? (
               <UserAttendanceRecords />
             ) : adminNav === 'break-time' ? (

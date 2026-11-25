@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Coffee, Clock, CheckCircle2, Edit3 } from 'lucide-react';
+import { Coffee, Clock, CheckCircle2, Edit3, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { BreakTimeRecord } from '../../types';
 
 export const ActiveBreakBanner: React.FC = () => {
-  const { activeTeamBreaks, currentUser, handleEndBreak, refreshActiveBreaks, setUserNav, setManagerNav, setAdminNav } = useApp();
+  const {
+    activeTeamBreaks,
+    currentUser,
+    handleEndBreak,
+    handleDeleteBreak,
+    refreshActiveBreaks,
+    setUserNav,
+    setManagerNav,
+    setAdminNav
+  } = useApp();
   const [, setTick] = useState(0);
 
   // Update live countdown every second
@@ -20,11 +29,16 @@ export const ActiveBreakBanner: React.FC = () => {
     return null;
   }
 
+  const navigateToBreakTime = () => {
+    if (currentUser?.role === 'manager') setManagerNav('break-time');
+    else if (currentUser?.role === 'admin') setAdminNav('break-time');
+    else setUserNav('break-time');
+  };
+
   const formatRemaining = (toTimestamp: string | Date) => {
     const endMs = new Date(toTimestamp).getTime();
     const diff = Math.max(0, Math.floor((endMs - Date.now()) / 1000));
     if (diff <= 0) {
-      // Time is up, refresh breaks so expired one clears
       setTimeout(() => refreshActiveBreaks(), 500);
       return 'Ending now...';
     }
@@ -41,6 +55,7 @@ export const ActiveBreakBanner: React.FC = () => {
     <div className="space-y-3 mb-6">
       {activeTeamBreaks.map((brk: BreakTimeRecord) => {
         const isMe = currentUser?.id && (brk.userId === currentUser.id || brk.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
+        const isManagerOrAdmin = currentUser?.role === 'manager' || currentUser?.role === 'admin';
         const remainingText = formatRemaining(brk.toTimestamp);
 
         return (
@@ -97,8 +112,8 @@ export const ActiveBreakBanner: React.FC = () => {
               </div>
 
               {/* Right Action */}
-              <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
-                <div className="text-right hidden md:block">
+              <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-center flex-wrap">
+                <div className="text-right hidden md:block mr-1">
                   <div className="text-[11px] uppercase tracking-wider font-bold text-slate-400">Status</div>
                   <div className="text-xs font-semibold text-emerald-600 flex items-center gap-1 justify-end">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
@@ -107,19 +122,15 @@ export const ActiveBreakBanner: React.FC = () => {
                 </div>
 
                 {isMe ? (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 flex-wrap">
                     <button
                       type="button"
-                      onClick={() => {
-                        if (currentUser?.role === 'manager') setManagerNav('break-time');
-                        else if (currentUser?.role === 'admin') setAdminNav('break-time');
-                        else setUserNav('break-time');
-                      }}
+                      onClick={navigateToBreakTime}
                       className="px-3 py-2 rounded-xl text-xs sm:text-sm font-bold bg-white/95 hover:bg-white text-slate-800 border border-slate-200/90 shadow-xs transition-all flex items-center gap-1.5 cursor-pointer"
-                      title="Modify your break time schedule"
+                      title="Modify your break schedule"
                     >
                       <Edit3 className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Modify Time</span>
+                      <span>Modify</span>
                     </button>
                     <button
                       type="button"
@@ -127,12 +138,36 @@ export const ActiveBreakBanner: React.FC = () => {
                       className="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition-all flex items-center gap-1.5 cursor-pointer hover:shadow-md"
                     >
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>End Break Early</span>
+                      <span>End Early</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBreak(brk.id || brk.customId || '')}
+                      className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 transition-all cursor-pointer"
+                      title="Delete this active break"
+                    >
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
-                  <div className="px-3 py-1.5 rounded-xl bg-white/80 border border-slate-200 text-xs font-medium text-slate-600">
-                    Notified to Team & Manager
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={navigateToBreakTime}
+                      className="px-3 py-1.5 rounded-xl bg-white/90 hover:bg-white border border-slate-200 text-xs font-semibold text-indigo-600 cursor-pointer transition shadow-xs"
+                    >
+                      View Team Schedule
+                    </button>
+                    {isManagerOrAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteBreak(brk.id || brk.customId || '')}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition"
+                        title="Delete break record (Manager / Admin)"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 )}
               </div>

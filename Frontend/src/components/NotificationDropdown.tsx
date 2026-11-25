@@ -13,7 +13,9 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
     handleMarkNotificationRead,
     handleMarkAllNotificationsRead,
     setUserNav,
+    setManagerNav,
     setAdminNav,
+    currentUser,
     portalMode
   } = useApp();
 
@@ -44,6 +46,10 @@ export const NotificationDropdown: React.FC<Props> = ({ isOpen, onClose }) => {
     if (notif.link === 'appointments') {
       if (portalMode === 'admin') setAdminNav('appointments');
       else setUserNav('appointments');
+    } else if (notif.link === 'break-time' || notif.link === '/break-time') {
+      if (currentUser?.role === 'manager') setManagerNav('break-time');
+      else if (currentUser?.role === 'admin') setAdminNav('break-time');
+      else setUserNav('break-time');
     } else if (notif.link === 'my-work' || notif.link === 'assigned-work') {
       setUserNav('my-work');
     } else if (notif.link === 'work-history') {
