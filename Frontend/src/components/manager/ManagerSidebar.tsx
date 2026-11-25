@@ -62,7 +62,7 @@ export const ManagerSidebar: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen bg-[#14122d] text-white flex flex-col justify-between shrink-0 overflow-hidden transition-transform duration-300 ease-in-out relative shadow-2xl ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen h-dvh bg-[#14122d] text-white flex flex-col justify-between shrink-0 overflow-hidden transition-transform duration-300 ease-in-out relative shadow-2xl pt-safe pb-safe ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
         {/* Top & Navigation Section */}
         <div className="flex flex-col flex-1 min-h-0 relative z-10">
@@ -90,8 +90,9 @@ export const ManagerSidebar: React.FC = () => {
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="lg:hidden touch-target p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Close menu"
+              aria-label="Close navigation menu"
             >
               <X className="w-5 h-5" />
             </button>

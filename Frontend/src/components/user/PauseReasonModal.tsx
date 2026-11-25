@@ -38,7 +38,7 @@ export const PauseReasonModal: React.FC<PauseReasonModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-3xl max-w-md w-full shadow-2xl border border-gray-100 overflow-hidden transform transition-all"
+        className="bg-white rounded-3xl max-w-md w-full max-h-[90dvh] overflow-y-auto shadow-2xl border border-gray-100 transform transition-all"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

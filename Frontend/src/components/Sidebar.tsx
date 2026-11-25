@@ -56,10 +56,10 @@ export const Sidebar: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen bg-[#121139] text-slate-300 flex flex-col shrink-0 overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen h-dvh bg-[#121139] text-slate-300 flex flex-col justify-between shrink-0 overflow-hidden transition-transform duration-300 ease-in-out shadow-2xl pt-safe pb-safe ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
         {/* Brand Header */}
-        <div className="p-5 flex items-center justify-between border-b border-indigo-950/60 shrink-0">
+        <div className="p-4 sm:p-5 flex items-center justify-between border-b border-indigo-950/60 shrink-0">
           <div
             className="flex items-center gap-3 cursor-pointer select-none"
             onClick={() => handleNavAction(() => setAdminNav('dashboard'))}
@@ -84,7 +84,7 @@ export const Sidebar: React.FC = () => {
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="lg:hidden touch-target p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
             title="Close navigation"
           >
             <X className="w-5 h-5" />

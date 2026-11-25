@@ -108,30 +108,31 @@ export const SubmitWorkDrawer: React.FC = () => {
       />
 
       {/* Slide-over panel */}
-      <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-        <div className="w-screen max-w-lg bg-white shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-300 border-l border-gray-100">
+      <div className="fixed inset-y-0 right-0 max-w-full flex pl-0 sm:pl-10">
+        <div className="w-screen max-w-full sm:max-w-lg bg-white shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-300 border-l border-gray-100 pb-safe">
           {/* Header */}
-          <div className="p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm z-10">
+          <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white/95 backdrop-blur-sm z-10">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5a36e6] flex items-center justify-center shadow-xs">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#5a36e6] flex items-center justify-center shadow-xs shrink-0">
                 <Upload className="w-5 h-5" />
               </div>
-              <div>
-                <h2 className="text-base font-bold text-gray-900 leading-tight">Submit Work Deliverables</h2>
-                <p className="text-xs text-gray-500 font-medium">Record deliverables, update task progress, and submit for review</p>
+              <div className="min-w-0">
+                <h2 className="text-base font-bold text-gray-900 leading-tight truncate">Submit Work Deliverables</h2>
+                <p className="text-xs text-gray-500 font-medium truncate">Record deliverables, update task progress, and submit for review</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setIsSubmitWorkDrawerOpen(false)}
-              className="p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer"
+              className="touch-target p-2 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition cursor-pointer shrink-0"
+              aria-label="Close submit work drawer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
 
           {/* Form Content */}
-          <form onSubmit={onSubmit} className="p-6 space-y-5 flex-1">
+          <form onSubmit={onSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 flex-1">
             {/* Task Selector (if multiple assigned tasks exist) */}
             {assignedTasks.length > 1 && (
               <div>
@@ -269,18 +270,18 @@ export const SubmitWorkDrawer: React.FC = () => {
             </div>
 
             {/* Action Buttons */}
-            <div className="pt-4 border-t border-gray-100 flex items-center gap-3">
+            <div className="pt-4 border-t border-gray-100 flex items-center gap-3 pb-safe">
               <button
                 type="button"
                 onClick={() => setIsSubmitWorkDrawerOpen(false)}
-                className="w-1/2 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition cursor-pointer"
+                className="w-1/2 min-h-[44px] py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-bold hover:bg-gray-50 transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-1/2 py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] disabled:opacity-50 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30 cursor-pointer"
+                className="w-1/2 min-h-[44px] py-2.5 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] disabled:opacity-50 text-white text-xs font-bold transition flex items-center justify-center gap-2 shadow-md shadow-indigo-600/30 cursor-pointer"
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>{isSubmitting ? 'Submitting...' : 'Submit Work'}</span>

@@ -20,7 +20,7 @@ export const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onDismis
   if (!toasts || toasts.length === 0) return null;
 
   return (
-    <div className="fixed top-5 right-5 z-[130] flex flex-col gap-2.5 max-w-sm sm:max-w-md w-full pointer-events-none">
+    <div className="fixed top-3 right-3 left-3 sm:left-auto sm:top-5 sm:right-5 z-[130] flex flex-col gap-2 max-w-none sm:max-w-md w-auto sm:w-full pointer-events-none pt-safe">
       {toasts.map((toast) => {
         const isError = toast.type === 'error';
         const isWarning = toast.type === 'warning';
