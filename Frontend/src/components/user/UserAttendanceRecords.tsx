@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   CalendarCheck, 
   Clock, 
-  LogIn, 
-  LogOut, 
   Search, 
   ChevronDown, 
   ChevronUp, 
@@ -20,15 +18,12 @@ export const UserAttendanceRecords: React.FC = () => {
     todayAttendance, 
     attendanceRecords, 
     refreshAttendanceRecords, 
-    handlePunchIn, 
-    handlePunchOut,
     currentUser 
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'all' | 'week' | 'month'>('all');
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
-  const [isProcessing, setIsProcessing] = useState(false);
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
 
   const isPunchedIn = todayAttendance?.status === 'punched_in';
@@ -82,20 +77,6 @@ export const UserAttendanceRecords: React.FC = () => {
   };
 
   const todayStr = new Date().toISOString().split('T')[0];
-
-  const onPunchIn = async () => {
-    setIsProcessing(true);
-    await handlePunchIn();
-    await refreshAttendanceRecords();
-    setIsProcessing(false);
-  };
-
-  const onPunchOut = async () => {
-    setIsProcessing(true);
-    await handlePunchOut();
-    await refreshAttendanceRecords();
-    setIsProcessing(false);
-  };
 
   const toggleExpand = (date: string) => {
     setExpandedDates(prev => ({
@@ -177,29 +158,15 @@ export const UserAttendanceRecords: React.FC = () => {
           </div>
         </div>
 
-        {/* Quick Punch In / Out Button */}
+        {/* Refresh Action (Punch option is strictly scoped to Dashboard) */}
         <div className="flex items-center gap-2.5 self-start md:self-auto">
-          {isPunchedIn ? (
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={onPunchOut}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              <LogOut className="w-4 h-4 text-rose-600" />
-              <span>{isProcessing ? 'Refreshing...' : 'Punch Out (Stop Work)'}</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              disabled={isProcessing}
-              onClick={onPunchIn}
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 cursor-pointer disabled:opacity-50"
-            >
-              <LogIn className="w-4 h-4" />
-              <span>{isProcessing ? 'Refreshing...' : 'Punch In (Present)'}</span>
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => refreshAttendanceRecords()}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-semibold transition cursor-pointer"
+          >
+            Refresh Records
+          </button>
         </div>
       </div>
 
@@ -348,18 +315,9 @@ export const UserAttendanceRecords: React.FC = () => {
               <CalendarCheck className="w-6 h-6" />
             </div>
             <h4 className="text-sm font-bold text-gray-800 mb-1">No Attendance Records Found</h4>
-            <p className="text-xs text-gray-500 max-w-sm mx-auto mb-4 font-medium">
-              You haven't recorded any punches for this filter range yet. Use the Punch In button to begin tracking your workspace hours.
+            <p className="text-xs text-gray-500 max-w-sm mx-auto font-medium">
+              You haven't recorded any punches for this filter range yet. Use the Punch In button on your Dashboard to begin tracking your workspace hours.
             </p>
-            {!isPunchedIn && (
-              <button
-                type="button"
-                onClick={onPunchIn}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition shadow-sm cursor-pointer"
-              >
-                Punch In (Present)
-              </button>
-            )}
           </div>
         ) : (
           <div className="divide-y divide-gray-100">

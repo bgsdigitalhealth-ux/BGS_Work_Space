@@ -110,7 +110,6 @@ export const App: React.FC = () => {
           <Header />
 
           <main className="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-6">
-            <AttendanceWidget />
             {adminNav !== 'break-time' && <ActiveBreakBanner />}
             {(adminNav === 'record' || adminNav === 'records') ? (
               <UserAttendanceRecords />
@@ -128,6 +127,9 @@ export const App: React.FC = () => {
               <ReportsView />
             ) : (
               <>
+                {/* Workspace Attendance Punch Widget (Dashboard only) */}
+                <AttendanceWidget />
+
                 {/* Top 5 KPI Stats Cards */}
                 <StatsOverview />
 
@@ -169,8 +171,7 @@ export const App: React.FC = () => {
           <UserHeader />
 
           <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
-            <AttendanceWidget />
-            {/* Conditional View by managerNav */}
+            {/* Conditional View by managerNav (Punch option is rendered inside ManagerDashboard only) */}
             {(managerNav === 'record' || managerNav === 'records') && <UserAttendanceRecords />}
             {managerNav === 'break-time' && <BreakTimeView />}
             {managerNav === 'dashboard' && <ManagerDashboard />}

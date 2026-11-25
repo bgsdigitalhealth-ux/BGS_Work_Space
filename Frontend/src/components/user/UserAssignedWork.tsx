@@ -31,7 +31,6 @@ import { UserAssignedWork as UserAssignedWorkType } from '../../types';
 import { UserWorkDetails } from './UserWorkDetails';
 import { PauseReasonModal } from './PauseReasonModal';
 import { EditTaskModal } from './EditTaskModal';
-import { AttendanceWidget } from './AttendanceWidget';
 
 interface UserAssignedWorkProps {
   initialView?: 'cards' | 'list' | 'details';
@@ -389,9 +388,6 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   // ----------------------------------------------------
   return (
     <div className="space-y-6 pb-12">
-      {/* Workspace Attendance Widget (Punch In / Punch Out & Today's Time Present) */}
-      <AttendanceWidget />
-
       {/* Top Header Card with Quick Stats & Layout Switcher */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
