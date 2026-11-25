@@ -125,6 +125,58 @@
   "appointments": [],
   "notifications": [
     {
+      "id": "notif-1795589289780-710",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "brk-1795589289779-416",
+      "title": "☕ Sushmitha is on Break (Tea Break)",
+      "message": "Sushmitha (AI Team) is on break until 12:25 PM.",
+      "timestamp": "25 Nov 2026, 12:18 PM",
+      "read": false,
+      "link": "break-time",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795589289780-712",
+      "recipientRole": "admin",
+      "recipientUserId": "usr-bgsmch-admin",
+      "recipientEmail": "bgsmchhospitalnagarur@gmail.com",
+      "referenceId": "brk-1795589289779-416",
+      "title": "☕ Sushmitha is on Break (Tea Break)",
+      "message": "Sushmitha (AI Team) is on break until 12:25 PM.",
+      "timestamp": "25 Nov 2026, 12:18 PM",
+      "read": false,
+      "link": "break-time",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795589289778-357",
+      "recipientRole": "manager",
+      "recipientUserId": "usr-1795150363087-258",
+      "recipientEmail": "dynamicsajjan@gmail.com",
+      "referenceId": "brk-1795589289766-279",
+      "title": "☕ Mehul is on Break (Coffee Break)",
+      "message": "Mehul (AI Team) is on break until 12:20 PM.",
+      "timestamp": "25 Nov 2026, 12:18 PM",
+      "read": false,
+      "link": "break-time",
+      "actionUrl": ""
+    },
+    {
+      "id": "notif-1795589289767-40",
+      "recipientRole": "admin",
+      "recipientUserId": "usr-bgsmch-admin",
+      "recipientEmail": "bgsmchhospitalnagarur@gmail.com",
+      "referenceId": "brk-1795589289766-279",
+      "title": "☕ Mehul is on Break (Coffee Break)",
+      "message": "Mehul (AI Team) is on break until 12:20 PM.",
+      "timestamp": "25 Nov 2026, 12:18 PM",
+      "read": false,
+      "link": "break-time",
+      "actionUrl": ""
+    },
+    {
       "id": "notif-1795586164281-663",
       "recipientRole": "admin",
       "recipientUserId": "usr-bgsmch-admin",
@@ -148,19 +200,6 @@
       "timestamp": "25 Nov 2026, 10:29 AM",
       "read": false,
       "link": "/break-time",
-      "actionUrl": ""
-    },
-    {
-      "id": "notif-1795580694887-692",
-      "recipientRole": "user",
-      "recipientUserId": "usr-mehul",
-      "recipientEmail": "",
-      "referenceId": "",
-      "title": "New Work Assigned",
-      "message": "Admin (Admin) assigned: \"Build AI Doctor Chatbot\" to you.",
-      "timestamp": "25 Nov 2026, 09:54 AM",
-      "read": false,
-      "link": "assigned-work",
       "actionUrl": ""
     },
     {

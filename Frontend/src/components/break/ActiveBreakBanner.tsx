@@ -93,9 +93,23 @@ export const ActiveBreakBanner: React.FC = () => {
     return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s left`;
   };
 
+  // Strict User-Based Isolation: regular users only see their own active break banner.
+  // Managers and Admins see their team members' active break notices.
+  const visibleBreaks = (activeTeamBreaks || []).filter((brk: BreakTimeRecord) => {
+    const isMe = currentUser?.id && (brk.userId === currentUser.id || brk.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
+    if (currentUser?.role === 'user') {
+      return isMe;
+    }
+    return true;
+  });
+
+  if (!visibleBreaks || visibleBreaks.length === 0) {
+    return null;
+  }
+
   return (
     <div className="space-y-3 mb-6">
-      {activeTeamBreaks.map((brk: BreakTimeRecord) => {
+      {visibleBreaks.map((brk: BreakTimeRecord) => {
         const isMe = currentUser?.id && (brk.userId === currentUser.id || brk.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
         const isManagerOrAdmin = currentUser?.role === 'manager' || currentUser?.role === 'admin';
         const remainingText = formatRemaining(brk.toTimestamp, brk.fromTime, brk.toTime);

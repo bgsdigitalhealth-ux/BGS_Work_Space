@@ -618,7 +618,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || currentUser.department || '';
       const departmentName = currentUser.department || '';
       const userRole = currentUser.role || 'user';
-      const list = await api.getActiveBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole);
+      const list = await api.getActiveBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole, currentUser.email);
       setActiveTeamBreaks(list || []);
     } catch (e) {
       console.warn('Could not fetch active breaks:', e);
@@ -637,7 +637,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const departmentId = myMem?.departmentId || (currentUser as any)?.departmentId || currentUser.department || '';
       const departmentName = currentUser.department || '';
       const userRole = currentUser.role || 'user';
-      const list = await api.getTodayBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole);
+      const list = await api.getTodayBreaks(teamId, teamName, currentUser.id, departmentId, departmentName, userRole, currentUser.email);
       setTodayTeamBreaks(list || []);
     } catch (e) {
       console.warn('Could not fetch today breaks:', e);

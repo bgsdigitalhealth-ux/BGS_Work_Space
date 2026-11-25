@@ -603,8 +603,8 @@ router.post('/attendance/punch-out', async (req, res) => {
 // --- Break Time Management ---
 router.get('/breaks/active', async (req, res) => {
   try {
-    const { teamId, teamName, departmentId, departmentName, userId, userRole } = req.query;
-    const breaks = await dataService.getActiveBreaks({ teamId, teamName, departmentId, departmentName, userId, userRole });
+    const { teamId, teamName, departmentId, departmentName, userId, userEmail, userRole } = req.query;
+    const breaks = await dataService.getActiveBreaks({ teamId, teamName, departmentId, departmentName, userId, userEmail, userRole });
     res.json(breaks);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -613,8 +613,8 @@ router.get('/breaks/active', async (req, res) => {
 
 router.get('/breaks/today', async (req, res) => {
   try {
-    const { teamId, teamName, departmentId, departmentName, userId, userRole } = req.query;
-    const breaks = await dataService.getTodayBreaks({ teamId, teamName, departmentId, departmentName, userId, userRole });
+    const { teamId, teamName, departmentId, departmentName, userId, userEmail, userRole } = req.query;
+    const breaks = await dataService.getTodayBreaks({ teamId, teamName, departmentId, departmentName, userId, userEmail, userRole });
     res.json(breaks);
   } catch (err) {
     res.status(500).json({ error: err.message });

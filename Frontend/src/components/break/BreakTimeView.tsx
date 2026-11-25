@@ -385,17 +385,6 @@ export const BreakTimeView: React.FC = () => {
               Log or update your break schedule anytime. Your active break notice is broadcast in real-time to your team members and manager.
             </p>
           </div>
-
-          <div className="flex items-center gap-3 self-start md:self-center">
-            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-center">
-              <div className="text-2xl font-black text-amber-300">{activeTeamBreaks.length}</div>
-              <div className="text-xs text-indigo-200 font-medium">Team On Break</div>
-            </div>
-            <div className="px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-center">
-              <div className="text-2xl font-black text-emerald-300">{todayTeamBreaks.length}</div>
-              <div className="text-xs text-indigo-200 font-medium">Today's Breaks</div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -749,66 +738,97 @@ export const BreakTimeView: React.FC = () => {
             </div>
           )}
 
-          {/* Team Members Currently on Break */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-600" />
-                <span>Team Members on Break ({otherTeamBreaks.length})</span>
-              </h3>
-              <span className="text-[11px] font-semibold text-slate-400">Scoped to {teamName}</span>
+          {/* Team Members Currently on Break (Manager / Admin only) OR Personal Break Guidelines (Regular User) */}
+          {currentUser?.role !== 'user' ? (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Users className="w-4 h-4 text-indigo-600" />
+                  <span>Team Members on Break ({otherTeamBreaks.length})</span>
+                </h3>
+                <span className="text-[11px] font-semibold text-slate-400">Scoped to {teamName}</span>
+              </div>
+
+              {otherTeamBreaks.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  No other teammates are currently on break.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {otherTeamBreaks.map((b: BreakTimeRecord) => (
+                    <div
+                      key={b.id || b.customId}
+                      className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
+                          {(b.userName || 'M')[0]}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-900 truncate">
+                            {b.userName}
+                          </div>
+                          <div className="text-[11px] text-slate-500 truncate">
+                            {b.reason} ({b.fromTime} - {b.toTime})
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        <div className="text-[11px] font-bold text-amber-700 flex items-center gap-1 justify-end">
+                          <Clock className="w-3 h-3" />
+                          {formatRemaining(b.toTimestamp, b.fromTime, b.toTime)}
+                        </div>
+                        <div className="text-[10px] text-slate-400">Active Notice</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-
-            {otherTeamBreaks.length === 0 ? (
-              <div className="py-6 text-center text-xs text-slate-400">
-                No other teammates are currently on break.
+          ) : (
+            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-3.5">
+              <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                <h3 className="font-bold text-slate-900 text-sm flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-indigo-600" />
+                  <span>Break Guidelines & Policy</span>
+                </h3>
+                <span className="text-[11px] font-semibold text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 className="w-3.5 h-3.5" />
+                  Live Sync
+                </span>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {otherTeamBreaks.map((b: BreakTimeRecord) => (
-                  <div
-                    key={b.id || b.customId}
-                    className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between gap-3"
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs shrink-0">
-                        {(b.userName || 'M')[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-900 truncate">
-                          {b.userName}
-                        </div>
-                        <div className="text-[11px] text-slate-500 truncate">
-                          {b.reason} ({b.fromTime} - {b.toTime})
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <div className="text-[11px] font-bold text-amber-700 flex items-center gap-1 justify-end">
-                        <Clock className="w-3 h-3" />
-                        {formatRemaining(b.toTimestamp, b.fromTime, b.toTime)}
-                      </div>
-                      <div className="text-[10px] text-slate-400">Active Notice</div>
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-2.5 text-xs text-slate-600">
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 mt-1 shrink-0" />
+                  <p>Short tea or coffee breaks are recommended for 10–15 minutes to stay refreshed.</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-indigo-500 mt-1 shrink-0" />
+                  <p>Your break notice automatically notifies your manager in real-time when active.</p>
+                </div>
+                <div className="p-3 rounded-2xl bg-slate-50/80 border border-slate-100 flex items-start gap-2.5">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0" />
+                  <p>You can modify your time or end early at any moment using your active card above.</p>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Today's Team Break Schedule / History Table */}
+      {/* Today's Break Schedule / History Table (User-based for regular users, Team-based for managers) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 border-b border-slate-100">
           <div>
             <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
               <History className="w-4 h-4 text-indigo-600" />
-              <span>Today's Break Log & Records</span>
+              <span>{currentUser?.role === 'user' ? 'My Break Log & Records' : "Today's Break Log & Records"}</span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Complete log of all breaks taken today across {teamName} and your department.
+              {currentUser?.role === 'user'
+                ? 'History of all breaks logged by you today.'
+                : `Complete log of all breaks taken today across ${teamName} and your department.`}
             </p>
           </div>
           <button
@@ -823,124 +843,139 @@ export const BreakTimeView: React.FC = () => {
           </button>
         </div>
 
-        {todayTeamBreaks.length === 0 ? (
-          <div className="py-10 text-center text-xs text-slate-400">
-            No breaks logged today for this team yet.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-600">
-              <thead>
-                <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
-                  <th className="py-3 px-3">Member</th>
-                  <th className="py-3 px-3">Date</th>
-                  <th className="py-3 px-3">From - To</th>
-                  <th className="py-3 px-3">Reason / Description</th>
-                  <th className="py-3 px-3">Status</th>
-                  <th className="py-3 px-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {todayTeamBreaks.map((b: BreakTimeRecord) => {
-                  const isMe = currentUser?.id && (b.userId === currentUser.id || b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
-                  const isManagerOrAdmin = currentUser?.role === 'manager' || currentUser?.role === 'admin';
-                  const isActive = b.status === 'active' && new Date(b.toTimestamp).getTime() > Date.now();
-                  const canDelete = isMe || isManagerOrAdmin;
+        {(() => {
+          const isUserRole = currentUser?.role === 'user';
+          const displayedBreaks = isUserRole
+            ? (todayTeamBreaks || []).filter(
+                b =>
+                  (currentUser?.id && (b.userId === currentUser.id || String(b.userId) === String(currentUser.id))) ||
+                  (currentUser?.email && b.userEmail?.toLowerCase() === currentUser.email.toLowerCase())
+              )
+            : (todayTeamBreaks || []);
 
-                  const formattedRowDate = b.date
-                    ? new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric'
-                      })
-                    : todayDisplayDate;
+          if (displayedBreaks.length === 0) {
+            return (
+              <div className="py-10 text-center text-xs text-slate-400">
+                {isUserRole ? 'No breaks logged by you today yet.' : 'No breaks logged today for this team yet.'}
+              </div>
+            );
+          }
 
-                  return (
-                    <tr key={b.id || b.customId} className="hover:bg-slate-50/60 transition-colors">
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0">
-                            {(b.userName || 'U')[0]}
+          return (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs text-slate-600">
+                <thead>
+                  <tr className="border-b border-slate-100 text-[11px] uppercase tracking-wider text-slate-400 font-bold">
+                    <th className="py-3 px-3">Member</th>
+                    <th className="py-3 px-3">Date</th>
+                    <th className="py-3 px-3">From - To</th>
+                    <th className="py-3 px-3">Reason / Description</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {displayedBreaks.map((b: BreakTimeRecord) => {
+                    const isMe = currentUser?.id && (b.userId === currentUser.id || b.userEmail?.toLowerCase() === currentUser.email?.toLowerCase());
+                    const isManagerOrAdmin = currentUser?.role === 'manager' || currentUser?.role === 'admin';
+                    const isActive = b.status === 'active' && new Date(b.toTimestamp).getTime() > Date.now();
+                    const canDelete = isMe || isManagerOrAdmin;
+
+                    const formattedRowDate = b.date
+                      ? new Date(b.date + 'T00:00:00').toLocaleDateString('en-GB', {
+                          day: '2-digit',
+                          month: 'short',
+                          year: 'numeric'
+                        })
+                      : todayDisplayDate;
+
+                    return (
+                      <tr key={b.id || b.customId} className="hover:bg-slate-50/60 transition-colors">
+                        <td className="py-3.5 px-3">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 font-bold flex items-center justify-center text-xs shrink-0">
+                              {(b.userName || 'U')[0]}
+                            </div>
+                            <div>
+                              <span className="font-bold text-slate-800">
+                                {b.userName}
+                              </span>
+                              {isMe && <span className="ml-1 text-[10px] text-indigo-600 font-semibold">(You)</span>}
+                              {b.teamName && (
+                                <div className="text-[10px] text-slate-400">{b.teamName}</div>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <span className="font-bold text-slate-800">
-                              {b.userName}
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-slate-700">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-slate-600">
+                            <Calendar className="w-3 h-3 text-slate-400" />
+                            {formattedRowDate}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3 font-semibold text-slate-800">
+                          {b.fromTime} - {b.toTime}
+                        </td>
+                        <td className="py-3.5 px-3 font-medium text-slate-700">
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[11px]">
+                            {b.reason}
+                          </span>
+                        </td>
+                        <td className="py-3.5 px-3">
+                          {isActive ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
+                              Active ({formatRemaining(b.toTimestamp, b.fromTime, b.toTime)})
                             </span>
-                            {isMe && <span className="ml-1 text-[10px] text-indigo-600 font-semibold">(You)</span>}
-                            {b.teamName && (
-                              <div className="text-[10px] text-slate-400">{b.teamName}</div>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              <CheckCircle2 className="w-3 h-3" />
+                              Completed
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-3.5 px-3 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isActive && isMe && (
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEdit(b)}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 cursor-pointer transition-all flex items-center gap-1"
+                                  title="Modify Break Time"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  Modify
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleEndBreak(b.id || b.customId || '')}
+                                  className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-all"
+                                >
+                                  End Early
+                                </button>
+                              </>
+                            )}
+                            {canDelete && (
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteBreak(b.id || b.customId || '')}
+                                className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-all"
+                                title="Delete this break record"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
                             )}
                           </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-3 font-medium text-slate-700">
-                        <span className="inline-flex items-center gap-1 text-[11px] text-slate-600">
-                          <Calendar className="w-3 h-3 text-slate-400" />
-                          {formattedRowDate}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 font-semibold text-slate-800">
-                        {b.fromTime} - {b.toTime}
-                      </td>
-                      <td className="py-3.5 px-3 font-medium text-slate-700">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[11px]">
-                          {b.reason}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3">
-                        {isActive ? (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-                            Active ({formatRemaining(b.toTimestamp, b.fromTime, b.toTime)})
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            <CheckCircle2 className="w-3 h-3" />
-                            Completed
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {isActive && isMe && (
-                            <>
-                              <button
-                                type="button"
-                                onClick={() => handleStartEdit(b)}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 cursor-pointer transition-all flex items-center gap-1"
-                                title="Modify Break Time"
-                              >
-                                <Edit3 className="w-3 h-3" />
-                                Modify
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleEndBreak(b.id || b.customId || '')}
-                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-amber-600 hover:bg-amber-700 text-white cursor-pointer transition-all"
-                              >
-                                End Early
-                              </button>
-                            </>
-                          )}
-                          {canDelete && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteBreak(b.id || b.customId || '')}
-                              className="p-1.5 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 cursor-pointer transition-all"
-                              title="Delete this break record"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        })()}
       </div>
     </div>
   );

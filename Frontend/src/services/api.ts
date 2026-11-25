@@ -218,7 +218,8 @@ export const api = {
     userId?: string,
     departmentId?: string,
     departmentName?: string,
-    userRole?: string
+    userRole?: string,
+    userEmail?: string
   ): Promise<BreakTimeRecord[]> => {
     const params = new URLSearchParams();
     if (teamId) params.append('teamId', teamId);
@@ -227,6 +228,7 @@ export const api = {
     if (departmentId) params.append('departmentId', departmentId);
     if (departmentName) params.append('departmentName', departmentName);
     if (userRole) params.append('userRole', userRole);
+    if (userEmail) params.append('userEmail', userEmail);
     const res = await fetch(`${API_BASE}/breaks/active?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch active breaks');
     return res.json();
@@ -237,7 +239,8 @@ export const api = {
     userId?: string,
     departmentId?: string,
     departmentName?: string,
-    userRole?: string
+    userRole?: string,
+    userEmail?: string
   ): Promise<BreakTimeRecord[]> => {
     const params = new URLSearchParams();
     if (teamId) params.append('teamId', teamId);
@@ -246,6 +249,7 @@ export const api = {
     if (departmentId) params.append('departmentId', departmentId);
     if (departmentName) params.append('departmentName', departmentName);
     if (userRole) params.append('userRole', userRole);
+    if (userEmail) params.append('userEmail', userEmail);
     const res = await fetch(`${API_BASE}/breaks/today?${params.toString()}`);
     if (!res.ok) throw new Error('Failed to fetch today breaks');
     return res.json();
