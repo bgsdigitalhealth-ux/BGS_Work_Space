@@ -23,16 +23,13 @@ import {
   SquarePen,
   ArrowLeft,
   Copy,
-  PhoneOff,
-  MicOff,
-  VideoOff,
-  Monitor,
   CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { getSocket, connectSocketUser } from '../../services/socket';
 import { Conversation, ChatMessage, EligibleUser, MeetingData } from '../../types';
+import { MeetingRoom } from '../meet/MeetingRoom';
 
 export const MessagesView: React.FC = () => {
   const { currentUser, departments = [], teams = [], members = [] } = useApp();
@@ -85,10 +82,6 @@ export const MessagesView: React.FC = () => {
 
   // Active in-meeting room
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<MeetingData | null>(null);
-  const [meetingMuted, setMeetingMuted] = useState<boolean>(false);
-  const [meetingVideoOff, setMeetingVideoOff] = useState<boolean>(false);
-  const [meetingScreenSharing, setMeetingScreenSharing] = useState<boolean>(false);
-  const [meetingTimer, setMeetingTimer] = useState<number>(0);
 
   // Incoming meeting banner popup
   const [incomingMeetingPopup, setIncomingMeetingPopup] = useState<{
@@ -96,6 +89,9 @@ export const MessagesView: React.FC = () => {
     conversationId: string;
     senderName: string;
   } | null>(null);
+
+  // Active ongoing meetings tracker for conversations and teams
+  const [ongoingMeetings, setOngoingMeetings] = useState<{ [key: string]: MeetingData }>({});
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -257,13 +253,48 @@ export const MessagesView: React.FC = () => {
       }
     };
 
-    // Real-time meeting alert popup
+    // Real-time meeting alert popup & ongoing tracker
     const handleMeetingPopupAlert = (data: any) => {
       if (data && data.meeting) {
-        setIncomingMeetingPopup({
-          meeting: data.meeting,
-          conversationId: data.conversationId,
-          senderName: data.senderName || 'Team Member'
+        if (data.senderName && data.senderName !== currentUser?.name) {
+          setIncomingMeetingPopup({
+            meeting: data.meeting,
+            conversationId: data.conversationId,
+            senderName: data.senderName || 'Team Member'
+          });
+        }
+        setOngoingMeetings(prev => ({
+          ...prev,
+          [data.conversationId || data.meeting.id]: data.meeting,
+          [data.meeting.id]: data.meeting
+        }));
+      }
+    };
+
+    const handleMeetingEndedAlert = ({ meetingId }: any) => {
+      setOngoingMeetings(prev => {
+        const copy = { ...prev };
+        Object.keys(copy).forEach(k => {
+          if (copy[k]?.id === meetingId) delete copy[k];
+        });
+        return copy;
+      });
+      setIncomingMeetingPopup(prev => prev?.meeting?.id === meetingId ? null : prev);
+      setActiveMeetingRoom(prev => prev?.id === meetingId ? null : prev);
+    };
+
+    const handleMeetingStatusUpdate = ({ meetingId, status, participantsCount }: any) => {
+      if (status === 'ended') {
+        handleMeetingEndedAlert({ meetingId });
+      } else {
+        setOngoingMeetings(prev => {
+          const copy = { ...prev };
+          Object.keys(copy).forEach(k => {
+            if (copy[k]?.id === meetingId) {
+              copy[k] = { ...copy[k], participantsCount };
+            }
+          });
+          return copy;
         });
       }
     };
@@ -276,6 +307,8 @@ export const MessagesView: React.FC = () => {
     socket.on('user_typing', handleUserTyping);
     socket.on('meeting_popup', handleMeetingPopupAlert);
     socket.on('meeting_started', handleMeetingPopupAlert);
+    socket.on('meeting_ended', handleMeetingEndedAlert);
+    socket.on('meeting_status_update', handleMeetingStatusUpdate);
 
     // Initial fetch of active online users via REST immediately
     api.getOnlineUsers().then((list) => {
@@ -303,6 +336,8 @@ export const MessagesView: React.FC = () => {
       socket.off('user_typing', handleUserTyping);
       socket.off('meeting_popup', handleMeetingPopupAlert);
       socket.off('meeting_started', handleMeetingPopupAlert);
+      socket.off('meeting_ended', handleMeetingEndedAlert);
+      socket.off('meeting_status_update', handleMeetingStatusUpdate);
     };
   }, [currentUser, activeConversation]);
 
@@ -352,6 +387,14 @@ export const MessagesView: React.FC = () => {
       setLoadingMessages(true);
       const history = await api.getMessageHistory(conv.id, currentUser.id);
       setMessages(history);
+      const activeMeetMsg = [...history].reverse().find(m => m.meeting && m.meeting.status !== 'ended');
+      if (activeMeetMsg?.meeting) {
+        setOngoingMeetings(prev => ({
+          ...prev,
+          [conv.id]: activeMeetMsg.meeting!,
+          [activeMeetMsg.meeting!.id]: activeMeetMsg.meeting!
+        }));
+      }
     } catch (err) {
       console.error('Failed to load messages:', err);
     } finally {
@@ -466,27 +509,6 @@ export const MessagesView: React.FC = () => {
     setShowEmojiPicker(false);
   };
 
-  // Meeting Timer Effect
-  useEffect(() => {
-    let interval: any = null;
-    if (activeMeetingRoom) {
-      interval = setInterval(() => {
-        setMeetingTimer(prev => prev + 1);
-      }, 1000);
-    } else {
-      setMeetingTimer(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeMeetingRoom]);
-
-  const formatMeetingTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
   // Create & Start Meeting (Direct or Group Meeting)
   const handleStartMeeting = () => {
     if (!currentUser) return;
@@ -549,16 +571,21 @@ export const MessagesView: React.FC = () => {
       selectConversation(firstConv);
     }
 
+    setOngoingMeetings(prev => ({
+      ...prev,
+      [activeConversation?.id || code]: newMeeting,
+      [code]: newMeeting,
+      ...(activeConversation?.teamName ? { [activeConversation.teamName]: newMeeting } : {})
+    }));
+
     setIsMeetingModalOpen(false);
     setMeetingTitle('');
     setActiveMeetingRoom(newMeeting);
-    setMeetingTimer(0);
   };
 
   // Join Existing Meeting (from chat card or banner)
   const handleJoinMeeting = (meeting: MeetingData) => {
     setActiveMeetingRoom(meeting);
-    setMeetingTimer(0);
     setIsMeetingModalOpen(false);
   };
 
@@ -1422,6 +1449,41 @@ export const MessagesView: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Persistent Ongoing Meeting Banner in Conversation */}
+          {(() => {
+            const currentOngoingMeeting = activeConversation
+              ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+              : null;
+            if (!currentOngoingMeeting || currentOngoingMeeting.status === 'ended') return null;
+            const isUserInThisMeeting = activeMeetingRoom?.id === currentOngoingMeeting.id;
+            return (
+              <div className="bg-gradient-to-r from-[#111b21] via-[#16271e] to-[#111b21] border-b border-[#25D366]/40 p-3 px-5 flex items-center justify-between text-white shadow-md z-20 shrink-0 animate-in slide-in-from-top duration-200">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg shadow-emerald-950/60 shrink-0 animate-pulse">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-white truncate">Online Video Meeting is Ongoing</span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#25D366]/20 text-[#25D366] text-[10px] font-bold border border-[#25D366]/40 shrink-0">LIVE</span>
+                    </div>
+                    <p className="text-[11px] text-gray-300 truncate mt-0.5">
+                      {currentOngoingMeeting.title} • Hosted by {currentOngoingMeeting.hostName || 'Host'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleJoinMeeting(currentOngoingMeeting)}
+                  className="px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-lg shadow-emerald-900/50 flex items-center gap-2 transition cursor-pointer shrink-0"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{isUserInThisMeeting ? 'Return to Call' : 'Join Meeting'}</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Real-time Incoming Meeting Popup Banner ("popup on message") */}
           {incomingMeetingPopup && (
@@ -2418,235 +2480,13 @@ export const MessagesView: React.FC = () => {
         </div>
       )}
 
-      {/* ---------------- 6. LIVE VIRTUAL MEETING ROOM OVERLAY ---------------- */}
+      {/* ---------------- 6. LIVE VIRTUAL MEETING ROOM (WHATSAPP WEB STYLE WebRTC) ---------------- */}
       {activeMeetingRoom && (
-        <div className="fixed inset-0 z-50 bg-[#0c1317] flex flex-col select-none text-white animate-in zoom-in-95 duration-200">
-          {/* Room Top Header Bar */}
-          <div className="p-3.5 px-6 bg-[#111b21] border-b border-[#202c33] flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#25D366] text-white flex items-center justify-center shadow-xs shrink-0">
-                <Video className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm text-white truncate">
-                    {activeMeetingRoom.title}
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-[#00a884]/20 text-[#25D366] text-[10px] font-bold shrink-0">
-                    {activeMeetingRoom.type === 'group' ? '👥 Group Meeting' : '👤 Direct Call'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
-                  <span className="flex items-center gap-1 font-mono text-emerald-400 font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    {formatMeetingTimer(meetingTimer)}
-                  </span>
-                  <span>•</span>
-                  <span>Host: {activeMeetingRoom.hostName || 'WorkHub Host'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Room ID Pill & Copy */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#202c33] border border-[#2a3942] text-xs">
-                <span className="text-gray-400 text-[11px]">ID:</span>
-                <span className="font-mono text-emerald-400 font-bold text-xs">{activeMeetingRoom.id}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeMeetingRoom.id);
-                    alert(`Meeting ID ${activeMeetingRoom.id} copied to clipboard!`);
-                  }}
-                  className="p-1 hover:text-white text-gray-400 transition-colors cursor-pointer"
-                  title="Copy Meeting ID"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveMeetingRoom(null)}
-                className="p-2 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-gray-300 hover:text-white transition-colors cursor-pointer"
-                title="Minimize / Close View"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Video Stage Grid */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-            <div className={`grid gap-4 w-full max-w-6xl h-full max-h-[680px] ${activeMeetingRoom.type === 'group'
-              ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2'
-              : 'grid-cols-1 sm:grid-cols-2'
-              }`}>
-              {/* Tile 1: You (Current User) */}
-              <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-emerald-500/40 shadow-xl flex flex-col items-center justify-center group min-h-[220px]">
-                {meetingVideoOff ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center font-bold text-2xl shadow-lg ring-4 ring-emerald-500/30 ${getAvatarBg(currentUser?.email || 'user')}`}>
-                      {getInitials(currentUser?.name, currentUser?.email)}
-                    </div>
-                    <span className="text-xs text-gray-400 font-medium">Camera is turned off</span>
-                  </div>
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a2e26] via-[#111b21] to-[#0d1e18] flex items-center justify-center relative">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,168,132,0.15),transparent_70%)]" />
-                    <div className="flex flex-col items-center gap-3 z-10">
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl ring-4 ring-[#25D366]/40 ${getAvatarBg(currentUser?.email || 'user')}`}>
-                        {getInitials(currentUser?.name, currentUser?.email)}
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-emerald-300">
-                        <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-                        <span>HD Live Video Feed Active</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Tile Label */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                  <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
-                    <span>You ({currentUser?.name || 'User'})</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">Host</span>
-                  </div>
-                  <div className={`p-1.5 rounded-lg ${meetingMuted ? 'bg-red-500/80 text-white' : 'bg-black/60 text-emerald-400'}`}>
-                    {meetingMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tile 2: Partner / Host Participant */}
-              <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                  <div className="flex flex-col items-center gap-3 z-10">
-                    <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-purple-600 text-white ring-4 ring-purple-500/30">
-                      {activeMeetingRoom.hostName?.substring(0, 2).toUpperCase() || 'TM'}
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-purple-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
-                      <span>Connected • Audio Active</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                  <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
-                    <span>{activeMeetingRoom.hostName || 'Connected Member'}</span>
-                  </div>
-                  <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                    <Mic className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tiles 3 & 4 (Shown for Group Meetings) */}
-              {activeMeetingRoom.type === 'group' && (
-                <>
-                  <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                    <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                      <div className="flex flex-col items-center gap-3 z-10">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-teal-600 text-white ring-4 ring-teal-500/30">
-                          TL
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-teal-300">
-                          <span>Team Collaborator</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                      <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white">
-                        <span>Team Lead (Online)</span>
-                      </div>
-                      <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                        <Mic className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                    <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                      <div className="flex flex-col items-center gap-3 z-10">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-amber-600 text-white ring-4 ring-amber-500/30">
-                          WK
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-amber-300">
-                          <span>Workspace Participant</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                      <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white">
-                        <span>Workspace Member</span>
-                      </div>
-                      <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                        <Mic className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Bottom Dock Control Bar */}
-          <div className="p-4 bg-[#111b21] border-t border-[#202c33] flex items-center justify-center gap-4 shrink-0">
-            {/* Toggle Mic */}
-            <button
-              type="button"
-              onClick={() => setMeetingMuted(!meetingMuted)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingMuted
-                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title={meetingMuted ? "Unmute Microphone" : "Mute Microphone"}
-            >
-              {meetingMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-
-            {/* Toggle Video Camera */}
-            <button
-              type="button"
-              onClick={() => setMeetingVideoOff(!meetingVideoOff)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingVideoOff
-                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title={meetingVideoOff ? "Turn On Camera" : "Turn Off Camera"}
-            >
-              {meetingVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-            </button>
-
-            {/* Toggle Screen Share */}
-            <button
-              type="button"
-              onClick={() => {
-                setMeetingScreenSharing(!meetingScreenSharing);
-                alert(!meetingScreenSharing ? "Screen Sharing active: Presenting your workspace." : "Screen Sharing stopped.");
-              }}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingScreenSharing
-                ? 'bg-[#00a884] text-white ring-2 ring-emerald-400/50'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title="Share Screen"
-            >
-              <Monitor className="w-5 h-5" />
-            </button>
-
-            {/* Leave / End Call */}
-            <button
-              type="button"
-              onClick={() => setActiveMeetingRoom(null)}
-              className="px-6 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 flex items-center gap-2 transition-all cursor-pointer ring-2 ring-red-500/30"
-              title="Leave Meeting"
-            >
-              <PhoneOff className="w-5 h-5" />
-              <span>Leave Call</span>
-            </button>
-          </div>
-        </div>
+        <MeetingRoom
+          meetingId={activeMeetingRoom.id}
+          initialMeeting={activeMeetingRoom}
+          onLeave={() => setActiveMeetingRoom(null)}
+        />
       )}
     </div>
   );

@@ -263,10 +263,10 @@ function initSocket(server) {
         socket.meetingId = meetingId;
         socket.meetingUser = { id, email, name, role: user.role || 'user' };
 
-        // Fetch existing peers in this room (excluding self)
+        // Fetch existing peers in this room (strictly excluding self!)
         const roomSockets = await io.in(meetingRoom).fetchSockets();
         const existingPeers = roomSockets
-          .filter(s => s.id !== socket.id && s.meetingUser)
+          .filter(s => s.id !== socket.id && s.meetingUser && s.meetingUser.id !== id && (s.meetingUser.email || '').toLowerCase() !== email)
           .map(s => ({
             socketId: s.id,
             user: s.meetingUser
@@ -276,6 +276,13 @@ function initSocket(server) {
         socket.to(meetingRoom).emit('user_joined_meeting', {
           socketId: socket.id,
           user: socket.meetingUser
+        });
+
+        // Broadcast active meeting count to all connected users
+        io.emit('meeting_status_update', {
+          meetingId,
+          status: 'active',
+          participantsCount: roomSockets.length
         });
 
         if (typeof callback === 'function') {
@@ -302,26 +309,77 @@ function initSocket(server) {
       });
     });
 
-    socket.on('leave_meeting', ({ meetingId }) => {
+    socket.on('leave_meeting', async ({ meetingId }) => {
       if (!meetingId) return;
       const meetingRoom = `meet_${meetingId}`;
+      const departingUser = socket.meetingUser;
       socket.leave(meetingRoom);
       socket.to(meetingRoom).emit('user_left_meeting', {
         socketId: socket.id,
-        user: socket.meetingUser
+        user: departingUser
       });
       socket.meetingId = null;
       socket.meetingUser = null;
+
+      // Auto-end meeting if no participants remain
+      try {
+        const remainingSockets = await io.in(meetingRoom).fetchSockets();
+        if (remainingSockets.length === 0) {
+          io.emit('meeting_ended', { meetingId });
+          await dataService.endMeeting(meetingId);
+        } else {
+          io.emit('meeting_status_update', {
+            meetingId,
+            status: 'active',
+            participantsCount: remainingSockets.length
+          });
+        }
+      } catch (e) {
+        console.warn('[Socket] leave_meeting check error:', e.message);
+      }
+    });
+
+    socket.on('end_meeting', async ({ meetingId }) => {
+      if (!meetingId) return;
+      const meetingRoom = `meet_${meetingId}`;
+      io.to(meetingRoom).emit('meeting_ended', { meetingId });
+      io.emit('meeting_ended', { meetingId });
+      try {
+        await dataService.endMeeting(meetingId);
+      } catch (e) {}
+      const roomSockets = await io.in(meetingRoom).fetchSockets();
+      roomSockets.forEach(s => {
+        s.leave(meetingRoom);
+        s.meetingId = null;
+        s.meetingUser = null;
+      });
     });
 
     // 8. Disconnect handling (when user closes tab or website)
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       if (socket.meetingId) {
         const meetingRoom = `meet_${socket.meetingId}`;
+        const mId = socket.meetingId;
+        const departingUser = socket.meetingUser;
         socket.to(meetingRoom).emit('user_left_meeting', {
           socketId: socket.id,
-          user: socket.meetingUser
+          user: departingUser
         });
+        socket.leave(meetingRoom);
+
+        try {
+          const remaining = await io.in(meetingRoom).fetchSockets();
+          if (remaining.length === 0) {
+            io.emit('meeting_ended', { meetingId: mId });
+            await dataService.endMeeting(mId);
+          } else {
+            io.emit('meeting_status_update', {
+              meetingId: mId,
+              status: 'active',
+              participantsCount: remaining.length
+            });
+          }
+        } catch (e) {}
       }
 
       const removed = activeSockets.get(socket.id);
