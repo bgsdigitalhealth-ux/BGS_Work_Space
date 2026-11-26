@@ -1163,7 +1163,7 @@ const fetchDepartments = async () => {
   }
 };
 
-const fetchTeams = async (deptId: string) => {
+const fetchTeams = async (deptId: string = '') => {
   try {
     const data = await api.getTeams(deptId);
     setTeams(data);
@@ -1177,7 +1177,7 @@ const fetchTeams = async (deptId: string) => {
   }
 };
 
-const fetchMembers = async (teamId: string) => {
+const fetchMembers = async (teamId: string = '') => {
   try {
     const data = await api.getMembers(teamId);
     setMembers(data);
@@ -1470,6 +1470,8 @@ const refreshAll = async () => {
   const promises: Promise<any>[] = [
     fetchStats(),
     fetchDepartments(),
+    fetchTeams(),
+    fetchMembers(),
     fetchAllUsers(),
     refreshUserWorkspace(),
     refreshAppointments(),
@@ -1479,7 +1481,6 @@ const refreshAll = async () => {
     promises.push(fetchTeams(selectedDepartment.id));
   }
   if (selectedTeam) {
-    promises.push(fetchMembers(selectedTeam.id));
     promises.push(fetchAssignments(selectedTeam.id));
     promises.push(fetchTasks(selectedTeam.id));
     promises.push(fetchWorkDone(selectedTeam.id));
@@ -1565,15 +1566,13 @@ useEffect(() => {
   }
 }, [selectedDepartment]);
 
-// When selected team changes, load members, assignments, tasks, work done
+// When selected team changes, load assignments, tasks, work done
 useEffect(() => {
   if (selectedTeam) {
-    fetchMembers(selectedTeam.id);
     fetchAssignments(selectedTeam.id);
     fetchTasks(selectedTeam.id);
     fetchWorkDone(selectedTeam.id);
   } else {
-    setMembers([]);
     setAssignments([]);
     setTasks([]);
     setWorkDone([]);
@@ -1688,7 +1687,7 @@ const handleDeleteMember = async (id: string) => {
   if (!ok) return;
   try {
     await api.deleteMember(id);
-    if (selectedTeam) fetchMembers(selectedTeam.id);
+    await fetchMembers();
     fetchStats();
     notify('Team member removed successfully.', 'success');
   } catch (e: any) {

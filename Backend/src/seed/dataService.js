@@ -6003,7 +6003,19 @@ const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, us
     });
   } else {
     if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-      attendanceList = attendanceList.filter(a => a.userId === memberId);
+      const cleanMem = String(memberId).trim().toLowerCase();
+      const foundMem = (memoryStore.members || []).find(m => m.id === memberId || (m.email && m.email.toLowerCase() === cleanMem));
+      const targetEmails = new Set([cleanMem]);
+      const targetIds = new Set([String(memberId).trim()]);
+      if (foundMem) {
+        if (foundMem.id) targetIds.add(String(foundMem.id));
+        if (foundMem.userId) targetIds.add(String(foundMem.userId));
+        if (foundMem.email) targetEmails.add(foundMem.email.toLowerCase());
+      }
+      attendanceList = attendanceList.filter(a =>
+        (a.userId && targetIds.has(String(a.userId))) ||
+        (a.userEmail && targetEmails.has(a.userEmail.toLowerCase()))
+      );
     }
     if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
       attendanceList = attendanceList.filter(a => a.teamId === teamId || a.teamName === teamId);
@@ -6067,10 +6079,24 @@ const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, us
     });
   } else {
     if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-      allTasks = allTasks.filter(t => t.userId === memberId || t.assigneeId === memberId);
+      const cleanMem = String(memberId).trim().toLowerCase();
+      const foundMem = (memoryStore.members || []).find(m => m.id === memberId || (m.email && m.email.toLowerCase() === cleanMem));
+      const targetEmails = new Set([cleanMem]);
+      const targetIds = new Set([String(memberId).trim()]);
+      if (foundMem) {
+        if (foundMem.id) targetIds.add(String(foundMem.id));
+        if (foundMem.userId) targetIds.add(String(foundMem.userId));
+        if (foundMem.email) targetEmails.add(foundMem.email.toLowerCase());
+      }
+      allTasks = allTasks.filter(t =>
+        (t.userId && targetIds.has(String(t.userId))) ||
+        (t.assigneeId && targetIds.has(String(t.assigneeId))) ||
+        (t.assigneeEmail && targetEmails.has(t.assigneeEmail.toLowerCase())) ||
+        (t.userEmail && targetEmails.has(t.userEmail.toLowerCase()))
+      );
     }
     if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
-      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId);
+      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId || (t as any).teamName === teamId);
     }
   }
 

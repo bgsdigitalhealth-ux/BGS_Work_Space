@@ -52,14 +52,20 @@ export const ManagerDashboard: React.FC = () => {
   const managerTeamName = currentUser?.team || myMember?.role || 'Assigned Team';
   const managerDeptName = currentUser?.department || 'Operations';
 
-  // Team members strictly belonging to this Manager's team
+  // Team members belonging to this Manager's team, or all workspace members if manager oversees workspace
   const myTeamMembers = (members || []).filter(m => {
     if (managerTeamId && m.teamId && m.teamId === managerTeamId) return true;
-    if (currentUser?.team && m.role && m.role.toLowerCase().includes(currentUser.team.toLowerCase())) return true;
+    if (currentUser?.team && (m as any).team && (m as any).team.toLowerCase() === currentUser.team.toLowerCase()) return true;
+    if (currentUser?.department && (m.departmentId === currentUser.department || (m as any).department === currentUser.department)) return true;
     return false;
   });
+  const displayTeamMembers = myTeamMembers.length > 0
+    ? myTeamMembers
+    : (members || []).filter(m => m.email?.toLowerCase() !== myEmail && m.role !== 'Administrator');
 
-  const memberEmails = new Set(myTeamMembers.map(m => m.email.toLowerCase()));
+  const memberEmails = new Set(
+    (displayTeamMembers.length > 0 ? displayTeamMembers : members).map(m => m.email.toLowerCase())
+  );
 
   // Team tasks: tasks belonging to members of this team or assigned within this team
   const allAssigned = userWorkspace?.assignedWork || [];
@@ -192,7 +198,7 @@ export const ManagerDashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</p>
-            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{myTeamMembers.length || 1}</h3>
+            <h3 className="text-2xl font-black text-slate-900 mt-0.5 font-number">{(displayTeamMembers.length > 0 ? displayTeamMembers.length : members.length) || 1}</h3>
           </div>
         </div>
 

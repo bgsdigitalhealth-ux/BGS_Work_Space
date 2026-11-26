@@ -41,6 +41,9 @@ export const MembersTable: React.FC = () => {
     );
   }
 
+  // Filter members specifically assigned to this selected team
+  const teamMembers = members.filter(m => m.teamId === selectedTeam.id);
+
   const getRoleBadge = (role: string) => {
     const r = (role || 'Developer').toLowerCase();
     if (r.includes('lead') || r.includes('manager')) {
@@ -150,7 +153,7 @@ export const MembersTable: React.FC = () => {
             }`}
         >
           <Users className="w-3.5 h-3.5" />
-          <span>Members ({members.length})</span>
+          <span>Members ({teamMembers.length})</span>
         </button>
 
         <button
@@ -201,7 +204,7 @@ export const MembersTable: React.FC = () => {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               <h4 className="font-bold text-slate-800 text-sm">
-                Team Members ({members.length})
+                Team Members ({teamMembers.length})
               </h4>
               <button
                 onClick={() => setIsAddMemberOpen(true)}
@@ -227,14 +230,14 @@ export const MembersTable: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100/80 text-slate-700 font-medium">
-                {members.length === 0 ? (
+                {teamMembers.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-6 text-center text-slate-400">
                       No members added to this team yet. Click "+ Add Member" to add one!
                     </td>
                   </tr>
                 ) : (
-                  members.map((member: Member, idx: number) => {
+                  teamMembers.map((member: Member, idx: number) => {
                     const displayName = (member.name || '').trim() || 'Team Member';
                     const displayEmail = (member.email || '').trim() || 'No email registered';
                     const displayPhone = (member.phone || '').trim() || '+91 98765 43210';
