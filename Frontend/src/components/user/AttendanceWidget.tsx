@@ -7,8 +7,10 @@ export const AttendanceWidget: React.FC = () => {
   const [liveElapsed, setLiveElapsed] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const isPunchedIn = todayAttendance?.status === 'punched_in';
-  const baseSeconds = todayAttendance?.totalSeconds || 0;
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isToday = todayAttendance?.date === todayStr;
+  const isPunchedIn = isToday && todayAttendance?.status === 'punched_in';
+  const baseSeconds = isToday ? (todayAttendance?.totalSeconds || 0) : 0;
 
   // Running timer ticker when punched in
   useEffect(() => {

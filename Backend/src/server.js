@@ -45,7 +45,8 @@ app.use(cors({
     'Cache-Control',
     'x-user-id',
     'x-user-email',
-    'x-user-role'
+    'x-user-role',
+    'x-timezone-offset'
   ]
 }));
 

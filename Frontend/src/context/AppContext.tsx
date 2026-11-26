@@ -583,6 +583,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [currentUser?.id, currentUser?.email]);
 
+  // Real-time midnight auto-punch-out watcher:
+  // Checks if the date has rolled over past midnight 11:59 PM to auto-close sessions and update UI
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const checkMidnightRollover = () => {
+      const now = new Date();
+      const localTodayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+      if (todayAttendance?.status === 'punched_in' && todayAttendance.date && todayAttendance.date < localTodayStr) {
+        // Date rolled over while user was punched in!
+        api.autoMidnightPunchOut().finally(() => {
+          refreshTodayAttendance();
+          refreshAttendanceRecords();
+        });
+      }
+    };
+
+    const interval = setInterval(checkMidnightRollover, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, todayAttendance?.status, todayAttendance?.date]);
+
   const handlePunchIn = async () => {
     if (!currentUser) return;
     try {

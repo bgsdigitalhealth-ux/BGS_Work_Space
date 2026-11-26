@@ -55,6 +55,7 @@ export const UserAttendanceRecords: React.FC = () => {
 
   const formatTimeOnly = (dateVal?: string | Date | null) => {
     if (!dateVal || dateVal === 'Active') return 'Currently Active';
+    if (String(dateVal).includes('11:59 PM')) return '11:59 PM';
     try {
       const d = new Date(dateVal);
       if (!isNaN(d.getTime())) {
@@ -83,6 +84,29 @@ export const UserAttendanceRecords: React.FC = () => {
       ...prev,
       [date]: !prev[date]
     }));
+  };
+
+  // Helper to compute seconds for any record (including auto midnight fallback for unclosed past days)
+  const getCalculatedRecordSeconds = (rec: any) => {
+    const isRecToday = rec.date === todayStr;
+    if (isRecToday && isPunchedIn) return liveElapsed;
+    if (rec.totalSeconds && rec.totalSeconds > 0) return rec.totalSeconds;
+    const pArr = Array.isArray(rec.punches) ? rec.punches : [];
+    if (pArr.length > 0) {
+      return pArr.reduce((sum: number, p: any) => {
+        if (p.durationSeconds && p.durationSeconds > 0) return sum + p.durationSeconds;
+        const pIn = new Date(p.punchIn).getTime();
+        if (isNaN(pIn)) return sum;
+        const pOut = p.punchOut ? new Date(p.punchOut).getTime() : 0;
+        if (pOut > pIn) return sum + Math.round((pOut - pIn) / 1000);
+        // Fallback: duration up to 23:59:59 of punch in date
+        const pInDate = new Date(p.punchIn);
+        const endOfDay = new Date(pInDate);
+        endOfDay.setHours(23, 59, 59, 0);
+        return sum + Math.max(0, Math.round((endOfDay.getTime() - pIn) / 1000));
+      }, 0);
+    }
+    return 0;
   };
 
   // Merge today's live record with attendanceRecords if present
@@ -133,7 +157,7 @@ export const UserAttendanceRecords: React.FC = () => {
   });
 
   // Calculate Cumulative Metrics
-  const totalSecondsAll = filteredRecords.reduce((acc, r) => acc + (r.totalSeconds || 0), 0);
+  const totalSecondsAll = filteredRecords.reduce((acc, r) => acc + getCalculatedRecordSeconds(r), 0);
   const totalDaysCount = filteredRecords.length;
   const avgSecondsPerDay = totalDaysCount > 0 ? Math.round(totalSecondsAll / totalDaysCount) : 0;
 
@@ -323,16 +347,37 @@ export const UserAttendanceRecords: React.FC = () => {
           <div className="divide-y divide-gray-100">
             {filteredRecords.map((record) => {
               const isToday = record.date === todayStr;
+              const isPast = record.date < todayStr;
               const dateInfo = formatDateDisplay(record.date);
               const isExpanded = Boolean(expandedDates[record.date]);
               const punches = Array.isArray(record.punches) ? record.punches : [];
 
-              const firstIn = punches.length > 0 ? formatTimeOnly(punches[0].punchIn) : '—';
-              const lastOut = punches.length > 0
-                ? (punches[punches.length - 1].punchOut ? formatTimeOnly(punches[punches.length - 1].punchOut) : (record.status === 'punched_in' ? 'Currently Active' : '—'))
-                : '—';
+              // On past dates, a user is never currently punched in
+              const isEffectivelyPunchedIn = isToday && isPunchedIn;
+              const isAutoOut = Boolean(record.autoPunchedOut) || (isPast && record.status === 'punched_in');
 
-              const recordSeconds = isToday && isPunchedIn ? liveElapsed : (record.totalSeconds || 0);
+              const firstIn = punches.length > 0 ? formatTimeOnly(punches[0].punchIn) : (record.firstPunchIn ? formatTimeOnly(record.firstPunchIn) : '—');
+
+              let lastOut = '—';
+              if (punches.length > 0) {
+                const lp = punches[punches.length - 1];
+                if (lp.punchOut) {
+                  const formatted = formatTimeOnly(lp.punchOut);
+                  lastOut = (lp.autoPunchedOut || formatted.includes('11:59')) ? '11:59 PM' : formatted;
+                } else if (isEffectivelyPunchedIn) {
+                  lastOut = 'Currently Active';
+                } else {
+                  // Past day without manual punch out: automatically 11:59 PM
+                  lastOut = '11:59 PM (Auto)';
+                }
+              } else if (record.lastPunchOut) {
+                const formatted = formatTimeOnly(record.lastPunchOut);
+                lastOut = (record.autoPunchedOut || formatted.includes('11:59')) ? '11:59 PM' : formatted;
+              } else if (isPast && record.firstPunchIn) {
+                lastOut = '11:59 PM (Auto)';
+              }
+
+              const recordSeconds = getCalculatedRecordSeconds(record);
               const hoursDecimal = (recordSeconds / 3600).toFixed(2);
 
               return (
@@ -357,11 +402,17 @@ export const UserAttendanceRecords: React.FC = () => {
                             </span>
                           )}
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            record.status === 'punched_in'
+                            isEffectivelyPunchedIn
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                              : isAutoOut
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200'
+                                : 'bg-slate-100 text-slate-600 border border-slate-200'
                           }`}>
-                            {record.status === 'punched_in' ? 'Present & Working' : 'Punched Out'}
+                            {isEffectivelyPunchedIn
+                              ? 'Present & Working'
+                              : isAutoOut
+                                ? 'Punched Out (11:59 PM Auto)'
+                                : 'Punched Out'}
                           </span>
                         </div>
                         <span className="text-xs text-gray-500 font-medium mt-0.5 block">
@@ -390,7 +441,9 @@ export const UserAttendanceRecords: React.FC = () => {
                         <span className={`text-xs font-bold px-2 py-0.5 rounded-md mt-0.5 inline-block font-mono border ${
                           lastOut === 'Currently Active'
                             ? 'bg-purple-50 text-[#5a36e6] border-purple-200'
-                            : 'bg-gray-100 text-gray-700 border-gray-200'
+                            : lastOut.includes('11:59')
+                              ? 'bg-amber-50 text-amber-800 border-amber-200'
+                              : 'bg-gray-100 text-gray-700 border-gray-200'
                         }`}>
                           {lastOut}
                         </span>
@@ -435,12 +488,28 @@ export const UserAttendanceRecords: React.FC = () => {
                       ) : (
                         <div className="space-y-2">
                           {punches.map((p: AttendancePunch, pIdx: number) => {
+                            const isLastPunch = pIdx === punches.length - 1;
                             const pInStr = formatTimeOnly(p.punchIn);
-                            const pOutStr = p.punchOut ? formatTimeOnly(p.punchOut) : (record.status === 'punched_in' && pIdx === punches.length - 1 ? 'Currently In Progress' : 'Incomplete');
-                            
+                            let pOutStr = '—';
                             let sessionSecs = p.durationSeconds || 0;
-                            if (!p.punchOut && record.status === 'punched_in' && pIdx === punches.length - 1) {
+
+                            if (p.punchOut) {
+                              const formatted = formatTimeOnly(p.punchOut);
+                              pOutStr = (p.autoPunchedOut || formatted.includes('11:59')) ? '11:59 PM (Auto Punch Out)' : formatted;
+                              if (sessionSecs === 0) {
+                                const pInTime = new Date(p.punchIn).getTime();
+                                const pOutTime = new Date(p.punchOut).getTime();
+                                if (pOutTime > pInTime) sessionSecs = Math.round((pOutTime - pInTime) / 1000);
+                              }
+                            } else if (isEffectivelyPunchedIn && isLastPunch) {
+                              pOutStr = 'Currently In Progress';
                               sessionSecs = Math.max(0, Math.round((Date.now() - new Date(p.punchIn).getTime()) / 1000));
+                            } else {
+                              pOutStr = '11:59 PM (Auto Punch Out)';
+                              const pInDate = new Date(p.punchIn);
+                              const endOfDay = new Date(pInDate);
+                              endOfDay.setHours(23, 59, 59, 0);
+                              sessionSecs = Math.max(0, Math.round((endOfDay.getTime() - pInDate.getTime()) / 1000));
                             }
 
                             return (
@@ -457,7 +526,7 @@ export const UserAttendanceRecords: React.FC = () => {
                                   </span>
                                   <span className="text-gray-400">&rarr;</span>
                                   <span className="font-semibold text-gray-800">
-                                    Punch Out: <span className={`font-mono font-bold ${pOutStr === 'Currently In Progress' ? 'text-[#5a36e6]' : 'text-gray-700'}`}>{pOutStr}</span>
+                                    Punch Out: <span className={`font-mono font-bold ${pOutStr === 'Currently In Progress' ? 'text-[#5a36e6]' : pOutStr.includes('11:59') ? 'text-amber-800 font-semibold' : 'text-gray-700'}`}>{pOutStr}</span>
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 font-mono text-xs font-bold text-gray-800">

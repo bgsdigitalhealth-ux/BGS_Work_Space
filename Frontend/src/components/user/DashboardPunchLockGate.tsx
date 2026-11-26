@@ -6,7 +6,9 @@ export const DashboardPunchLockGate: React.FC = () => {
   const { todayAttendance, handlePunchIn, currentUser, isAttendanceLoading } = useApp();
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const isPunchedIn = todayAttendance?.status === 'punched_in';
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isToday = todayAttendance?.date === todayStr;
+  const isPunchedIn = isToday && todayAttendance?.status === 'punched_in';
 
   // Do not show the gate if attendance is still loading or user is already punched in
   if (isAttendanceLoading || isPunchedIn) {

@@ -168,12 +168,15 @@ export const api = {
     return res.json();
   },
 
-  // Attendance (Punch In / Punch Out)
+  // Attendance (Punch In / Punch Out & 11:59 PM Auto Midnight Punch Out)
   getTodayAttendance: async (userId?: string, userEmail?: string): Promise<AttendanceRecord> => {
     const params = new URLSearchParams();
     if (userId) params.append('userId', userId);
     if (userEmail) params.append('userEmail', userEmail);
-    const res = await fetch(`${API_BASE}/attendance/today?${params.toString()}`);
+    params.append('tzOffset', String(new Date().getTimezoneOffset()));
+    const res = await fetch(`${API_BASE}/attendance/today?${params.toString()}`, {
+      headers: { 'x-timezone-offset': String(new Date().getTimezoneOffset()) }
+    });
     if (!res.ok) throw new Error('Failed to fetch today attendance');
     return res.json();
   },
@@ -182,15 +185,25 @@ export const api = {
     if (userId) params.append('userId', userId);
     if (userEmail) params.append('userEmail', userEmail);
     if (limit) params.append('limit', String(limit));
-    const res = await fetch(`${API_BASE}/attendance/records?${params.toString()}`);
+    params.append('tzOffset', String(new Date().getTimezoneOffset()));
+    const res = await fetch(`${API_BASE}/attendance/records?${params.toString()}`, {
+      headers: { 'x-timezone-offset': String(new Date().getTimezoneOffset()) }
+    });
     if (!res.ok) throw new Error('Failed to fetch attendance records');
     return res.json();
   },
-  punchIn: async (data: { userId: string; userEmail: string; userName?: string; teamId?: string; teamName?: string; departmentId?: string; departmentName?: string }): Promise<AttendanceRecord> => {
+  punchIn: async (data: { userId: string; userEmail: string; userName?: string; teamId?: string; teamName?: string; departmentId?: string; departmentName?: string; timezoneOffset?: number }): Promise<AttendanceRecord> => {
+    const payload = {
+      ...data,
+      timezoneOffset: data.timezoneOffset !== undefined ? data.timezoneOffset : new Date().getTimezoneOffset()
+    };
     const res = await fetch(`${API_BASE}/attendance/punch-in`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: {
+        'Content-Type': 'application/json',
+        'x-timezone-offset': String(new Date().getTimezoneOffset())
+      },
+      body: JSON.stringify(payload)
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
@@ -198,16 +211,35 @@ export const api = {
     }
     return res.json();
   },
-  punchOut: async (data: { userId: string; userEmail: string }): Promise<AttendanceRecord> => {
+  punchOut: async (data: { userId: string; userEmail: string; timezoneOffset?: number }): Promise<AttendanceRecord> => {
+    const payload = {
+      ...data,
+      timezoneOffset: data.timezoneOffset !== undefined ? data.timezoneOffset : new Date().getTimezoneOffset()
+    };
     const res = await fetch(`${API_BASE}/attendance/punch-out`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
+      headers: {
+        'Content-Type': 'application/json',
+        'x-timezone-offset': String(new Date().getTimezoneOffset())
+      },
+      body: JSON.stringify(payload)
     });
     if (!res.ok) {
       const err = await res.json().catch(() => null);
       throw new Error(err?.error || 'Failed to punch out');
     }
+    return res.json();
+  },
+  autoMidnightPunchOut: async (): Promise<{ success: boolean; changed: boolean }> => {
+    const res = await fetch(`${API_BASE}/attendance/auto-midnight`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-timezone-offset': String(new Date().getTimezoneOffset())
+      },
+      body: JSON.stringify({ timezoneOffset: new Date().getTimezoneOffset() })
+    });
+    if (!res.ok) throw new Error('Failed to run auto midnight punch out');
     return res.json();
   },
 

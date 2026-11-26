@@ -558,8 +558,9 @@ router.put('/assignments/:id', async (req, res) => {
 // --- Attendance (Punch In / Punch Out) ---
 router.get('/attendance/today', async (req, res) => {
   try {
-    const { userId, userEmail } = req.query;
-    const result = await dataService.getTodayAttendance(userId, userEmail);
+    const { userId, userEmail, tzOffset } = req.query;
+    const offset = tzOffset !== undefined ? Number(tzOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.getTodayAttendance(userId, userEmail, offset);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -568,8 +569,9 @@ router.get('/attendance/today', async (req, res) => {
 
 router.get('/attendance/records', async (req, res) => {
   try {
-    const { userId, userEmail, limit } = req.query;
-    const records = await dataService.getAttendanceRecords({ userId, userEmail, limit: limit ? Number(limit) : 60 });
+    const { userId, userEmail, limit, tzOffset } = req.query;
+    const offset = tzOffset !== undefined ? Number(tzOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const records = await dataService.getAttendanceRecords({ userId, userEmail, limit: limit ? Number(limit) : 60, timezoneOffset: offset });
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -578,9 +580,10 @@ router.get('/attendance/records', async (req, res) => {
 
 router.post('/attendance/punch-in', async (req, res) => {
   try {
-    const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName } = req.body;
+    const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset } = req.body;
     if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
-    const result = await dataService.recordPunchIn({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName });
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.recordPunchIn({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset: offset });
     broadcast('ATTENDANCE_UPDATED', { type: 'punch_in', ...result });
     res.json(result);
   } catch (err) {
@@ -590,11 +593,23 @@ router.post('/attendance/punch-in', async (req, res) => {
 
 router.post('/attendance/punch-out', async (req, res) => {
   try {
-    const { userId, userEmail } = req.body;
+    const { userId, userEmail, timezoneOffset } = req.body;
     if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
-    const result = await dataService.recordPunchOut({ userId, userEmail });
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.recordPunchOut({ userId, userEmail, timezoneOffset: offset });
     broadcast('ATTENDANCE_UPDATED', { type: 'punch_out', ...result });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/attendance/auto-midnight', async (req, res) => {
+  try {
+    const { timezoneOffset } = req.body;
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.checkAndApplyAutoMidnightPunchOut(offset);
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

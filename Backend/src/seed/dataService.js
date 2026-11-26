@@ -4935,9 +4935,182 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
 };
 
 // =========================================================================
-// ATTENDANCE TRACKING (Punch In / Punch Out)
+// ATTENDANCE TRACKING (Punch In / Punch Out & 11:59 PM Auto Midnight Punch Out)
 // =========================================================================
-const getTodayAttendance = async (userId, userEmail) => {
+
+// Helper to compute midnight (23:59:59) punch-out timestamp for a date and timezone
+const computeMidnightPunchOut = (dateStr, punchIn, tzOffset) => {
+  // If timezone offset is provided (in minutes, e.g. -330 for UTC+05:30):
+  if (typeof tzOffset === 'number' && !isNaN(tzOffset)) {
+    const parts = (dateStr || '').split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      // In local timezone, 23:59:59 converted to UTC:
+      const utcMs = Date.UTC(y, m - 1, d, 23, 59, 59) + (tzOffset * 60 * 1000);
+      const res = new Date(utcMs);
+      if (!isNaN(res.getTime())) {
+        return res;
+      }
+    }
+  }
+
+  // Fallback 1: align to end-of-day of punchIn Date
+  if (punchIn) {
+    const pIn = new Date(punchIn);
+    if (!isNaN(pIn.getTime())) {
+      const res = new Date(pIn);
+      res.setHours(23, 59, 59, 0);
+      if (res.getTime() >= pIn.getTime()) {
+        return res;
+      }
+    }
+  }
+
+  // Fallback 2: parse ISO local representation
+  try {
+    const d = new Date(`${dateStr}T23:59:59`);
+    if (!isNaN(d.getTime())) return d;
+  } catch {}
+
+  const fb = new Date();
+  fb.setHours(23, 59, 59, 0);
+  return fb;
+};
+
+// Auto Midnight Punch Out: auto-closes any unclosed punch sessions when clock passes 11:59 PM
+const checkAndApplyAutoMidnightPunchOut = async (clientTzOffset = null) => {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  let changed = false;
+
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+
+  // 1. Process all in-memory records
+  for (const record of memoryStore.attendance) {
+    if (!record || !record.date) continue;
+
+    const isPastDate = record.date < todayStr;
+    const isToday = record.date === todayStr;
+    const hasUnclosedPunch = Array.isArray(record.punches) && record.punches.some(p => !p.punchOut);
+    const isOpen = record.status === 'punched_in' || hasUnclosedPunch;
+
+    if (!isOpen) continue;
+
+    const tz = (record.timezoneOffset !== undefined && record.timezoneOffset !== null) ? record.timezoneOffset : clientTzOffset;
+    let shouldAutoPunchOut = isPastDate;
+
+    if (isToday) {
+      // Check if current time has passed 23:59:59 of today
+      const endOfDay = computeMidnightPunchOut(record.date, record.punches?.[0]?.punchIn, tz);
+      if (now.getTime() >= endOfDay.getTime()) {
+        shouldAutoPunchOut = true;
+      }
+    }
+
+    if (shouldAutoPunchOut) {
+      let recalculatedTotal = 0;
+      if (Array.isArray(record.punches)) {
+        for (const p of record.punches) {
+          if (!p.punchOut) {
+            const pInTime = new Date(p.punchIn).getTime();
+            const autoOut = computeMidnightPunchOut(record.date, p.punchIn, tz);
+            p.punchOut = autoOut;
+            p.autoPunchedOut = true;
+            const dur = Math.max(0, Math.round((autoOut.getTime() - pInTime) / 1000));
+            p.durationSeconds = dur;
+          }
+          recalculatedTotal += (p.durationSeconds || 0);
+        }
+      }
+
+      record.totalSeconds = recalculatedTotal;
+      record.status = 'punched_out';
+      record.autoPunchedOut = true;
+      if (tz !== null && tz !== undefined) record.timezoneOffset = tz;
+      changed = true;
+
+      if (getStatus()) {
+        try {
+          await Attendance.findOneAndUpdate(
+            { date: record.date, userId: record.userId },
+            { $set: record },
+            { new: true }
+          );
+        } catch (e) {
+          console.warn('Mongo autoPunchOut update error:', e.message);
+        }
+      }
+    }
+  }
+
+  // 2. Query MongoDB for any unclosed past records
+  if (getStatus()) {
+    try {
+      const openDbRecords = await Attendance.find({
+        $or: [
+          { status: 'punched_in', date: { $lt: todayStr } },
+          { 'punches.punchOut': null, date: { $lt: todayStr } }
+        ]
+      });
+
+      for (const doc of openDbRecords) {
+        let docChanged = false;
+        let total = 0;
+        const tz = (doc.timezoneOffset !== undefined && doc.timezoneOffset !== null) ? doc.timezoneOffset : clientTzOffset;
+
+        if (Array.isArray(doc.punches)) {
+          for (const p of doc.punches) {
+            if (!p.punchOut) {
+              const pInTime = new Date(p.punchIn).getTime();
+              const autoOut = computeMidnightPunchOut(doc.date, p.punchIn, tz);
+              p.punchOut = autoOut;
+              p.autoPunchedOut = true;
+              p.durationSeconds = Math.max(0, Math.round((autoOut.getTime() - pInTime) / 1000));
+              docChanged = true;
+            }
+            total += (p.durationSeconds || 0);
+          }
+        }
+
+        if (doc.status === 'punched_in' || docChanged) {
+          doc.status = 'punched_out';
+          doc.autoPunchedOut = true;
+          doc.totalSeconds = total;
+          if (tz !== null && tz !== undefined) doc.timezoneOffset = tz;
+          await doc.save();
+          changed = true;
+
+          const memRec = memoryStore.attendance.find(a => a.date === doc.date && a.userId === doc.userId);
+          if (memRec) {
+            Object.assign(memRec, doc.toObject());
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Mongo check unclosed attendance error:', e.message);
+    }
+  }
+
+  if (changed) {
+    saveStore();
+    try {
+      const { broadcast } = require('../socket');
+      broadcast('ATTENDANCE_UPDATED', { type: 'auto_midnight_punch_out' });
+    } catch {}
+  }
+
+  return { changed };
+};
+
+// Periodic background runner: checks for midnight auto punch outs every 30 seconds
+setInterval(() => {
+  checkAndApplyAutoMidnightPunchOut().catch(err => {
+    console.warn('[AutoPunchOut] Background tick notice:', err.message);
+  });
+}, 30000);
+
+const getTodayAttendance = async (userId, userEmail, timezoneOffset = null) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
   const today = new Date().toISOString().split('T')[0];
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
@@ -4988,7 +5161,8 @@ const getTodayAttendance = async (userId, userEmail) => {
   };
 };
 
-const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName }) => {
+const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
@@ -5010,16 +5184,22 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
       departmentName: departmentName || '',
       date: today,
       status: 'punched_in',
-      punches: [{ punchIn: now, punchOut: null, durationSeconds: 0 }],
+      timezoneOffset: timezoneOffset !== null && timezoneOffset !== undefined ? timezoneOffset : 0,
+      autoPunchedOut: false,
+      punches: [{ punchIn: now, punchOut: null, durationSeconds: 0, autoPunchedOut: false }],
       totalSeconds: 0
     };
     memoryStore.attendance.unshift(record);
   } else {
+    if (timezoneOffset !== null && timezoneOffset !== undefined) {
+      record.timezoneOffset = timezoneOffset;
+    }
     // If not already punched in, add new punch
     if (record.status !== 'punched_in') {
       record.status = 'punched_in';
+      record.autoPunchedOut = false;
       if (!Array.isArray(record.punches)) record.punches = [];
-      record.punches.push({ punchIn: now, punchOut: null, durationSeconds: 0 });
+      record.punches.push({ punchIn: now, punchOut: null, durationSeconds: 0, autoPunchedOut: false });
     }
   }
 
@@ -5037,10 +5217,11 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
     }
   }
 
-  return getTodayAttendance(userId, userEmail);
+  return getTodayAttendance(userId, userEmail, timezoneOffset);
 };
 
-const recordPunchOut = async ({ userId, userEmail }) => {
+const recordPunchOut = async ({ userId, userEmail, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
   const today = new Date().toISOString().split('T')[0];
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
@@ -5051,10 +5232,14 @@ const recordPunchOut = async ({ userId, userEmail }) => {
 
   if (record && record.status === 'punched_in') {
     record.status = 'punched_out';
+    if (timezoneOffset !== null && timezoneOffset !== undefined) {
+      record.timezoneOffset = timezoneOffset;
+    }
     if (Array.isArray(record.punches) && record.punches.length > 0) {
       const lastPunch = record.punches[record.punches.length - 1];
       if (lastPunch && !lastPunch.punchOut) {
         lastPunch.punchOut = now;
+        lastPunch.autoPunchedOut = false;
         const dur = Math.max(0, Math.round((now.getTime() - new Date(lastPunch.punchIn).getTime()) / 1000));
         lastPunch.durationSeconds = dur;
         record.totalSeconds = (record.totalSeconds || 0) + dur;
@@ -5075,10 +5260,11 @@ const recordPunchOut = async ({ userId, userEmail }) => {
     }
   }
 
-  return getTodayAttendance(userId, userEmail);
+  return getTodayAttendance(userId, userEmail, timezoneOffset);
 };
 
-const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
+const getAttendanceRecords = async ({ userId, userEmail, limit = 60, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
   // Seed sample past records if user only has <= 1 record, so day-by-day record view shows history
@@ -5129,8 +5315,8 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
           date: dateStr,
           status: 'punched_out',
           punches: [
-            { punchIn: morningIn, punchOut: morningOut, durationSeconds: dur1 },
-            { punchIn: afternoonIn, punchOut: afternoonOut, durationSeconds: dur2 }
+            { punchIn: morningIn, punchOut: morningOut, durationSeconds: dur1, autoPunchedOut: false },
+            { punchIn: afternoonIn, punchOut: afternoonOut, durationSeconds: dur2, autoPunchedOut: false }
           ],
           totalSeconds: dur1 + dur2
         });
@@ -5166,7 +5352,8 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
   const today = new Date().toISOString().split('T')[0];
   const mapped = records.map(r => {
     let totalSecs = r.totalSeconds || 0;
-    let isCurrentlyIn = r.status === 'punched_in';
+    const isPast = r.date < today;
+    const isCurrentlyIn = !isPast && r.status === 'punched_in';
     let currentInTime = null;
 
     if (r.date === today && isCurrentlyIn && Array.isArray(r.punches) && r.punches.length > 0) {
@@ -5181,12 +5368,32 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
     const firstPunch = Array.isArray(r.punches) && r.punches.length > 0 ? r.punches[0] : null;
     const lastPunch = Array.isArray(r.punches) && r.punches.length > 0 ? r.punches[r.punches.length - 1] : null;
 
+    let formattedLastPunchOut = null;
+    if (lastPunch && lastPunch.punchOut) {
+      formattedLastPunchOut = lastPunch.punchOut;
+    } else if (isCurrentlyIn) {
+      formattedLastPunchOut = 'Active';
+    } else if (r.autoPunchedOut || isPast) {
+      formattedLastPunchOut = '11:59 PM';
+    }
+
+    // Safety fallback calculation for past records where totalSeconds is 0
+    if (isPast && totalSecs === 0 && Array.isArray(r.punches) && r.punches.length > 0) {
+      totalSecs = r.punches.reduce((acc, p) => {
+        if (p.durationSeconds && p.durationSeconds > 0) return acc + p.durationSeconds;
+        const pIn = new Date(p.punchIn).getTime();
+        const pOut = p.punchOut ? new Date(p.punchOut).getTime() : computeMidnightPunchOut(r.date, p.punchIn, r.timezoneOffset ?? timezoneOffset).getTime();
+        return acc + Math.max(0, Math.round((pOut - pIn) / 1000));
+      }, 0);
+    }
+
     return {
       ...r,
+      status: isPast ? 'punched_out' : r.status,
       totalSeconds: totalSecs,
       currentPunchIn: currentInTime,
       firstPunchIn: firstPunch ? firstPunch.punchIn : null,
-      lastPunchOut: lastPunch && lastPunch.punchOut ? lastPunch.punchOut : (isCurrentlyIn ? 'Active' : null),
+      lastPunchOut: formattedLastPunchOut,
       punchCount: Array.isArray(r.punches) ? r.punches.length : 0
     };
   });
@@ -6648,6 +6855,7 @@ module.exports = {
   getAttendanceRecords,
   recordPunchIn,
   recordPunchOut,
+  checkAndApplyAutoMidnightPunchOut,
   startTaskTimer,
   pauseTaskTimer,
   resumeTaskTimer,

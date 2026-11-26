@@ -166,6 +166,7 @@ export interface AttendancePunch {
   punchIn: string;
   punchOut?: string | null;
   durationSeconds?: number;
+  autoPunchedOut?: boolean;
 }
 
 export interface AttendanceRecord {
@@ -186,6 +187,8 @@ export interface AttendanceRecord {
   firstPunchIn?: string | null;
   lastPunchOut?: string | null;
   punchCount?: number;
+  autoPunchedOut?: boolean;
+  timezoneOffset?: number;
 }
 
 export interface BreakTimeRecord {
