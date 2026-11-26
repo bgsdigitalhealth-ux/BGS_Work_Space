@@ -66,15 +66,29 @@ export const AttendanceWidget: React.FC = () => {
             </span>
           </div>
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 mt-0.5 flex-wrap">
-            <span>Today's Time Present:</span>
-            <span className={`font-mono text-sm font-black ${isPunchedIn ? 'text-emerald-600' : 'text-gray-900'}`}>
-              {formatHoursMins(liveElapsed)}
-            </span>
-            <span className="text-[11px] font-bold text-gray-500">
-              ({(liveElapsed / 3600).toFixed(2)} hrs)
-            </span>
-            {isPunchedIn && (
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping ml-1" />
+            {isPunchedIn ? (
+              <>
+                <span>Today's Time Present:</span>
+                <span className="font-mono text-sm font-black text-emerald-600">
+                  {formatHoursMins(liveElapsed)}
+                </span>
+                <span className="text-[11px] font-bold text-gray-500">
+                  ({(liveElapsed / 3600).toFixed(2)} hrs)
+                </span>
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping ml-1" />
+              </>
+            ) : liveElapsed > 0 ? (
+              <>
+                <span>Total Time Logged:</span>
+                <span className="font-mono text-sm font-bold text-gray-800">
+                  {formatHoursMins(liveElapsed)}
+                </span>
+                <span className="text-[11px] font-bold text-gray-500">
+                  ({(liveElapsed / 3600).toFixed(2)} hrs)
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-500 font-medium">Session not started • Punch in to begin workspace tracking</span>
             )}
           </div>
         </div>
