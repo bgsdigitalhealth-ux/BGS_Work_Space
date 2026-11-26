@@ -3277,6 +3277,11 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
       if (role === 'admin') {
         orClauses.push({ recipientRole: 'admin' });
         orClauses.push({ recipientRole: 'all' });
+      } else if (role === 'manager') {
+        orClauses.push({ recipientRole: 'manager' });
+        orClauses.push({ recipientRole: 'all' });
+        if (cleanUserId) orClauses.push({ recipientUserId: cleanUserId });
+        if (cleanEmail) orClauses.push({ recipientEmail: cleanEmail });
       } else if (role === 'user') {
         orClauses.push({ recipientRole: 'all' });
         if (cleanUserId) {
@@ -3294,7 +3299,10 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
 
       const filter = orClauses.length > 0 ? { $or: orClauses } : {};
       const list = await Notification.find(filter).sort({ createdAt: -1 }).lean();
-      return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
+      if (list && list.length > 0) {
+        return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
+      }
+      // If Mongo collection returned 0 results, fall back seamlessly to memoryStore
     } catch (e) {
       console.warn('Mongo notifications read error:', e.message);
     }
@@ -3306,6 +3314,8 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
   let list = memoryStore.notifications;
   if (role === 'admin') {
     list = list.filter(n => n.recipientRole === 'admin' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail === cleanEmail));
+  } else if (role === 'manager') {
+    list = list.filter(n => n.recipientRole === 'manager' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail && n.recipientEmail.toLowerCase() === cleanEmail));
   } else if (role === 'user') {
     list = list.filter(n => {
       const isBreakNotif = (n.title && n.title.includes('Break')) || (n.message && n.message.includes('break'));
@@ -3395,7 +3405,7 @@ const markAllNotificationsRead = async (role) => {
     memoryStore.notifications = [];
   }
   memoryStore.notifications.forEach(n => {
-    if (!role || n.recipientRole === role) {
+    if (!role || role === 'all' || n.recipientRole === role) {
       n.read = true;
     }
   });
@@ -3403,7 +3413,7 @@ const markAllNotificationsRead = async (role) => {
 
   if (getStatus()) {
     try {
-      const filter = role ? { recipientRole: role } : {};
+      const filter = (role && role !== 'all') ? { recipientRole: role } : {};
       await Notification.updateMany(filter, { read: true });
     } catch (e) {
       console.warn('Mongo mark all read error:', e.message);

@@ -1371,6 +1371,7 @@ useEffect(() => {
 useEffect(() => {
   if (!currentUser) return;
   refreshUserWorkspace();
+  refreshNotifications();
   let isMounted = true;
   api.validateSession(currentUser.id, currentUser.email).then((res) => {
     if (!isMounted) return;
