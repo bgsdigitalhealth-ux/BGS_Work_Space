@@ -1391,6 +1391,14 @@ export const MessagesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
+                  const ongoing = activeConversation
+                    ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+                    : null;
+                  if (ongoing && ongoing.status !== 'ended') {
+                    handleJoinMeeting(ongoing);
+                    return;
+                  }
+
                   if (activeConversation.isGroup) {
                     setMeetingTitle(`${activeConversation.groupName || activeConversation.teamName || 'Team'} Online Meeting`);
                     setMeetingType('group');
@@ -1411,6 +1419,14 @@ export const MessagesView: React.FC = () => {
               </button>
               <button
                 onClick={() => {
+                  const ongoing = activeConversation
+                    ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+                    : null;
+                  if (ongoing && ongoing.status !== 'ended') {
+                    handleJoinMeeting(ongoing);
+                    return;
+                  }
+
                   if (activeConversation.isGroup) {
                     setMeetingTitle(`${activeConversation.groupName || activeConversation.teamName || 'Team'} Voice Conference`);
                     setMeetingType('group');

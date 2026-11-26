@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Camera, CameraOff, Mic, MicOff, PhoneOff, Copy, Check,
-  Users, ShieldAlert, MonitorUp, Video as VideoIcon
+  Users, ShieldAlert, MonitorUp, Video as VideoIcon, Hand, MoreVertical
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getSocket } from '../../services/socket';
@@ -25,6 +25,9 @@ interface RemotePeerData {
   user: any;
   stream?: MediaStream;
   isConnected: boolean;
+  isMicOn?: boolean;
+  isVideoOn?: boolean;
+  isHandRaised?: boolean;
 }
 
 interface PopupNotice {
@@ -46,6 +49,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   const [callState, setCallState] = useState<'connecting' | 'connected' | 'ended'>('connecting');
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
+  const [isHandRaised, setIsHandRaised] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
@@ -157,6 +161,42 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
             localVideoRef.current.srcObject = stream;
           }
 
+          // Attach newly obtained local tracks to any already-created peer connections
+          Object.entries(peersRef.current).forEach(([targetSocketId, peerItem]) => {
+            if (peerItem.pc && peerItem.pc.signalingState !== 'closed') {
+              stream.getTracks().forEach(track => {
+                const senders = peerItem.pc.getSenders();
+                const existing = senders.find(s => s.track && s.track.kind === track.kind);
+                if (existing) {
+                  existing.replaceTrack(track).catch(() => {});
+                } else {
+                  try {
+                    peerItem.pc.addTrack(track, stream);
+                  } catch (e) {}
+                }
+              });
+
+              if (peerItem.pc.signalingState === 'stable') {
+                peerItem.pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
+                  .then(offer => peerItem.pc.setLocalDescription(offer))
+                  .then(() => {
+                    socket?.emit('webrtc_signal', {
+                      meetingId,
+                      targetSocketId,
+                      signal: { sdp: peerItem.pc.localDescription },
+                      senderUser: {
+                        id: currentUser?.id,
+                        email: currentUser?.email,
+                        name: currentUser?.name,
+                        role: currentUser?.role
+                      }
+                    });
+                  })
+                  .catch(err => console.warn('[WebRTC] Track add offer error:', err));
+              }
+            }
+          });
+
           // Automatically connect to the call
           if (socket && currentUser) {
             setCallState('connecting');
@@ -183,7 +223,10 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                         updated[p.socketId] = {
                           user: p.user,
                           stream: updated[p.socketId]?.stream,
-                          isConnected: true
+                          isConnected: true,
+                          isMicOn: true,
+                          isVideoOn: true,
+                          isHandRaised: false
                         };
                       }
                     });
@@ -307,17 +350,27 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
     // Remote stream track handler
     pc.ontrack = (event) => {
-      const stream = event.streams?.[0] || new MediaStream([event.track]);
-      if (peersRef.current[targetSocketId]) {
-        peersRef.current[targetSocketId].stream = stream;
+      let existingStream = peersRef.current[targetSocketId]?.stream;
+      if (!existingStream) {
+        existingStream = new MediaStream();
+        peersRef.current[targetSocketId].stream = existingStream;
       }
+      if (!existingStream.getTracks().some(t => t.id === event.track.id)) {
+        existingStream.addTrack(event.track);
+      }
+
+      // Create a fresh MediaStream wrapper containing all tracks so React re-renders RemoteVideoElement
+      const freshStream = new MediaStream(existingStream.getTracks());
 
       setRemotePeers(prev => ({
         ...prev,
         [targetSocketId]: {
           user: targetUser || prev[targetSocketId]?.user,
-          stream,
-          isConnected: true
+          stream: freshStream,
+          isConnected: true,
+          isMicOn: prev[targetSocketId]?.isMicOn ?? true,
+          isVideoOn: prev[targetSocketId]?.isVideoOn ?? true,
+          isHandRaised: prev[targetSocketId]?.isHandRaised ?? false
         }
       }));
     };
@@ -391,6 +444,37 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
       if (signal?.type === 'screen_share_stop') {
         setPresenterInfo(null);
         addNotice('Screen sharing stopped', 'info');
+        return;
+      }
+
+      // Check for hand raise signal
+      if (signal?.type === 'hand_raise') {
+        const raisedName = senderUser?.name || 'A participant';
+        if (signal.isHandRaised) {
+          addNotice(`${raisedName} raised hand ✋`, 'info');
+        }
+        setRemotePeers(prev => ({
+          ...prev,
+          [senderSocketId]: {
+            ...prev[senderSocketId],
+            user: senderUser || prev[senderSocketId]?.user,
+            isHandRaised: Boolean(signal.isHandRaised)
+          }
+        }));
+        return;
+      }
+
+      // Check for media state change (mic/camera toggle)
+      if (signal?.type === 'media_state_change') {
+        setRemotePeers(prev => ({
+          ...prev,
+          [senderSocketId]: {
+            ...prev[senderSocketId],
+            user: senderUser || prev[senderSocketId]?.user,
+            isMicOn: signal.isMicOn !== undefined ? signal.isMicOn : prev[senderSocketId]?.isMicOn,
+            isVideoOn: signal.isVideoOn !== undefined ? signal.isVideoOn : prev[senderSocketId]?.isVideoOn
+          }
+        }));
         return;
       }
 
@@ -488,7 +572,10 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
         [socketId]: {
           user,
           stream: prev[socketId]?.stream,
-          isConnected: true
+          isConnected: true,
+          isMicOn: true,
+          isVideoOn: true,
+          isHandRaised: false
         }
       }));
 
@@ -514,12 +601,29 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
       }
     };
 
+    // Auto re-join room if socket reconnects
+    const handleSocketConnect = () => {
+      if (authStatus === 'authorized' && currentUser) {
+        socket.emit('join_meeting', {
+          meetingId,
+          user: {
+            id: currentUser.id,
+            email: currentUser.email,
+            name: currentUser.name,
+            role: currentUser.role
+          }
+        });
+      }
+    };
+
+    socket.on('connect', handleSocketConnect);
     socket.on('webrtc_signal', handleSignal);
     socket.on('user_joined_meeting', handleUserJoined);
     socket.on('user_left_meeting', handleUserLeft);
     socket.on('meeting_ended', handleMeetingEnded);
 
     return () => {
+      socket.off('connect', handleSocketConnect);
       socket.off('webrtc_signal', handleSignal);
       socket.off('user_joined_meeting', handleUserJoined);
       socket.off('user_left_meeting', handleUserLeft);
@@ -591,6 +695,13 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
         const nextState = !audioTracks[0].enabled;
         audioTracks.forEach(t => { t.enabled = nextState; });
         setIsMicOn(nextState);
+        if (socket) {
+          socket.emit('webrtc_signal', {
+            meetingId,
+            targetSocketId: 'broadcast',
+            signal: { type: 'media_state_change', isMicOn: nextState, isVideoOn }
+          });
+        }
       }
     }
   };
@@ -602,7 +713,31 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
         const nextState = !videoTracks[0].enabled;
         videoTracks.forEach(t => { t.enabled = nextState; });
         setIsVideoOn(nextState);
+        if (socket) {
+          socket.emit('webrtc_signal', {
+            meetingId,
+            targetSocketId: 'broadcast',
+            signal: { type: 'media_state_change', isMicOn, isVideoOn: nextState }
+          });
+        }
       }
+    }
+  };
+
+  const toggleHandRaise = () => {
+    const nextState = !isHandRaised;
+    setIsHandRaised(nextState);
+    if (nextState) {
+      addNotice('You raised your hand ✋', 'info');
+    } else {
+      addNotice('You lowered your hand', 'info');
+    }
+    if (socket) {
+      socket.emit('webrtc_signal', {
+        meetingId,
+        targetSocketId: 'broadcast',
+        signal: { type: 'hand_raise', isHandRaised: nextState }
+      });
     }
   };
 
@@ -908,148 +1043,196 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
           </div>
         ) : (
           /* ========================================================
-             CASE B: CAMERA GRID (1, 2, or Multi-Participant WhatsApp Grid)
+             CASE B: UNIFIED RESPONSIVE VIDEO GRID (Google Meet & WhatsApp style)
              ======================================================== */
-          peerCount === 0 ? (
-            /* User is alone: WhatsApp-style single waiting stage */
-            <div className="w-full h-full max-w-4xl relative rounded-3xl overflow-hidden bg-[#111b21] border border-[#202c33] flex flex-col items-center justify-center shadow-2xl">
-              {isVideoOn ? (
-                <video
-                  ref={localVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full h-full object-cover transform -scale-x-100"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-4 z-10">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-tr from-[#128c7e] to-[#25D366] text-white font-bold text-3xl flex items-center justify-center shadow-2xl ring-4 ring-[#25D366]/30">
-                    {getInitials(currentUser?.name, currentUser?.email)}
-                  </div>
-                  <div className="text-center">
-                    <h3 className="font-bold text-base text-white">{currentUser?.name || 'You'}</h3>
-                    <p className="text-xs text-gray-400 mt-0.5">Camera is turned off</p>
-                  </div>
-                </div>
-              )}
+          (() => {
+            const allParticipants = [
+              {
+                id: 'local',
+                isLocal: true,
+                user: currentUser,
+                stream: localStream || undefined,
+                isConnected: true,
+                isVideoOn,
+                isMicOn,
+                isHandRaised
+              },
+              ...remoteSocketIds.map(sId => ({
+                id: sId,
+                isLocal: false,
+                user: remotePeers[sId].user,
+                stream: remotePeers[sId].stream,
+                isConnected: remotePeers[sId].isConnected,
+                isMicOn: remotePeers[sId].isMicOn ?? true,
+                isVideoOn: remotePeers[sId].isVideoOn ?? true,
+                isHandRaised: remotePeers[sId].isHandRaised ?? false
+              }))
+            ];
 
-              {/* Waiting Pill Overlay */}
-              <div className="absolute top-5 left-5 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-xs text-emerald-300">
-                <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-                <span>Waiting for other team members to join...</span>
-              </div>
+            const totalCount = allParticipants.length;
 
-              {/* Bottom Tag */}
-              <div className="absolute bottom-5 left-5 right-5 flex items-center justify-between z-10">
-                <div className="px-3.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-xs font-semibold text-white flex items-center gap-2">
-                  <span>You ({currentUser?.name || 'User'})</span>
-                  <span className="text-[10px] text-[#25D366] font-mono">Host</span>
-                </div>
-                <div className={`p-2 rounded-xl backdrop-blur-md ${isMicOn ? 'bg-black/60 text-[#25D366]' : 'bg-red-500/80 text-white'}`}>
-                  {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                </div>
-              </div>
-            </div>
-          ) : peerCount === 1 ? (
-            /* 1-on-1 Call: Side-by-Side or PiP Layout (NO DUPLICATES) */
-            <div className="w-full h-full max-w-6xl grid grid-cols-1 md:grid-cols-2 gap-4 items-center justify-center">
-              {/* Tile 1: You */}
-              <div className="w-full h-full min-h-[260px] relative rounded-3xl overflow-hidden bg-[#111b21] border border-emerald-500/40 shadow-xl flex items-center justify-center">
-                {isVideoOn ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover transform -scale-x-100"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-tr from-[#128c7e] to-[#25D366] text-white font-bold text-2xl flex items-center justify-center shadow-xl ring-4 ring-[#25D366]/30">
-                      {getInitials(currentUser?.name, currentUser?.email)}
-                    </div>
-                    <span className="text-xs text-gray-400">Camera off</span>
-                  </div>
-                )}
-                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs z-10">
-                  <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white">
-                    You ({currentUser?.name || 'User'})
-                  </div>
-                  <div className={`p-1.5 rounded-lg ${isMicOn ? 'bg-black/60 text-[#25D366]' : 'bg-red-500/80 text-white'}`}>
-                    {isMicOn ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tile 2: The Remote Connected Member */}
-              {remoteSocketIds.map(sId => {
-                const peer = remotePeers[sId];
-                return (
-                  <div key={sId} className="w-full h-full min-h-[260px] relative rounded-3xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex items-center justify-center">
-                    <RemoteVideoElement user={peer.user} stream={peer.stream} />
-                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs z-10">
-                      <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
-                        <span>{peer.user?.name || peer.user?.email || 'Connected Member'}</span>
-                        <span className="w-2 h-2 rounded-full bg-[#25D366]" />
+            return (
+              <div className="w-full h-full flex flex-col items-center justify-center p-2 sm:p-4 overflow-y-auto">
+                {totalCount === 1 ? (
+                  /* Solo participant card */
+                  <div className="w-full max-w-3xl h-[65vh] relative rounded-3xl overflow-hidden bg-[#181c21] border border-white/10 shadow-2xl flex items-center justify-center group">
+                    {isVideoOn ? (
+                      <video
+                        ref={localVideoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover transform -scale-x-100"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6 text-center z-10">
+                        <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-tr from-[#128c7e] to-[#25D366] text-white font-bold text-3xl sm:text-4xl flex items-center justify-center shadow-2xl ring-4 ring-[#25D366]/30 mb-3 select-none">
+                          {getInitials(currentUser?.name, currentUser?.email)}
+                        </div>
+                        <h3 className="font-bold text-base text-white">{currentUser?.name || 'You'}</h3>
+                        <p className="text-xs text-gray-400 mt-1">Waiting for other members to join...</p>
                       </div>
-                      <div className="p-1.5 rounded-lg bg-black/60 text-[#25D366]">
-                        <Mic className="w-4 h-4" />
+                    )}
+
+                    {/* Waiting pill top-left */}
+                    <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/10 flex items-center gap-2 text-xs text-emerald-300 z-20">
+                      <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+                      <span>Waiting for team members to join...</span>
+                    </div>
+
+                    {/* Top-right mic status */}
+                    <div className="absolute top-4 right-4 z-20">
+                      <div className={`w-8 h-8 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg border border-white/10 ${
+                        isMicOn ? 'bg-black/60 text-[#25D366]' : 'bg-[#ea0038]/90 text-white'
+                      }`}>
+                        {isMicOn ? <Mic className="w-4 h-4 text-[#25D366]" /> : <MicOff className="w-4 h-4 text-white" />}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* Multi-Participant Grid (3+ members) */
-            <div className={`w-full h-full max-w-6xl grid gap-4 overflow-y-auto p-2 ${
-              peerCount <= 3 ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
-            }`}>
-              {/* Tile 1: You */}
-              <div className="aspect-video relative rounded-2xl overflow-hidden bg-[#111b21] border border-emerald-500/40 shadow-xl flex items-center justify-center">
-                {isVideoOn ? (
-                  <video
-                    ref={localVideoRef}
-                    autoPlay
-                    playsInline
-                    muted
-                    className="w-full h-full object-cover transform -scale-x-100"
-                  />
-                ) : (
-                  <div className="flex flex-col items-center gap-2">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#128c7e] to-[#25D366] text-white font-bold text-xl flex items-center justify-center shadow-lg">
-                      {getInitials(currentUser?.name, currentUser?.email)}
+
+                    {/* Bottom-left user name badge + hand raise */}
+                    <div className="absolute bottom-4 left-4 z-20 flex items-center gap-2">
+                      {isHandRaised && (
+                        <div className="w-8 h-8 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg shadow-amber-500/30 animate-bounce">
+                          <Hand className="w-4 h-4 fill-black" />
+                        </div>
+                      )}
+                      <div className="px-3.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white flex items-center gap-2 shadow-lg">
+                        <span>You ({currentUser?.name || 'User'})</span>
+                        {isHost && <span className="text-[10px] text-[#25D366] font-mono">Host</span>}
+                      </div>
                     </div>
-                    <span className="text-[11px] text-gray-400">You (Camera off)</span>
+
+                    {/* Bottom-right 3-dots */}
+                    <div className="absolute bottom-4 right-4 z-20">
+                      <button
+                        type="button"
+                        className="w-8 h-8 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md text-white/80 hover:text-white flex items-center justify-center border border-white/10 shadow-lg transition"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  /* Multi-participant Grid (Google Meet 2x3 or WhatsApp 3x3) */
+                  <div className={`w-full h-full max-w-7xl grid gap-3 sm:gap-4 items-center justify-center ${
+                    totalCount === 2
+                      ? 'grid-cols-1 md:grid-cols-2 max-w-5xl'
+                      : totalCount <= 4
+                        ? 'grid-cols-1 sm:grid-cols-2 max-w-5xl'
+                        : totalCount <= 6
+                          ? 'grid-cols-2 sm:grid-cols-3 max-w-6xl'
+                          : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 max-w-7xl'
+                  }`}>
+                    {allParticipants.map(participant => (
+                      <div
+                        key={participant.id}
+                        className="w-full h-full min-h-[170px] sm:min-h-[200px] md:min-h-[220px] aspect-[4/3] sm:aspect-video relative rounded-2xl sm:rounded-3xl overflow-hidden bg-[#181c21] border border-white/10 shadow-2xl flex items-center justify-center group"
+                      >
+                        {participant.isLocal ? (
+                          participant.isVideoOn ? (
+                            <video
+                              ref={localVideoRef}
+                              autoPlay
+                              playsInline
+                              muted
+                              className="w-full h-full object-cover transform -scale-x-100"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center p-4 text-center z-10">
+                              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-tr from-[#128c7e] to-[#25D366] text-white font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-2xl ring-4 ring-[#25D366]/30 select-none">
+                                {getInitials(currentUser?.name, currentUser?.email)}
+                              </div>
+                            </div>
+                          )
+                        ) : (
+                          <RemoteVideoElement
+                            user={participant.user}
+                            stream={participant.stream}
+                          />
+                        )}
+
+                        {/* Top-Right Corner: Mic Status Badge */}
+                        <div className="absolute top-3 right-3 z-20">
+                          <div
+                            className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg border border-white/10 ${
+                              participant.isMicOn ? 'bg-black/60 text-[#25D366]' : 'bg-[#ea0038]/90 text-white'
+                            }`}
+                            title={participant.isMicOn ? 'Microphone on' : 'Microphone muted'}
+                          >
+                            {participant.isMicOn ? (
+                              <Mic className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#25D366]" />
+                            ) : (
+                              <MicOff className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom-Left Corner: Name Badge + Hand Raise Indicator */}
+                        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 max-w-[80%]">
+                          {participant.isHandRaised && (
+                            <div
+                              className="w-7 h-7 rounded-full bg-amber-500 text-black flex items-center justify-center shadow-lg shadow-amber-500/30 animate-bounce shrink-0"
+                              title={`${participant.isLocal ? 'You' : participant.user?.name || 'Participant'} raised hand`}
+                            >
+                              <Hand className="w-3.5 h-3.5 fill-black" />
+                            </div>
+                          )}
+                          <div className="px-3 py-1 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-xs font-semibold text-white truncate shadow-lg flex items-center gap-1.5">
+                            <span className="truncate">
+                              {participant.isLocal
+                                ? `You${isHost ? ' (Host)' : ''}`
+                                : (participant.user?.name || participant.user?.email || 'Participant')}
+                            </span>
+                            {!participant.isLocal && (
+                              <span className="w-2 h-2 rounded-full bg-[#25D366] shrink-0" />
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom-Right Corner: 3-dots Menu Button */}
+                        <div className="absolute bottom-3 right-3 z-20">
+                          <button
+                            type="button"
+                            className="w-7 h-7 rounded-full bg-black/50 hover:bg-black/80 backdrop-blur-md text-white/80 hover:text-white flex items-center justify-center transition cursor-pointer border border-white/10 shadow-lg"
+                            title="More options"
+                          >
+                            <MoreVertical className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
-                <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex items-center gap-2">
-                  <span>You ({currentUser?.name})</span>
-                </div>
               </div>
-
-              {/* Tiles: Unique Remote Peers */}
-              {remoteSocketIds.map(sId => {
-                const peer = remotePeers[sId];
-                return (
-                  <div key={sId} className="aspect-video relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex items-center justify-center">
-                    <RemoteVideoElement user={peer.user} stream={peer.stream} />
-                    <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex items-center gap-2">
-                      <span>{peer.user?.name || peer.user?.email || 'Participant'}</span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )
+            );
+          })()
         )}
 
       </main>
 
-      {/* WhatsApp Web Floating Bottom Control Dock */}
+      {/* Floating Bottom Control Dock (Google Meet / WhatsApp style) */}
       <footer className="p-4 px-6 flex items-center justify-center bg-[#111b21] border-t border-[#202c33] shrink-0 z-20">
-        <div className="flex items-center gap-3 sm:gap-4 bg-[#202c33] px-6 py-2.5 rounded-full border border-[#2a3942] shadow-2xl">
+        <div className="flex items-center gap-2.5 sm:gap-4 bg-[#202c33] px-5 sm:px-6 py-2.5 rounded-full border border-[#2a3942] shadow-2xl">
 
           {/* Toggle Microphone */}
           <button
@@ -1093,6 +1276,29 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
             <MonitorUp className="w-5 h-5" />
           </button>
 
+          {/* Hand Raise Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleHandRaise}
+            className={`p-3.5 rounded-full transition cursor-pointer shadow-md ${
+              isHandRaised
+                ? 'bg-amber-500 hover:bg-amber-400 text-black ring-2 ring-amber-300 shadow-amber-500/40 shadow-lg'
+                : 'bg-[#111b21] hover:bg-[#2a3942] text-white'
+            }`}
+            title={isHandRaised ? "Lower Hand" : "Raise Hand"}
+          >
+            <Hand className={`w-5 h-5 ${isHandRaised ? 'fill-black' : ''}`} />
+          </button>
+
+          {/* More Options / 3-dots */}
+          <button
+            type="button"
+            className="hidden sm:flex p-3.5 rounded-full bg-[#111b21] hover:bg-[#2a3942] text-white transition cursor-pointer shadow-md"
+            title="More options"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
+
           {/* Divider */}
           <div className="w-px h-6 bg-[#2a3942] my-auto mx-1" />
 
@@ -1104,7 +1310,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
             title="Leave Call"
           >
             <PhoneOff className="w-4 h-4" />
-            <span>Leave Call</span>
+            <span className="hidden sm:inline">Leave Call</span>
           </button>
 
           {/* Host End for All Option */}
@@ -1112,7 +1318,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
             <button
               type="button"
               onClick={handleEndCallForAll}
-              className="hidden sm:flex px-4 py-3 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs items-center gap-1.5 transition cursor-pointer"
+              className="hidden md:flex px-4 py-3 rounded-full bg-red-950/80 hover:bg-red-900 border border-red-500/40 text-red-300 font-bold text-xs items-center gap-1.5 transition cursor-pointer"
               title="End Meeting for Everyone"
             >
               <span>End All</span>
@@ -1142,13 +1348,17 @@ const RemoteVideoElement: React.FC<{
       return;
     }
 
-    const checkTracks = () => {
+    const checkVideoState = () => {
       const vTracks = stream.getVideoTracks();
-      const hasLive = vTracks.some(t => t.enabled && t.readyState === 'live');
-      setHasLiveVideo(hasLive);
+      const hasActiveVideoTrack = vTracks.some(t => t.enabled && t.readyState === 'live');
+      if (videoRef.current && videoRef.current.videoWidth > 0) {
+        setHasLiveVideo(true);
+      } else {
+        setHasLiveVideo(hasActiveVideoTrack);
+      }
     };
 
-    checkTracks();
+    checkVideoState();
 
     if (videoRef.current) {
       videoRef.current.srcObject = stream;
@@ -1160,14 +1370,27 @@ const RemoteVideoElement: React.FC<{
       audioRef.current.play().catch(() => {});
     }
 
+    const onTrackChange = () => {
+      checkVideoState();
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    };
+
+    stream.addEventListener('addtrack', onTrackChange);
+    stream.addEventListener('removetrack', onTrackChange);
+
     const vTracks = stream.getVideoTracks();
     vTracks.forEach(t => {
-      t.onmute = checkTracks;
-      t.onunmute = checkTracks;
-      t.onended = checkTracks;
+      t.onmute = checkVideoState;
+      t.onunmute = () => setHasLiveVideo(true);
+      t.onended = checkVideoState;
     });
 
     return () => {
+      stream.removeEventListener('addtrack', onTrackChange);
+      stream.removeEventListener('removetrack', onTrackChange);
       vTracks.forEach(t => {
         t.onmute = null;
         t.onunmute = null;
@@ -1183,33 +1406,47 @@ const RemoteVideoElement: React.FC<{
     return name.substring(0, 2).toUpperCase();
   })();
 
+  const avatarColor = (() => {
+    const colors = [
+      'from-emerald-600 to-teal-800',
+      'from-blue-600 to-indigo-800',
+      'from-purple-600 to-violet-800',
+      'from-amber-600 to-orange-800',
+      'from-rose-600 to-pink-800',
+      'from-cyan-600 to-blue-800'
+    ];
+    const str = (user?.name || user?.email || 'TM');
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = (hash + str.charCodeAt(i)) % colors.length;
+    }
+    return colors[hash];
+  })();
+
   return (
-    <div className="w-full h-full relative flex items-center justify-center overflow-hidden bg-[#111b21]">
+    <div className="w-full h-full relative flex items-center justify-center overflow-hidden bg-[#181c21]">
       {/* Remote audio playback */}
       <audio ref={audioRef} autoPlay playsInline />
 
-      {/* Remote video playback */}
+      {/* Remote video playback: muted so browser autoplay never blocks video */}
       <video
         ref={videoRef}
         autoPlay
         playsInline
+        muted
+        onLoadedMetadata={() => setHasLiveVideo(true)}
+        onPlaying={() => setHasLiveVideo(true)}
+        onCanPlay={() => setHasLiveVideo(true)}
         className={`w-full h-full ${
           isPresentation ? 'object-contain transform-none bg-black' : 'object-cover'
-        } ${hasLiveVideo ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}
+        } transition-opacity duration-300 ${hasLiveVideo ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}
       />
 
-      {/* Fallback WhatsApp-style user card if video is not live or camera is off */}
+      {/* Google Meet / WhatsApp Centered Avatar Circle when video is off */}
       {!hasLiveVideo && (
         <div className="flex flex-col items-center justify-center p-4 text-center z-10 animate-in fade-in duration-200">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-emerald-500 text-white font-bold text-xl sm:text-2xl flex items-center justify-center shadow-2xl ring-4 ring-emerald-500/20 mb-2.5">
+          <div className={`w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-gradient-to-tr ${avatarColor} text-white font-bold text-2xl sm:text-3xl flex items-center justify-center shadow-2xl ring-4 ring-white/10 select-none`}>
             {initials}
-          </div>
-          <h4 className="font-bold text-xs sm:text-sm text-white truncate max-w-[180px]">
-            {user?.name || user?.email || 'Connected Member'}
-          </h4>
-          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] text-emerald-300 mt-1.5 border border-emerald-500/20">
-            <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-            <span>Connected • Audio Active</span>
           </div>
         </div>
       )}
