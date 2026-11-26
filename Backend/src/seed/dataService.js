@@ -5291,21 +5291,53 @@ setInterval(() => {
   });
 }, 30000);
 
+// Helper to compute effective local date string YYYY-MM-DD from client timezone offset
+const getEffectiveDate = (timezoneOffset = null) => {
+  const now = new Date();
+  if (typeof timezoneOffset === 'number' && !isNaN(timezoneOffset)) {
+    const localMs = now.getTime() - (timezoneOffset * 60 * 1000);
+    const d = new Date(localMs);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  }
+  return now.toISOString().split('T')[0];
+};
+
 const getTodayAttendance = async (userId, userEmail, timezoneOffset = null) => {
   await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getEffectiveDate(timezoneOffset);
+  const utcToday = new Date().toISOString().split('T')[0];
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
+  // 1. First look for active punched_in record for this user (session is actively running)
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    a.status === 'punched_in'
   );
+
+  // 2. If not punched in, look for today's record (matching effective local date or UTC date)
+  if (!record) {
+    record = memoryStore.attendance.find(a =>
+      (a.date === today || a.date === utcToday) &&
+      (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    );
+  }
 
   if (getStatus()) {
     try {
-      const dbRec = await Attendance.findOne({
-        date: today,
-        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+      let dbRec = await Attendance.findOne({
+        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }],
+        status: 'punched_in'
       }).lean();
+
+      if (!dbRec) {
+        dbRec = await Attendance.findOne({
+          date: { $in: [today, utcToday] },
+          $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+        }).lean();
+      }
+
       if (dbRec) record = { ...dbRec, id: dbRec.customId || dbRec._id.toString() };
     } catch (e) {
       console.warn('Mongo attendance read error:', e.message);
@@ -5324,34 +5356,64 @@ const getTodayAttendance = async (userId, userEmail, timezoneOffset = null) => {
     };
   }
 
-  // Calculate live running seconds if currently punched in
-  let liveSeconds = record.totalSeconds || 0;
+  // Calculate live running seconds accurately: completed punches + active punch duration
+  let completedSeconds = 0;
   let activePunch = null;
-  if (record.status === 'punched_in' && Array.isArray(record.punches) && record.punches.length > 0) {
-    const lastPunch = record.punches[record.punches.length - 1];
-    if (lastPunch && !lastPunch.punchOut) {
-      activePunch = lastPunch.punchIn;
-      const elapsed = Math.round((Date.now() - new Date(lastPunch.punchIn).getTime()) / 1000);
-      liveSeconds += Math.max(0, elapsed);
+
+  if (Array.isArray(record.punches) && record.punches.length > 0) {
+    for (const p of record.punches) {
+      if (!p.punchIn) continue;
+      const inTime = new Date(p.punchIn).getTime();
+      if (isNaN(inTime)) continue;
+
+      if (p.punchOut) {
+        const outTime = new Date(p.punchOut).getTime();
+        const dur = (p.durationSeconds && p.durationSeconds > 0)
+          ? p.durationSeconds
+          : Math.max(0, Math.round((outTime - inTime) / 1000));
+        completedSeconds += dur;
+      } else {
+        // Active unclosed punch
+        activePunch = p.punchIn;
+        const elapsed = Math.max(0, Math.round((Date.now() - inTime) / 1000));
+        completedSeconds += elapsed;
+      }
     }
+  } else {
+    completedSeconds = record.totalSeconds || 0;
   }
 
   return {
     ...record,
-    totalSeconds: liveSeconds,
+    totalSeconds: completedSeconds,
     currentPunchIn: activePunch
   };
 };
 
 const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset = null }) => {
   await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getEffectiveDate(timezoneOffset);
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    (a.status === 'punched_in' || a.date === today)
   );
+
+  if (getStatus() && !record) {
+    try {
+      const dbRec = await Attendance.findOne({
+        $or: [
+          { status: 'punched_in', $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }] },
+          { date: today, $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }] }
+        ]
+      }).lean();
+      if (dbRec) record = dbRec;
+    } catch (e) {
+      console.warn('Mongo find record error:', e.message);
+    }
+  }
 
   if (!record) {
     record = {
@@ -5376,7 +5438,7 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
     if (timezoneOffset !== null && timezoneOffset !== undefined) {
       record.timezoneOffset = timezoneOffset;
     }
-    // If not already punched in, add new punch
+    // If not already punched in, add new punch to continue session
     if (record.status !== 'punched_in') {
       record.status = 'punched_in';
       record.autoPunchedOut = false;
@@ -5390,7 +5452,7 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
   if (getStatus()) {
     try {
       await Attendance.findOneAndUpdate(
-        { date: today, userId },
+        { date: record.date || today, userId },
         { $set: record },
         { upsert: true, new: true }
       );
@@ -5404,13 +5466,33 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
 
 const recordPunchOut = async ({ userId, userEmail, timezoneOffset = null }) => {
   await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
-  const today = new Date().toISOString().split('T')[0];
+  const today = getEffectiveDate(timezoneOffset);
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
+  // Look for active punched_in record or today's record
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    (a.status === 'punched_in' || a.date === today)
   );
+
+  if (getStatus()) {
+    try {
+      let dbRec = await Attendance.findOne({
+        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }],
+        status: 'punched_in'
+      });
+      if (!dbRec) {
+        dbRec = await Attendance.findOne({
+          date: today,
+          $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+        });
+      }
+      if (dbRec) record = dbRec;
+    } catch (e) {
+      console.warn('Mongo find record error:', e.message);
+    }
+  }
 
   if (record && record.status === 'punched_in') {
     record.status = 'punched_out';
@@ -5424,15 +5506,16 @@ const recordPunchOut = async ({ userId, userEmail, timezoneOffset = null }) => {
         lastPunch.autoPunchedOut = false;
         const dur = Math.max(0, Math.round((now.getTime() - new Date(lastPunch.punchIn).getTime()) / 1000));
         lastPunch.durationSeconds = dur;
-        record.totalSeconds = (record.totalSeconds || 0) + dur;
       }
+      // Re-sum all completed punches for 100% accurate total
+      record.totalSeconds = record.punches.reduce((sum, p) => sum + (p.durationSeconds || 0), 0);
     }
     saveStore();
 
     if (getStatus()) {
       try {
         await Attendance.findOneAndUpdate(
-          { date: today, userId },
+          { _id: record._id || undefined, date: record.date || today, userId },
           { $set: record },
           { new: true }
         );
@@ -5531,14 +5614,14 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60, timezoneOff
     }
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getEffectiveDate(timezoneOffset);
   const mapped = records.map(r => {
     let totalSecs = r.totalSeconds || 0;
     const isPast = r.date < today;
-    const isCurrentlyIn = !isPast && r.status === 'punched_in';
+    const isCurrentlyIn = r.status === 'punched_in';
     let currentInTime = null;
 
-    if (r.date === today && isCurrentlyIn && Array.isArray(r.punches) && r.punches.length > 0) {
+    if (isCurrentlyIn && Array.isArray(r.punches) && r.punches.length > 0) {
       const last = r.punches[r.punches.length - 1];
       if (last && !last.punchOut) {
         currentInTime = last.punchIn;

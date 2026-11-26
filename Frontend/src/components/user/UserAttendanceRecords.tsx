@@ -10,12 +10,13 @@ import {
   TrendingUp,
   UserCheck
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, calculateTotalAttendanceSeconds } from '../../context/AppContext';
 import { AttendancePunch } from '../../types';
 
 export const UserAttendanceRecords: React.FC = () => {
   const { 
     todayAttendance, 
+    liveAttendanceSeconds,
     attendanceRecords, 
     refreshAttendanceRecords, 
     currentUser 
@@ -24,22 +25,11 @@ export const UserAttendanceRecords: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState<'all' | 'week' | 'month'>('all');
   const [expandedDates, setExpandedDates] = useState<Record<string, boolean>>({});
-  const [liveElapsed, setLiveElapsed] = useState<number>(0);
 
   const isPunchedIn = todayAttendance?.status === 'punched_in';
-  const baseSeconds = todayAttendance?.totalSeconds || 0;
-
-  // Live timer for today when punched in
-  useEffect(() => {
-    setLiveElapsed(baseSeconds);
-    if (!isPunchedIn) return;
-
-    const interval = setInterval(() => {
-      setLiveElapsed(prev => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPunchedIn, baseSeconds]);
+  const liveElapsed = isPunchedIn
+    ? (liveAttendanceSeconds || calculateTotalAttendanceSeconds(todayAttendance))
+    : (todayAttendance?.totalSeconds || liveAttendanceSeconds || 0);
 
   // Refresh records on mount
   useEffect(() => {
@@ -88,8 +78,11 @@ export const UserAttendanceRecords: React.FC = () => {
 
   // Helper to compute seconds for any record (including auto midnight fallback for unclosed past days)
   const getCalculatedRecordSeconds = (rec: any) => {
-    const isRecToday = rec.date === todayStr;
-    if (isRecToday && isPunchedIn) return liveElapsed;
+    if (rec.status === 'punched_in') {
+      return (isPunchedIn && (rec.date === todayAttendance?.date || rec.id === todayAttendance?.id))
+        ? liveElapsed
+        : calculateTotalAttendanceSeconds(rec);
+    }
     if (rec.totalSeconds && rec.totalSeconds > 0) return rec.totalSeconds;
     const pArr = Array.isArray(rec.punches) ? rec.punches : [];
     if (pArr.length > 0) {
@@ -112,7 +105,7 @@ export const UserAttendanceRecords: React.FC = () => {
   // Merge today's live record with attendanceRecords if present
   const allRecords = [...(attendanceRecords || [])];
   if (todayAttendance) {
-    const idx = allRecords.findIndex(r => r.date === todayStr);
+    const idx = allRecords.findIndex(r => r.date === todayAttendance.date || r.date === todayStr);
     if (idx >= 0) {
       allRecords[idx] = {
         ...allRecords[idx],

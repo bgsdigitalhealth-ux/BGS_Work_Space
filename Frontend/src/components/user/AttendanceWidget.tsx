@@ -1,28 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { LogIn, LogOut, Clock, CheckCircle2, CalendarCheck } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, calculateTotalAttendanceSeconds } from '../../context/AppContext';
 
 export const AttendanceWidget: React.FC = () => {
-  const { todayAttendance, handlePunchIn, handlePunchOut, setUserNav, setAdminNav, setManagerNav, portalMode, currentUser } = useApp();
-  const [liveElapsed, setLiveElapsed] = useState<number>(0);
+  const {
+    todayAttendance,
+    liveAttendanceSeconds,
+    handlePunchIn,
+    handlePunchOut,
+    setUserNav,
+    setAdminNav,
+    setManagerNav,
+    portalMode,
+    currentUser
+  } = useApp();
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  const todayStr = new Date().toISOString().split('T')[0];
-  const isToday = todayAttendance?.date === todayStr;
-  const isPunchedIn = isToday && todayAttendance?.status === 'punched_in';
-  const baseSeconds = isToday ? (todayAttendance?.totalSeconds || 0) : 0;
-
-  // Running timer ticker when punched in
-  useEffect(() => {
-    setLiveElapsed(baseSeconds);
-    if (!isPunchedIn) return;
-
-    const interval = setInterval(() => {
-      setLiveElapsed(prev => prev + 1);
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isPunchedIn, baseSeconds]);
+  const isPunchedIn = todayAttendance?.status === 'punched_in';
+  // Central live time present: strictly continues in real-time from active session without resetting
+  const displaySeconds = isPunchedIn
+    ? (liveAttendanceSeconds || calculateTotalAttendanceSeconds(todayAttendance))
+    : (todayAttendance?.totalSeconds || liveAttendanceSeconds || 0);
 
   const formatHoursMins = (totalSecs: number) => {
     const hrs = Math.floor(totalSecs / 3600);
@@ -72,21 +70,21 @@ export const AttendanceWidget: React.FC = () => {
               <>
                 <span>Today's Time Present:</span>
                 <span className="font-mono text-sm font-black text-emerald-600">
-                  {formatHoursMins(liveElapsed)}
+                  {formatHoursMins(displaySeconds)}
                 </span>
                 <span className="text-[11px] font-bold text-gray-500">
-                  ({(liveElapsed / 3600).toFixed(2)} hrs)
+                  ({(displaySeconds / 3600).toFixed(2)} hrs)
                 </span>
                 <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-ping ml-1" />
               </>
-            ) : liveElapsed > 0 ? (
+            ) : displaySeconds > 0 ? (
               <>
                 <span>Total Time Logged:</span>
                 <span className="font-mono text-sm font-bold text-gray-800">
-                  {formatHoursMins(liveElapsed)}
+                  {formatHoursMins(displaySeconds)}
                 </span>
                 <span className="text-[11px] font-bold text-gray-500">
-                  ({(liveElapsed / 3600).toFixed(2)} hrs)
+                  ({(displaySeconds / 3600).toFixed(2)} hrs)
                 </span>
               </>
             ) : (
