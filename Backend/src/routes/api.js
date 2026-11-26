@@ -1315,6 +1315,47 @@ router.post('/messages/conversations/start', async (req, res) => {
   }
 });
 
+router.post('/messages/conversations/group', async (req, res) => {
+  try {
+    const { currentUserId, groupName, teamId, teamName, departmentId, departmentName, participantEmails } = req.body;
+    if (!currentUserId || !groupName || (!teamId && !teamName)) {
+      return res.status(400).json({ error: 'currentUserId, groupName, and team are required to create a team group.' });
+    }
+    const conversation = await dataService.createGroupConversation({
+      currentUserId,
+      groupName,
+      teamId,
+      teamName,
+      departmentId,
+      departmentName,
+      participantEmails
+    });
+    const io = getIO();
+    if (io) {
+      if (Array.isArray(conversation.participants)) {
+        conversation.participants.forEach(pId => {
+          io.to(`user_${pId}`).emit('conversation_updated', {
+            conversationId: conversation.customId || conversation.id,
+            lastMessage: conversation.lastMessage
+          });
+        });
+      }
+      if (Array.isArray(conversation.participantEmails)) {
+        conversation.participantEmails.forEach(pEmail => {
+          io.to(`user_${pEmail}`).emit('conversation_updated', {
+            conversationId: conversation.customId || conversation.id,
+            lastMessage: conversation.lastMessage
+          });
+        });
+      }
+    }
+    broadcast('MESSAGES_UPDATED', { conversationId: conversation.customId || conversation.id });
+    res.status(201).json(conversation);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/messages/history/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;

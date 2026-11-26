@@ -821,6 +821,27 @@ export const api = {
     return res.json();
   },
 
+  createGroupConversation: async (data: {
+    currentUserId: string;
+    groupName: string;
+    teamId: string;
+    teamName: string;
+    departmentId?: string;
+    departmentName?: string;
+    participantEmails?: string[];
+  }): Promise<Conversation> => {
+    const res = await fetch(`${API_BASE}/messages/conversations/group`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to create group conversation' }));
+      throw new Error(err.error || 'Failed to create team group conversation');
+    }
+    return res.json();
+  },
+
   getMessageHistory: async (conversationId: string, userId?: string): Promise<ChatMessage[]> => {
     const url = userId ? `${API_BASE}/messages/history/${conversationId}?userId=${encodeURIComponent(userId)}` : `${API_BASE}/messages/history/${conversationId}`;
     const res = await fetch(url);

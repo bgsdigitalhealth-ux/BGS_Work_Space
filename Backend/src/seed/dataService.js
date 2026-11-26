@@ -4030,6 +4030,125 @@ const findOrCreateConversation = async (user1Id, user2Email) => {
   };
 };
 
+const createGroupConversation = async ({
+  currentUserId,
+  groupName,
+  teamId,
+  teamName,
+  departmentId = '',
+  departmentName = '',
+  participantEmails = []
+}) => {
+  if (!groupName || !groupName.trim()) {
+    throw new Error('Group name is required');
+  }
+  if (!teamId && !teamName) {
+    throw new Error('Team selection is required. Groups must be scoped team-wise.');
+  }
+
+  const allEligible = await getEligibleUsers();
+  const creator = allEligible.find(u => u.id === currentUserId || u.email === (currentUserId || '').toLowerCase().trim());
+  if (!creator) {
+    throw new Error('Creator user identity could not be verified in database.');
+  }
+
+  // Find team in memoryStore or db
+  const team = (memoryStore.teams || []).find(t => t.id === teamId || t.name === teamName);
+  const resolvedTeamName = team?.name || teamName || 'Team';
+  const resolvedTeamId = team?.id || teamId || '';
+  const resolvedDeptName = team?.departmentName || departmentName || '';
+  const resolvedDeptId = team?.departmentId || departmentId || '';
+
+  // Get all members of this particular team
+  const teamMembers = (memoryStore.members || []).filter(m =>
+    (resolvedTeamId && m.teamId === resolvedTeamId) ||
+    (resolvedTeamName && m.team && m.team.toLowerCase().trim() === resolvedTeamName.toLowerCase().trim())
+  );
+
+  // Collect participant emails from input, or default to all members of that team
+  let emails = Array.isArray(participantEmails) && participantEmails.length > 0
+    ? participantEmails.map(e => (e || '').toLowerCase().trim()).filter(Boolean)
+    : teamMembers.map(m => (m.email || '').toLowerCase().trim()).filter(Boolean);
+
+  // Always include creator
+  if (!emails.includes(creator.email.toLowerCase().trim())) {
+    emails.push(creator.email.toLowerCase().trim());
+  }
+
+  // Deduplicate emails
+  emails = Array.from(new Set(emails));
+
+  // Resolve participant IDs
+  const pIds = emails.map(email => {
+    const u = allEligible.find(usr => usr.email === email);
+    if (u) return u.id;
+    const m = (memoryStore.members || []).find(mem => (mem.email || '').toLowerCase().trim() === email);
+    return m ? (m.userId || m.id) : email;
+  });
+
+  const pIdsDeduped = Array.from(new Set(pIds));
+
+  // Initialize unread counts map
+  const unreadMap = {};
+  pIdsDeduped.forEach(id => {
+    unreadMap[id] = 0;
+  });
+
+  const convId = generateId('conv');
+  const groupConv = {
+    id: convId,
+    customId: convId,
+    isGroup: true,
+    groupName: groupName.trim(),
+    teamId: resolvedTeamId,
+    teamName: resolvedTeamName,
+    departmentId: resolvedDeptId,
+    departmentName: resolvedDeptName,
+    groupAdmin: creator.id,
+    groupAdminEmail: creator.email,
+    participants: pIdsDeduped,
+    participantEmails: emails,
+    lastMessage: {
+      text: `🎉 Team Group "${groupName.trim()}" created for ${resolvedTeamName}`,
+      senderId: creator.id,
+      senderEmail: creator.email,
+      senderName: creator.name,
+      timestamp: new Date().toISOString(),
+      status: 'sent'
+    },
+    unreadCounts: unreadMap,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+  memoryStore.conversations.unshift(groupConv);
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Conversation.create(groupConv);
+    } catch (e) {
+      console.warn('Mongo create group conversation error:', e.message);
+    }
+  }
+
+  return {
+    ...groupConv,
+    otherUser: {
+      id: resolvedTeamId || convId,
+      name: groupConv.groupName,
+      email: `${resolvedTeamName} Group`,
+      role: 'group',
+      avatar: groupConv.groupName.charAt(0).toUpperCase(),
+      isGroup: true,
+      team: resolvedTeamName,
+      department: resolvedDeptName
+    },
+    unread: 0
+  };
+};
+
 const getConversationsForUser = async (userId, userEmail = '') => {
   const allEligible = await getEligibleUsers();
   const currentUser = allEligible.find(u => u.id === userId || (userEmail && u.email === userEmail.toLowerCase().trim()));
@@ -4065,6 +4184,40 @@ const getConversationsForUser = async (userId, userEmail = '') => {
   }
 
   return list.map(c => {
+    let unread = 0;
+    if (c.unreadCounts) {
+      if (typeof c.unreadCounts.get === 'function') {
+        unread = c.unreadCounts.get(myId) || 0;
+      } else {
+        unread = c.unreadCounts[myId] || (myEmail ? c.unreadCounts[myEmail] : 0) || 0;
+      }
+    }
+
+    if (c.isGroup) {
+      return {
+        ...c,
+        id: c.customId || c.id || c._id?.toString(),
+        isGroup: true,
+        groupName: c.groupName || `${c.teamName || 'Team'} Group`,
+        teamId: c.teamId || '',
+        teamName: c.teamName || '',
+        departmentId: c.departmentId || '',
+        departmentName: c.departmentName || '',
+        groupAdmin: c.groupAdmin || '',
+        otherUser: {
+          id: c.teamId || c.customId || c.id,
+          name: c.groupName || `${c.teamName || 'Team'} Group`,
+          email: c.teamName ? `${c.teamName} Group` : 'Team Group',
+          role: 'group',
+          avatar: (c.groupName || 'G').charAt(0).toUpperCase(),
+          isGroup: true,
+          team: c.teamName,
+          department: c.departmentName
+        },
+        unread
+      };
+    }
+
     const otherEmail = (c.participantEmails || []).find(e => e !== myEmail) || '';
     const otherId = (c.participants || []).find(id => id !== myId) || '';
     const otherUser = allEligible.find(u => (otherEmail && u.email === otherEmail) || (otherId && u.id === otherId)) || {
@@ -4074,15 +4227,6 @@ const getConversationsForUser = async (userId, userEmail = '') => {
       role: 'user',
       avatar: (otherEmail || 'U').charAt(0).toUpperCase()
     };
-
-    let unread = 0;
-    if (c.unreadCounts) {
-      if (typeof c.unreadCounts.get === 'function') {
-        unread = c.unreadCounts.get(myId) || 0;
-      } else {
-        unread = c.unreadCounts[myId] || (myEmail ? c.unreadCounts[myEmail] : 0) || 0;
-      }
-    }
 
     return {
       ...c,
@@ -4133,11 +4277,27 @@ const createMessage = async (data) => {
   if (!senderId || !senderEmail) throw new Error('Sender identity is required');
   if (!text && !attachment && !meeting) throw new Error('Message content, attachment, or meeting is required');
 
-  const allEligible = await getEligibleUsers();
-  const recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+  let conv = memoryStore.conversations.find(c => c.id === conversationId || c.customId === conversationId);
 
-  if (!recipient) {
-    throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
+  if (getStatus() && !conv) {
+    try {
+      const dbConv = await Conversation.findOne({ $or: [{ customId: conversationId }, { _id: conversationId }] }).lean();
+      if (dbConv) conv = { ...dbConv, id: dbConv.customId || dbConv._id.toString() };
+    } catch (e) {
+      console.warn('Mongo find conv for message error:', e.message);
+    }
+  }
+
+  const isGroup = Boolean(conv?.isGroup);
+  const allEligible = await getEligibleUsers();
+
+  let recipient = null;
+  if (!isGroup) {
+    recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
+    if (!recipient) {
+      throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
+    }
   }
 
   const senderUser = allEligible.find(u => u.id === senderId || u.email === (senderEmail || '').toLowerCase().trim());
@@ -4154,9 +4314,10 @@ const createMessage = async (data) => {
     senderEmail: senderEmail.toLowerCase().trim(),
     senderName: resolvedSenderName,
     senderRole: resolvedSenderRole,
-    recipientId: recipient.id,
-    recipientEmail: recipient.email.toLowerCase().trim(),
-    recipientName: recipient.name,
+    isGroup,
+    recipientId: isGroup ? 'group' : recipient.id,
+    recipientEmail: isGroup ? (conv?.teamName || 'group').toLowerCase().trim() : recipient.email.toLowerCase().trim(),
+    recipientName: isGroup ? (conv?.groupName || 'Team Group') : recipient.name,
     text: text || '',
     attachment: attachment || null,
     meeting: meeting || null,
@@ -4170,11 +4331,10 @@ const createMessage = async (data) => {
   if (!memoryStore.messages) memoryStore.messages = [];
   memoryStore.messages.push(newMsg);
 
-  if (!memoryStore.conversations) memoryStore.conversations = [];
   const convIndex = memoryStore.conversations.findIndex(c => c.id === conversationId || c.customId === conversationId);
   if (convIndex !== -1) {
-    const conv = memoryStore.conversations[convIndex];
-    conv.lastMessage = {
+    const memoryConv = memoryStore.conversations[convIndex];
+    memoryConv.lastMessage = {
       text: lastPreview,
       senderId,
       senderEmail: newMsg.senderEmail,
@@ -4182,10 +4342,18 @@ const createMessage = async (data) => {
       timestamp: newMsg.createdAt,
       status: 'sent'
     };
-    if (!conv.unreadCounts) conv.unreadCounts = {};
-    const currentUnread = conv.unreadCounts[recipient.id] || 0;
-    conv.unreadCounts[recipient.id] = currentUnread + 1;
-    conv.updatedAt = newMsg.createdAt;
+    if (!memoryConv.unreadCounts) memoryConv.unreadCounts = {};
+    if (isGroup && Array.isArray(memoryConv.participants)) {
+      memoryConv.participants.forEach(pId => {
+        if (pId !== senderId) {
+          memoryConv.unreadCounts[pId] = (memoryConv.unreadCounts[pId] || 0) + 1;
+        }
+      });
+    } else if (recipient) {
+      const currentUnread = memoryConv.unreadCounts[recipient.id] || 0;
+      memoryConv.unreadCounts[recipient.id] = currentUnread + 1;
+    }
+    memoryConv.updatedAt = newMsg.createdAt;
   }
 
   saveStore();
@@ -4193,6 +4361,17 @@ const createMessage = async (data) => {
   if (getStatus()) {
     try {
       const created = await Message.create(newMsg);
+      const incUpdate = {};
+      if (isGroup && conv && Array.isArray(conv.participants)) {
+        conv.participants.forEach(pId => {
+          if (pId !== senderId) {
+            incUpdate[`unreadCounts.${pId}`] = 1;
+          }
+        });
+      } else if (recipient) {
+        incUpdate[`unreadCounts.${recipient.id}`] = 1;
+      }
+
       await Conversation.findOneAndUpdate(
         { $or: [{ customId: conversationId }, { _id: conversationId }] },
         {
@@ -4204,7 +4383,7 @@ const createMessage = async (data) => {
             timestamp: new Date(),
             status: 'sent'
           },
-          $inc: { [`unreadCounts.${recipient.id}`]: 1 },
+          ...(Object.keys(incUpdate).length > 0 ? { $inc: incUpdate } : {}),
           updatedAt: new Date()
         }
       );
@@ -4214,7 +4393,10 @@ const createMessage = async (data) => {
     }
   }
 
-  return newMsg;
+  return {
+    ...newMsg,
+    conversation: conv
+  };
 };
 
 const markConversationAsRead = async (conversationId, userId) => {
@@ -6836,6 +7018,7 @@ module.exports = {
   // Real-Time Messaging Exports
   getEligibleUsers,
   findOrCreateConversation,
+  createGroupConversation,
   getConversationsForUser,
   getMessagesForConversation,
   createMessage,

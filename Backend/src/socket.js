@@ -118,41 +118,76 @@ function initSocket(server) {
             senderName: msg.senderName,
             senderEmail: msg.senderEmail
           });
-          io.to(`user_${msg.recipientId}`).emit('meeting_popup', {
-            meeting: msg.meeting,
-            conversationId: msg.conversationId,
-            senderName: msg.senderName
-          });
-          io.to(`user_${msg.recipientEmail}`).emit('meeting_popup', {
-            meeting: msg.meeting,
-            conversationId: msg.conversationId,
-            senderName: msg.senderName
-          });
+          if (!msg.isGroup) {
+            io.to(`user_${msg.recipientId}`).emit('meeting_popup', {
+              meeting: msg.meeting,
+              conversationId: msg.conversationId,
+              senderName: msg.senderName
+            });
+            io.to(`user_${msg.recipientEmail}`).emit('meeting_popup', {
+              meeting: msg.meeting,
+              conversationId: msg.conversationId,
+              senderName: msg.senderName
+            });
+          }
         }
 
-        // Send conversation update to recipient's personal room
-        io.to(`user_${msg.recipientId}`).emit('conversation_updated', {
-          conversationId: msg.conversationId,
-          lastMessage: msg,
-          recipientId: msg.recipientId
-        });
-        io.to(`user_${msg.recipientEmail}`).emit('conversation_updated', {
-          conversationId: msg.conversationId,
-          lastMessage: msg,
-          recipientId: msg.recipientId
-        });
+        if (msg.isGroup && msg.conversation) {
+          const parts = msg.conversation.participants || [];
+          const partEmails = msg.conversation.participantEmails || [];
 
-        // Send conversation update to sender's personal room
-        io.to(`user_${msg.senderId}`).emit('conversation_updated', {
-          conversationId: msg.conversationId,
-          lastMessage: msg,
-          senderId: msg.senderId
-        });
-        io.to(`user_${msg.senderEmail}`).emit('conversation_updated', {
-          conversationId: msg.conversationId,
-          lastMessage: msg,
-          senderId: msg.senderId
-        });
+          parts.forEach(pId => {
+            io.to(`user_${pId}`).emit('conversation_updated', {
+              conversationId: msg.conversationId,
+              lastMessage: msg
+            });
+            if (msg.meeting && pId !== msg.senderId) {
+              io.to(`user_${pId}`).emit('meeting_popup', {
+                meeting: msg.meeting,
+                conversationId: msg.conversationId,
+                senderName: msg.senderName
+              });
+            }
+          });
+
+          partEmails.forEach(pEmail => {
+            io.to(`user_${pEmail}`).emit('conversation_updated', {
+              conversationId: msg.conversationId,
+              lastMessage: msg
+            });
+            if (msg.meeting && pEmail !== msg.senderEmail) {
+              io.to(`user_${pEmail}`).emit('meeting_popup', {
+                meeting: msg.meeting,
+                conversationId: msg.conversationId,
+                senderName: msg.senderName
+              });
+            }
+          });
+        } else {
+          // Send conversation update to recipient's personal room
+          io.to(`user_${msg.recipientId}`).emit('conversation_updated', {
+            conversationId: msg.conversationId,
+            lastMessage: msg,
+            recipientId: msg.recipientId
+          });
+          io.to(`user_${msg.recipientEmail}`).emit('conversation_updated', {
+            conversationId: msg.conversationId,
+            lastMessage: msg,
+            recipientId: msg.recipientId
+          });
+
+          // Send conversation update to sender's personal room
+          io.to(`user_${msg.senderId}`).emit('conversation_updated', {
+            conversationId: msg.conversationId,
+            lastMessage: msg,
+            senderId: msg.senderId
+          });
+          io.to(`user_${msg.senderEmail}`).emit('conversation_updated', {
+            conversationId: msg.conversationId,
+            lastMessage: msg,
+            senderId: msg.senderId
+          });
+        }
 
         if (typeof callback === 'function') {
           callback({ success: true, message: msg });
