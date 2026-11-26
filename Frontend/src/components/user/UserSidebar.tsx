@@ -1,12 +1,10 @@
 import React from 'react';
 import {
-  Shield,
   LayoutDashboard,
   Briefcase,
   CalendarCheck,
   Coffee,
   ClipboardList,
-  Kanban,
   Send,
   History,
   Users,
@@ -18,6 +16,7 @@ import {
   X
 } from 'lucide-react';
 import { useApp, isUserManager, isTaskAssignedToUser } from '../../context/AppContext';
+import { AcuLogo } from '../common/AcuLogo';
 
 export const UserSidebar: React.FC = () => {
   const {
@@ -53,7 +52,6 @@ export const UserSidebar: React.FC = () => {
     { id: 'record', label: 'Record', icon: CalendarCheck },
     { id: 'break-time', label: 'Break Time', icon: Coffee },
     { id: 'my-work', label: 'My Work', icon: Briefcase },
-    { id: 'kanban', label: 'Kanban Board', icon: Kanban },
     { id: 'messages', label: 'Messages', icon: MessageSquare, badge: unreadMessagesCount > 0 ? unreadMessagesCount : undefined },
     { id: 'appointments', label: 'Appointments & Schedule', icon: CalendarCheck },
     { id: 'assigned-work', label: 'Assigned Work', icon: ClipboardList, badge: assignedCount > 0 ? assignedCount : undefined },
@@ -96,7 +94,7 @@ export const UserSidebar: React.FC = () => {
         />
       )}
 
-      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen bg-[#14122d] text-white flex flex-col justify-between shrink-0 overflow-hidden transition-transform duration-300 ease-in-out relative shadow-2xl ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      <aside className={`fixed lg:sticky top-0 bottom-0 left-0 z-50 lg:z-30 w-72 max-w-[85vw] lg:max-w-none h-screen h-dvh bg-[#14122d] text-white flex flex-col justify-between shrink-0 overflow-hidden transition-transform duration-300 ease-in-out relative shadow-2xl pt-safe pb-safe ${mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}>
         {/* Top & Navigation Section */}
         <div className="flex flex-col flex-1 min-h-0 relative z-10">
@@ -109,12 +107,17 @@ export const UserSidebar: React.FC = () => {
                 setMobileSidebarOpen(false);
               }}
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#704fe6] to-[#4f32c2] flex items-center justify-center shadow-lg shadow-indigo-900/50 shrink-0">
-                <Shield className="w-6 h-6 text-white" />
-              </div>
+              <AcuLogo size="md" />
               <div className="min-w-0">
-                <h1 className="text-xl font-bold tracking-wide text-white leading-none truncate font-formal">WorkHub</h1>
-                <p className="text-xs text-[#9d9bb9] font-medium tracking-wide mt-1 truncate">Team Workspace</p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-white font-bold text-2xl font-calligraphy tracking-wide leading-tight truncate">
+                    ACU
+                  </span>
+                  <span className="text-white font-extrabold text-sm leading-tight truncate tracking-tight">
+                    Workspace
+                  </span>
+                </div>
+                <p className="text-[10px] text-[#9d9bb9] font-semibold uppercase tracking-wider mt-0.5 truncate">Team Workspace</p>
               </div>
             </div>
 
@@ -122,8 +125,9 @@ export const UserSidebar: React.FC = () => {
             <button
               type="button"
               onClick={() => setMobileSidebarOpen(false)}
-              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className="lg:hidden touch-target p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
               title="Close menu"
+              aria-label="Close navigation menu"
             >
               <X className="w-5 h-5" />
             </button>

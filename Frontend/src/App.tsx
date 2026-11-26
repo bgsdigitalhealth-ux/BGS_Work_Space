@@ -42,15 +42,15 @@ import { ToastContainer } from './components/common/ToastContainer';
 import { ConfirmModal } from './components/common/ConfirmModal';
 
 export const App: React.FC = () => {
-  const { 
-    currentUser, 
-    userNav, 
-    managerNav, 
-    adminNav, 
+  const {
+    currentUser,
+    userNav,
+    managerNav,
+    adminNav,
     toasts,
     dismissToast,
     confirmModal,
-    closeConfirmModal 
+    closeConfirmModal
   } = useApp();
   const [authView, setAuthView] = useState<'landing' | 'login'>('landing');
 
@@ -94,7 +94,7 @@ export const App: React.FC = () => {
   // 1. ADMIN WORKSPACE (Strictly for role: 'admin')
   if (currentUser.role === 'admin') {
     return (
-      <div className="h-screen w-screen overflow-hidden flex bg-[#f3f4fa] font-sans antialiased relative">
+      <div className="h-screen h-dvh w-full max-w-full overflow-hidden flex bg-[#f3f4fa] font-sans antialiased relative">
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
         {confirmModal && (
           <ConfirmModal
@@ -106,10 +106,10 @@ export const App: React.FC = () => {
         <Sidebar />
 
         {/* Independently Scrollable Main Content Area */}
-        <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
+        <div className="flex-1 h-screen h-dvh overflow-y-auto flex flex-col min-w-0 touch-scroll">
           <Header />
 
-          <main className="p-4 sm:p-6 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-6">
+          <main className="p-3 sm:p-5 lg:p-8 flex-1 w-full max-w-[1700px] mx-auto space-y-5 sm:space-y-6 pb-16 sm:pb-10">
             {adminNav !== 'break-time' && <ActiveBreakBanner />}
             {(adminNav === 'record' || adminNav === 'records') ? (
               <UserAttendanceRecords />
@@ -157,7 +157,7 @@ export const App: React.FC = () => {
   // 2. MANAGER WORKSPACE (Strictly for role: 'manager')
   if (currentUser.role === 'manager') {
     return (
-      <div className="h-screen w-screen overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
+      <div className="h-screen h-dvh w-full max-w-full overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
         {confirmModal && (
           <ConfirmModal
@@ -169,10 +169,10 @@ export const App: React.FC = () => {
         <ManagerSidebar />
 
         {/* Independently Scrollable Manager Content Area */}
-        <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
+        <div className="flex-1 h-screen h-dvh overflow-y-auto flex flex-col min-w-0 touch-scroll">
           <UserHeader />
 
-          <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
+          <main className="p-3 sm:p-5 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-5 sm:space-y-6 pb-16 sm:pb-10">
             {/* Conditional View by managerNav (Punch option is rendered inside ManagerDashboard only) */}
             {(managerNav === 'record' || managerNav === 'records') && <UserAttendanceRecords />}
             {managerNav === 'break-time' && <BreakTimeView />}
@@ -198,7 +198,7 @@ export const App: React.FC = () => {
 
   // 3. USER WORKSPACE (Strictly for role: 'user')
   return (
-    <div className="h-screen w-screen overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
+    <div className="h-screen h-dvh w-full max-w-full overflow-hidden flex bg-[#f7f8fc] font-sans antialiased relative">
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
       {confirmModal && (
         <ConfirmModal
@@ -210,10 +210,10 @@ export const App: React.FC = () => {
       <UserSidebar />
 
       {/* Independently Scrollable User Content Area */}
-      <div className="flex-1 h-screen overflow-y-auto flex flex-col min-w-0">
+      <div className="flex-1 h-screen h-dvh overflow-y-auto flex flex-col min-w-0 touch-scroll">
         <UserHeader />
 
-        <main className="p-3.5 sm:p-6 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-6">
+        <main className="p-3 sm:p-5 lg:p-8 flex-1 max-w-[1600px] mx-auto w-full space-y-5 sm:space-y-6 pb-16 sm:pb-10">
           {/* Conditional View by userNav */}
           {userNav === 'dashboard' && <UserDashboard />}
           {(userNav === 'record' || userNav === 'records') && <UserAttendanceRecords />}

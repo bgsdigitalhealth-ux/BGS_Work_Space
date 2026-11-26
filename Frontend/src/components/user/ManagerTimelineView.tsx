@@ -21,8 +21,9 @@ import { TimelineEvent } from '../../types';
 export const ManagerTimelineView: React.FC = () => {
   const { teams, members, currentUser } = useApp();
 
-  const isUser = currentUser?.role === 'user';
   const isAdmin = currentUser?.role === 'admin';
+  const isManager = currentUser?.role === 'manager';
+  const isUser = currentUser?.role === 'user' || (!isAdmin && !isManager);
 
   const userEmail = (currentUser?.email || '').trim().toLowerCase();
   const userId = currentUser?.id || '';
@@ -32,16 +33,37 @@ export const ManagerTimelineView: React.FC = () => {
   );
   const myMemberId = myMember?.id || userId;
   const myTeamName = currentUser?.team || (myMember as any)?.team || 'Assigned Division';
+  const myTeamId = myMember?.teamId || teams.find(t => t.name === myTeamName || t.id === myTeamName)?.id || '';
+
+  // Allowed teams for current user role: Admin has access to all, Manager only their own team
+  const availableTeams = isAdmin
+    ? teams
+    : teams.filter(t => t.id === myTeamId || t.name === myTeamName || (myMember?.teamId && t.id === myMember.teamId));
 
   const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
-  const [selectedTeam, setSelectedTeam] = useState<string>(isUser ? (myMember?.teamId || 'Personal') : 'All');
-  const [selectedMember, setSelectedMember] = useState<string>(isUser ? myMemberId : 'All');
+  const [selectedTeam, setSelectedTeam] = useState<string>(() => {
+    if (isUser) return myMember?.teamId || myTeamId || 'Personal';
+    if (isManager) return myTeamId || availableTeams[0]?.id || 'Personal';
+    return 'All';
+  });
+  const [selectedMember, setSelectedMember] = useState<string>(() => {
+    if (isUser) return myMemberId;
+    return 'All';
+  });
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const filteredMembers = selectedTeam !== 'All'
-    ? members.filter(m => m.teamId === selectedTeam || (m as any).team === selectedTeam)
-    : members;
+  // Members filtered by team and role:
+  // - User: strictly themselves
+  // - Manager: strictly members of their assigned team
+  // - Admin: selected team or all
+  const filteredMembers = isUser
+    ? (myMember ? [myMember] : [])
+    : isManager
+      ? members.filter(m => (myTeamId && m.teamId === myTeamId) || (myTeamName && ((m as any).team === myTeamName || m.teamId === myTeamName)))
+      : (selectedTeam !== 'All'
+        ? members.filter(m => m.teamId === selectedTeam || (m as any).team === selectedTeam)
+        : members);
 
   const fetchTimeline = async () => {
     setLoading(true);
@@ -213,10 +235,11 @@ export const ManagerTimelineView: React.FC = () => {
                   setSelectedTeam(e.target.value);
                   setSelectedMember('All');
                 }}
-                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-bold text-gray-800 cursor-pointer"
+                disabled={isManager && availableTeams.length <= 1}
+                className="w-full px-3.5 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-bold text-gray-800 cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed"
               >
-                <option value="All">All Teams</option>
-                {teams.map((t) => (
+                {isAdmin && <option value="All">All Teams</option>}
+                {availableTeams.map((t) => (
                   <option key={t.id} value={t.id}>{t.name}</option>
                 ))}
               </select>
