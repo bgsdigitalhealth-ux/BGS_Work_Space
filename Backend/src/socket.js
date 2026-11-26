@@ -263,10 +263,10 @@ function initSocket(server) {
         socket.meetingId = meetingId;
         socket.meetingUser = { id, email, name, role: user.role || 'user' };
 
-        // Fetch existing peers in this room (strictly excluding self!)
+        // Fetch existing peers in this room (excluding current socket only)
         const roomSockets = await io.in(meetingRoom).fetchSockets();
         const existingPeers = roomSockets
-          .filter(s => s.id !== socket.id && s.meetingUser && s.meetingUser.id !== id && (s.meetingUser.email || '').toLowerCase() !== email)
+          .filter(s => s.id !== socket.id && s.meetingUser)
           .map(s => ({
             socketId: s.id,
             user: s.meetingUser
@@ -302,11 +302,17 @@ function initSocket(server) {
       if (!meetingId || !targetSocketId || !signal) return;
       if (socket.meetingId !== meetingId) return;
 
-      io.to(targetSocketId).emit('webrtc_signal', {
+      const payload = {
         senderSocketId: socket.id,
         signal,
         senderUser: senderUser || socket.meetingUser
-      });
+      };
+
+      if (targetSocketId === 'broadcast') {
+        socket.to(`meet_${meetingId}`).emit('webrtc_signal', payload);
+      } else {
+        io.to(targetSocketId).emit('webrtc_signal', payload);
+      }
     });
 
     socket.on('leave_meeting', async ({ meetingId }) => {

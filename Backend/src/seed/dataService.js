@@ -4798,29 +4798,40 @@ const verifyMeetingAccess = async (meetingId, user) => {
 };
 
 const getTurnCredentials = (userId) => {
-  const secret = process.env.COTURN_SECRET || 'workhub_coturn_secret_key_2026';
-  const coturnHost = process.env.COTURN_HOST || 'turn.workhub.local';
-  const ttl = 24 * 3600; // 24 hours
-  const expiry = Math.floor(Date.now() / 1000) + ttl;
-  const username = `${expiry}:${userId || 'anonymous'}`;
-  const hmac = crypto.createHmac('sha1', secret);
-  hmac.update(username);
-  const credential = hmac.digest('base64');
+  const iceServers = [
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun2.l.google.com:19302',
+        'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302'
+      ]
+    }
+  ];
 
-  return {
-    iceServers: [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
-      {
-        urls: [
-          `turn:${coturnHost}:3478?transport=udp`,
-          `turn:${coturnHost}:3478?transport=tcp`,
-          `turns:${coturnHost}:5349?transport=tcp`
-        ],
-        username,
-        credential
-      }
-    ]
-  };
+  if (process.env.COTURN_HOST && process.env.COTURN_HOST !== 'turn.workhub.local') {
+    const coturnHost = process.env.COTURN_HOST;
+    const secret = process.env.COTURN_SECRET || 'workhub_coturn_secret_key_2026';
+    const ttl = 24 * 3600; // 24 hours
+    const expiry = Math.floor(Date.now() / 1000) + ttl;
+    const username = `${expiry}:${userId || 'anonymous'}`;
+    const hmac = crypto.createHmac('sha1', secret);
+    hmac.update(username);
+    const credential = hmac.digest('base64');
+
+    iceServers.push({
+      urls: [
+        `turn:${coturnHost}:3478?transport=udp`,
+        `turn:${coturnHost}:3478?transport=tcp`,
+        `turns:${coturnHost}:5349?transport=tcp`
+      ],
+      username,
+      credential
+    });
+  }
+
+  return { iceServers };
 };
 
 // =========================================================================

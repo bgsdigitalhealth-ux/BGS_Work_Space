@@ -45,11 +45,10 @@ export const AttendanceWidget: React.FC = () => {
     <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       {/* Attendance Info */}
       <div className="flex items-center gap-3.5">
-        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold shadow-xs transition-colors ${
-          isPunchedIn
-            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'
-            : 'bg-slate-100 text-slate-500 border border-slate-200/60'
-        }`}>
+        <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold shadow-xs transition-colors ${isPunchedIn
+          ? 'bg-emerald-50 text-emerald-600 border border-emerald-200/60'
+          : 'bg-slate-100 text-slate-500 border border-slate-200/60'
+          }`}>
           {isPunchedIn ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <Clock className="w-5 h-5 text-slate-400" />}
         </div>
         <div>
@@ -57,11 +56,10 @@ export const AttendanceWidget: React.FC = () => {
             <span className="text-xs font-black uppercase tracking-wider text-gray-500">
               Workspace Attendance
             </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-              isPunchedIn
-                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                : 'bg-slate-100 text-slate-600 border border-slate-200'
-            }`}>
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${isPunchedIn
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-slate-100 text-slate-600 border border-slate-200'
+              }`}>
               {isPunchedIn ? 'Present & Punched In' : 'Punched Out'}
             </span>
           </div>

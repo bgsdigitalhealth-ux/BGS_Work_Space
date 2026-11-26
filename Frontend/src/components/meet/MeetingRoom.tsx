@@ -18,6 +18,13 @@ interface PeerConnectionItem {
   user: any;
   pc: RTCPeerConnection;
   stream?: MediaStream;
+  candidateQueue: RTCIceCandidateInit[];
+}
+
+interface RemotePeerData {
+  user: any;
+  stream?: MediaStream;
+  isConnected: boolean;
 }
 
 interface PopupNotice {
@@ -49,7 +56,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   // Streams & WebRTC
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
-  const [remotePeers, setRemotePeers] = useState<{ [socketId: string]: { user: any; stream: MediaStream } }>({});
+  const [remotePeers, setRemotePeers] = useState<{ [socketId: string]: RemotePeerData }>({});
   const [presenterInfo, setPresenterInfo] = useState<{ name: string; isSelf: boolean } | null>(null);
 
   // Refs
@@ -57,7 +64,15 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   const localScreenVideoRef = useRef<HTMLVideoElement>(null);
   const peersRef = useRef<{ [socketId: string]: PeerConnectionItem }>({});
   const iceServersRef = useRef<RTCIceServer[]>([
-    { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun2.l.google.com:19302',
+        'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302'
+      ]
+    }
   ]);
   const localStreamRef = useRef<MediaStream | null>(null);
   const screenStreamRef = useRef<MediaStream | null>(null);
@@ -160,14 +175,25 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
                 // Connect to existing peers (strictly excluding self)
                 if (Array.isArray(res.existingPeers)) {
-                  res.existingPeers.forEach((p: any) => {
-                    const myEmail = (currentUser.email || '').toLowerCase().trim();
-                    const myId = String(currentUser.id || '').trim();
-                    const pEmail = (p.user?.email || '').toLowerCase().trim();
-                    const pId = String(p.user?.id || '').trim();
+                  // 1. Immediately show all existing participants in the UI!
+                  setRemotePeers(prev => {
+                    const updated = { ...prev };
+                    res.existingPeers.forEach((p: any) => {
+                      if (p.socketId && p.socketId !== socket.id) {
+                        updated[p.socketId] = {
+                          user: p.user,
+                          stream: updated[p.socketId]?.stream,
+                          isConnected: true
+                        };
+                      }
+                    });
+                    return updated;
+                  });
 
-                    if (p.socketId && p.socketId !== socket.id && pId !== myId && pEmail !== myEmail) {
-                      createPeerConnection(p.socketId, p.user, true);
+                  // 2. Setup peer connections. As the joiner, we wait for incoming offers (isInitiator = false)
+                  res.existingPeers.forEach((p: any) => {
+                    if (p.socketId && p.socketId !== socket.id) {
+                      createPeerConnection(p.socketId, p.user, false);
                     }
                   });
                 }
@@ -193,9 +219,25 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
               }
             }, (res: any) => {
               if (res && res.success && Array.isArray(res.existingPeers)) {
+                // 1. Immediately show all existing participants in the UI!
+                setRemotePeers(prev => {
+                  const updated = { ...prev };
+                  res.existingPeers.forEach((p: any) => {
+                    if (p.socketId && p.socketId !== socket.id) {
+                      updated[p.socketId] = {
+                        user: p.user,
+                        stream: updated[p.socketId]?.stream,
+                        isConnected: true
+                      };
+                    }
+                  });
+                  return updated;
+                });
+
+                // 2. Setup peer connections (isInitiator = false)
                 res.existingPeers.forEach((p: any) => {
                   if (p.socketId && p.socketId !== socket.id) {
-                    createPeerConnection(p.socketId, p.user, true);
+                    createPeerConnection(p.socketId, p.user, false);
                   }
                 });
               }
@@ -225,15 +267,24 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
   // 3. WebRTC Peer Connection Helper
   const createPeerConnection = useCallback((targetSocketId: string, targetUser: any, isInitiator: boolean) => {
+    // If peer connection already exists and active, reuse it
+    if (peersRef.current[targetSocketId]?.pc && peersRef.current[targetSocketId].pc.signalingState !== 'closed') {
+      return peersRef.current[targetSocketId].pc;
+    }
+
     const pc = new RTCPeerConnection({
       iceServers: iceServersRef.current
     });
+
+    const candidateQueue: RTCIceCandidateInit[] = [];
 
     // Add local tracks (camera or screen) to peer connection
     const currentActiveStream = screenStreamRef.current || localStreamRef.current;
     if (currentActiveStream) {
       currentActiveStream.getTracks().forEach(track => {
-        pc.addTrack(track, currentActiveStream);
+        try {
+          pc.addTrack(track, currentActiveStream);
+        } catch (e) {}
       });
     }
 
@@ -256,37 +307,23 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
     // Remote stream track handler
     pc.ontrack = (event) => {
-      const [remoteStream] = event.streams;
-      if (remoteStream) {
-        peersRef.current[targetSocketId] = {
-          ...peersRef.current[targetSocketId],
-          stream: remoteStream
-        };
-
-        // Deduplicate: ensure only 1 tile per unique user ID/email
-        const tEmail = (targetUser?.email || '').toLowerCase().trim();
-        const tId = String(targetUser?.id || '').trim();
-
-        setRemotePeers(prev => {
-          const updated = { ...prev };
-          // Remove any stale key for this same user
-          Object.keys(updated).forEach(sId => {
-            const u = updated[sId].user;
-            if ((tId && String(u?.id) === tId) || (tEmail && (u?.email || '').toLowerCase() === tEmail)) {
-              delete updated[sId];
-            }
-          });
-          updated[targetSocketId] = {
-            user: targetUser,
-            stream: remoteStream
-          };
-          return updated;
-        });
+      const stream = event.streams?.[0] || new MediaStream([event.track]);
+      if (peersRef.current[targetSocketId]) {
+        peersRef.current[targetSocketId].stream = stream;
       }
+
+      setRemotePeers(prev => ({
+        ...prev,
+        [targetSocketId]: {
+          user: targetUser || prev[targetSocketId]?.user,
+          stream,
+          isConnected: true
+        }
+      }));
     };
 
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+      if (pc.connectionState === 'closed') {
         removePeer(targetSocketId);
       }
     };
@@ -294,10 +331,11 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
     peersRef.current[targetSocketId] = {
       socketId: targetSocketId,
       user: targetUser,
-      pc
+      pc,
+      candidateQueue
     };
 
-    // If initiator, create and send offer
+    // If initiator, create and send offer to peer
     if (isInitiator) {
       pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true })
         .then(offer => pc.setLocalDescription(offer))
@@ -338,10 +376,12 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
   // 4. Socket.IO Signaling Listener
   useEffect(() => {
-    if (!socket || callState !== 'connected') return;
+    if (!socket) return;
 
     // Handle incoming WebRTC signals
     const handleSignal = async ({ senderSocketId, signal, senderUser }: any) => {
+      if (!senderSocketId || senderSocketId === socket.id) return;
+
       // Check for screen share broadcast signals
       if (signal?.type === 'screen_share_start') {
         setPresenterInfo({ name: signal.presenterName || senderUser?.name || 'Participant', isSelf: false });
@@ -356,7 +396,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
       let peerItem = peersRef.current[senderSocketId];
 
-      if (!peerItem) {
+      if (!peerItem || !peerItem.pc || peerItem.pc.signalingState === 'closed') {
         createPeerConnection(senderSocketId, senderUser, false);
         peerItem = peersRef.current[senderSocketId];
       }
@@ -366,11 +406,35 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
       try {
         if (signal.sdp) {
-          await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+          const sdp = new RTCSessionDescription(signal.sdp);
 
-          if (signal.sdp.type === 'offer') {
+          if (sdp.type === 'offer') {
+            // Glare collision resolution
+            if (pc.signalingState !== 'stable') {
+              const isPolite = (socket.id || '').localeCompare(senderSocketId) < 0;
+              if (!isPolite) {
+                console.warn('[WebRTC] Glare offer ignored by impolite peer');
+                return;
+              }
+              console.log('[WebRTC] Glare offer rolling back local offer');
+              await pc.setLocalDescription({ type: 'rollback' });
+            }
+
+            await pc.setRemoteDescription(sdp);
+
+            // Flush queued ICE candidates
+            if (peerItem.candidateQueue && peerItem.candidateQueue.length > 0) {
+              for (const cand of peerItem.candidateQueue) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                } catch (e) {}
+              }
+              peerItem.candidateQueue = [];
+            }
+
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
+
             socket.emit('webrtc_signal', {
               meetingId,
               targetSocketId: senderSocketId,
@@ -382,12 +446,29 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                 role: currentUser?.role
               }
             });
+          } else if (sdp.type === 'answer') {
+            await pc.setRemoteDescription(sdp);
+
+            // Flush queued ICE candidates
+            if (peerItem.candidateQueue && peerItem.candidateQueue.length > 0) {
+              for (const cand of peerItem.candidateQueue) {
+                try {
+                  await pc.addIceCandidate(new RTCIceCandidate(cand));
+                } catch (e) {}
+              }
+              peerItem.candidateQueue = [];
+            }
           }
         } else if (signal.candidate) {
-          try {
-            await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
-          } catch (e) {
-            console.warn('[WebRTC] Error adding ICE candidate:', e);
+          if (!pc.remoteDescription) {
+            if (!peerItem.candidateQueue) peerItem.candidateQueue = [];
+            peerItem.candidateQueue.push(signal.candidate);
+          } else {
+            try {
+              await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
+            } catch (e) {
+              console.warn('[WebRTC] Error adding ICE candidate:', e);
+            }
           }
         }
       } catch (err: any) {
@@ -397,23 +478,27 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
     // When a new user joins the meeting
     const handleUserJoined = ({ socketId, user }: any) => {
-      const myEmail = (currentUser?.email || '').toLowerCase().trim();
-      const myId = String(currentUser?.id || '').trim();
-      const peerEmail = (user?.email || '').toLowerCase().trim();
-      const peerId = String(user?.id || '').trim();
-
-      // STRICT DEDUPLICATION: Never add self as a remote peer!
-      if ((myId && peerId === myId) || (myEmail && peerEmail === myEmail)) {
-        return;
-      }
+      if (!socketId || socketId === socket.id) return;
 
       addNotice(`${user.name || 'A team member'} joined the meeting`, 'join');
+
+      // 1. Immediately show the new joiner in the UI!
+      setRemotePeers(prev => ({
+        ...prev,
+        [socketId]: {
+          user,
+          stream: prev[socketId]?.stream,
+          isConnected: true
+        }
+      }));
+
+      // 2. Existing participant creates connection and sends offer (isInitiator = true)
       createPeerConnection(socketId, user, true);
     };
 
     // When a user leaves
     const handleUserLeft = ({ socketId, user }: any) => {
-      const peer = remotePeers[socketId] || peersRef.current[socketId];
+      const peer = peersRef.current[socketId];
       const name = user?.name || peer?.user?.name || 'A participant';
       removePeer(socketId);
       addNotice(`${name} left the meeting`, 'leave');
@@ -440,7 +525,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
       socket.off('user_left_meeting', handleUserLeft);
       socket.off('meeting_ended', handleMeetingEnded);
     };
-  }, [socket, callState, meetingId, currentUser, createPeerConnection, removePeer, addNotice, remotePeers]);
+  }, [socket, meetingId, currentUser, createPeerConnection, removePeer, addNotice]);
 
   // 5. Timer for Call Duration
   useEffect(() => {
@@ -772,7 +857,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
               ) : (
                 /* Remote presentation stream */
                 remoteSocketIds.map(sId => (
-                  <RemoteVideoElement key={sId} stream={remotePeers[sId].stream} isPresentation />
+                  <RemoteVideoElement key={sId} user={remotePeers[sId].user} stream={remotePeers[sId].stream} isPresentation />
                 ))
               )}
 
@@ -812,7 +897,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                 const peer = remotePeers[sId];
                 return (
                   <div key={sId} className="h-full aspect-video rounded-xl overflow-hidden bg-[#111b21] border border-[#202c33] relative shrink-0 shadow-lg">
-                    <RemoteVideoElement stream={peer.stream} />
+                    <RemoteVideoElement user={peer.user} stream={peer.stream} />
                     <div className="absolute bottom-1.5 left-2 bg-black/70 px-2 py-0.5 rounded text-[10px] text-white truncate max-w-[120px]">
                       {peer.user?.name || 'Participant'}
                     </div>
@@ -901,7 +986,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                 const peer = remotePeers[sId];
                 return (
                   <div key={sId} className="w-full h-full min-h-[260px] relative rounded-3xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex items-center justify-center">
-                    <RemoteVideoElement stream={peer.stream} />
+                    <RemoteVideoElement user={peer.user} stream={peer.stream} />
                     <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-xs z-10">
                       <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
                         <span>{peer.user?.name || peer.user?.email || 'Connected Member'}</span>
@@ -948,7 +1033,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                 const peer = remotePeers[sId];
                 return (
                   <div key={sId} className="aspect-video relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex items-center justify-center">
-                    <RemoteVideoElement stream={peer.stream} />
+                    <RemoteVideoElement user={peer.user} stream={peer.stream} />
                     <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-md px-2.5 py-1 rounded-lg text-xs font-semibold text-white flex items-center gap-2">
                       <span>{peer.user?.name || peer.user?.email || 'Participant'}</span>
                       <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" />
@@ -1041,22 +1126,93 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   );
 };
 
-// Sub-component to attach remote stream to video element
-const RemoteVideoElement: React.FC<{ stream: MediaStream; isPresentation?: boolean }> = ({ stream, isPresentation = false }) => {
+// Sub-component to attach remote stream to video & audio element with live card fallback
+const RemoteVideoElement: React.FC<{
+  user?: any;
+  stream?: MediaStream;
+  isPresentation?: boolean;
+}> = ({ user, stream, isPresentation = false }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [hasLiveVideo, setHasLiveVideo] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current && stream) {
-      videoRef.current.srcObject = stream;
+    if (!stream) {
+      setHasLiveVideo(false);
+      return;
     }
+
+    const checkTracks = () => {
+      const vTracks = stream.getVideoTracks();
+      const hasLive = vTracks.some(t => t.enabled && t.readyState === 'live');
+      setHasLiveVideo(hasLive);
+    };
+
+    checkTracks();
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(() => {});
+    }
+
+    if (audioRef.current) {
+      audioRef.current.srcObject = stream;
+      audioRef.current.play().catch(() => {});
+    }
+
+    const vTracks = stream.getVideoTracks();
+    vTracks.forEach(t => {
+      t.onmute = checkTracks;
+      t.onunmute = checkTracks;
+      t.onended = checkTracks;
+    });
+
+    return () => {
+      vTracks.forEach(t => {
+        t.onmute = null;
+        t.onunmute = null;
+        t.onended = null;
+      });
+    };
   }, [stream]);
 
+  const initials = (() => {
+    const name = user?.name || user?.email || 'TM';
+    const parts = name.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  })();
+
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      className={`w-full h-full ${isPresentation ? 'object-contain transform-none bg-black' : 'object-cover'}`}
-    />
+    <div className="w-full h-full relative flex items-center justify-center overflow-hidden bg-[#111b21]">
+      {/* Remote audio playback */}
+      <audio ref={audioRef} autoPlay playsInline />
+
+      {/* Remote video playback */}
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        className={`w-full h-full ${
+          isPresentation ? 'object-contain transform-none bg-black' : 'object-cover'
+        } ${hasLiveVideo ? 'opacity-100' : 'opacity-0 absolute pointer-events-none'}`}
+      />
+
+      {/* Fallback WhatsApp-style user card if video is not live or camera is off */}
+      {!hasLiveVideo && (
+        <div className="flex flex-col items-center justify-center p-4 text-center z-10 animate-in fade-in duration-200">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-purple-700 via-indigo-600 to-emerald-500 text-white font-bold text-xl sm:text-2xl flex items-center justify-center shadow-2xl ring-4 ring-emerald-500/20 mb-2.5">
+            {initials}
+          </div>
+          <h4 className="font-bold text-xs sm:text-sm text-white truncate max-w-[180px]">
+            {user?.name || user?.email || 'Connected Member'}
+          </h4>
+          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/40 backdrop-blur-md text-[10px] text-emerald-300 mt-1.5 border border-emerald-500/20">
+            <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
+            <span>Connected • Audio Active</span>
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
