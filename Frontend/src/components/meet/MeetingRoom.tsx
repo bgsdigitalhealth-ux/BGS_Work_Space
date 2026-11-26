@@ -53,6 +53,10 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
+  const [autoCloseCountdown, setAutoCloseCountdown] = useState<number | null>(null);
+
+  const hadRemotePeersRef = useRef(false);
+  const autoCloseIntervalRef = useRef<any>(null);
 
   // Notifications popup inside meeting
   const [popupNotices, setPopupNotices] = useState<PopupNotice[]>([]);
@@ -593,7 +597,9 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
 
     // When the meeting has ended automatically or by host
     const handleMeetingEnded = ({ meetingId: endedId }: any) => {
-      if (endedId === meetingId) {
+      const normEnded = String(endedId || '').trim().toUpperCase();
+      const normCurrent = String(meetingId || '').trim().toUpperCase();
+      if (normEnded === normCurrent) {
         addNotice('The meeting has ended', 'info');
         setTimeout(() => {
           handleLeaveCall();
@@ -646,10 +652,61 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
     };
   }, [callState]);
 
-  // 6. Action Handlers
+  // 6. Monitor Remote Participants & Dynamically Auto-Close Session When Everyone Leaves
+  useEffect(() => {
+    const peerIds = Object.keys(remotePeers);
+    if (peerIds.length > 0) {
+      hadRemotePeersRef.current = true;
+      if (autoCloseIntervalRef.current) {
+        clearInterval(autoCloseIntervalRef.current);
+        autoCloseIntervalRef.current = null;
+      }
+      setAutoCloseCountdown(null);
+    } else if (hadRemotePeersRef.current && peerIds.length === 0 && callState === 'connected') {
+      // Everyone else has left the meeting!
+      if (!autoCloseIntervalRef.current && autoCloseCountdown === null) {
+        addNotice('All participants left the meeting. Closing session in 10s...', 'info');
+        setAutoCloseCountdown(10);
+        autoCloseIntervalRef.current = setInterval(() => {
+          setAutoCloseCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              if (autoCloseIntervalRef.current) {
+                clearInterval(autoCloseIntervalRef.current);
+                autoCloseIntervalRef.current = null;
+              }
+              handleEndCallForAll();
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    }
+
+    return () => {
+      if (autoCloseIntervalRef.current) {
+        clearInterval(autoCloseIntervalRef.current);
+      }
+    };
+  }, [remotePeers, callState]);
+
+  // 7. Action Handlers
   const handleLeaveCall = () => {
+    if (autoCloseIntervalRef.current) {
+      clearInterval(autoCloseIntervalRef.current);
+      autoCloseIntervalRef.current = null;
+    }
+
     if (socket) {
       socket.emit('leave_meeting', { meetingId });
+    }
+
+    // If no remote participants remain, also immediately end the meeting session on backend & DB
+    if (Object.keys(remotePeers).length === 0) {
+      if (socket) {
+        socket.emit('end_meeting', { meetingId });
+      }
+      api.endMeeting(meetingId).catch(() => {});
     }
 
     // Close all peer connections
@@ -682,9 +739,14 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
   };
 
   const handleEndCallForAll = () => {
+    if (autoCloseIntervalRef.current) {
+      clearInterval(autoCloseIntervalRef.current);
+      autoCloseIntervalRef.current = null;
+    }
     if (socket) {
       socket.emit('end_meeting', { meetingId });
     }
+    api.endMeeting(meetingId).catch(() => {});
     handleLeaveCall();
   };
 
@@ -911,6 +973,44 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
         ))}
       </div>
 
+      {/* Dynamic Auto-Close Notification Banner when all other participants leave */}
+      {autoCloseCountdown !== null && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 z-50 bg-[#111b21]/95 backdrop-blur-xl px-5 py-3 rounded-2xl border border-red-500/50 text-white shadow-2xl flex items-center gap-4 animate-in slide-in-from-top-3 max-w-lg w-[92%] sm:w-auto">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <span className="w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-white truncate">All participants have left the meeting</p>
+              <p className="text-[11px] text-red-300">
+                Session closing in <span className="font-mono font-bold text-white">{autoCloseCountdown}s</span>
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                if (autoCloseIntervalRef.current) {
+                  clearInterval(autoCloseIntervalRef.current);
+                  autoCloseIntervalRef.current = null;
+                }
+                setAutoCloseCountdown(null);
+                addNotice('Session auto-close canceled', 'info');
+              }}
+              className="px-3 py-1.5 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-xs font-semibold text-gray-200 transition cursor-pointer"
+            >
+              Stay
+            </button>
+            <button
+              type="button"
+              onClick={handleEndCallForAll}
+              className="px-3 py-1.5 rounded-xl bg-[#ea0038] hover:bg-[#d00032] text-xs font-bold text-white transition shadow cursor-pointer"
+            >
+              Close Now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* WhatsApp Web Call Top Header */}
       <header className="px-5 py-3.5 flex items-center justify-between bg-[#111b21] border-b border-[#202c33] shrink-0 z-20">
         <div className="flex items-center gap-3.5 min-w-0">
@@ -923,7 +1023,7 @@ export const MeetingRoom: React.FC<Props> = ({ meetingId, initialMeeting, onLeav
                 {meeting?.title || 'Online Video Meeting'}
               </h1>
               <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full bg-[#00a884]/20 text-[#25D366] text-[10px] font-bold border border-[#00a884]/30 shrink-0">
-                {meeting?.type === 'group' ? '👥 Group Call' : '👤 Direct Call'}
+                {(meeting?.type === 'group' || meeting?.isGroup || (meeting?.title && meeting.title.toLowerCase().includes('team'))) ? '👥 Group Call' : '👤 Direct Call'}
               </span>
             </div>
             <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">

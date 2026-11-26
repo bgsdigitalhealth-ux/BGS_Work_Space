@@ -920,6 +920,18 @@ export const api = {
     return res.json();
   },
 
+  endMeeting: async (meetingId: string): Promise<any> => {
+    const res = await fetch(`${API_BASE}/meetings/${meetingId}/end`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: 'Failed to end meeting' }));
+      throw new Error(err.error || 'Failed to end meeting');
+    }
+    return res.json();
+  },
+
   approveMeeting: async (meetingId: string, adminUser?: any): Promise<any> => {
     const res = await fetch(`${API_BASE}/meetings/${meetingId}/approve`, {
       method: 'PUT',

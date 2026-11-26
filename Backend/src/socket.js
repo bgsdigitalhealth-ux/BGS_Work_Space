@@ -329,24 +329,27 @@ function initSocket(server) {
       socket.meetingId = null;
       socket.meetingUser = null;
 
-      // Auto-end meeting if no participants remain (with a 20s grace period for reloads)
-      setTimeout(async () => {
-        try {
-          const remainingSockets = await io.in(meetingRoom).fetchSockets();
-          if (remainingSockets.length === 0) {
-            io.emit('meeting_ended', { meetingId: normId });
-            await dataService.endMeeting(normId);
-          } else {
-            io.emit('meeting_status_update', {
-              meetingId: normId,
-              status: 'active',
-              participantsCount: remainingSockets.length
-            });
-          }
-        } catch (e) {
-          console.warn('[Socket] leave_meeting check error:', e.message);
+      try {
+        const remainingSockets = await io.in(meetingRoom).fetchSockets();
+        if (remainingSockets.length === 0) {
+          // Immediately close session when no participants remain
+          io.emit('meeting_ended', { meetingId: normId });
+          io.emit('meeting_status_update', {
+            meetingId: normId,
+            status: 'ended',
+            participantsCount: 0
+          });
+          await dataService.endMeeting(normId);
+        } else {
+          io.emit('meeting_status_update', {
+            meetingId: normId,
+            status: 'active',
+            participantsCount: remainingSockets.length
+          });
         }
-      }, 20000);
+      } catch (e) {
+        console.warn('[Socket] leave_meeting check error:', e.message);
+      }
     });
 
     socket.on('end_meeting', async ({ meetingId }) => {
@@ -355,6 +358,11 @@ function initSocket(server) {
       const meetingRoom = `meet_${normId}`;
       io.to(meetingRoom).emit('meeting_ended', { meetingId: normId });
       io.emit('meeting_ended', { meetingId: normId });
+      io.emit('meeting_status_update', {
+        meetingId: normId,
+        status: 'ended',
+        participantsCount: 0
+      });
       try {
         await dataService.endMeeting(normId);
       } catch (e) {}
@@ -378,12 +386,17 @@ function initSocket(server) {
         });
         socket.leave(meetingRoom);
 
-        // 30-second grace period before auto-ending meeting to allow tab refresh/reconnect
+        // 3-second grace period for tab refresh; if empty, close session
         setTimeout(async () => {
           try {
             const remaining = await io.in(meetingRoom).fetchSockets();
             if (remaining.length === 0) {
               io.emit('meeting_ended', { meetingId: normId });
+              io.emit('meeting_status_update', {
+                meetingId: normId,
+                status: 'ended',
+                participantsCount: 0
+              });
               await dataService.endMeeting(normId);
             } else {
               io.emit('meeting_status_update', {
@@ -393,7 +406,7 @@ function initSocket(server) {
               });
             }
           } catch (e) {}
-        }, 30000);
+        }, 3000);
       }
 
       const removed = activeSockets.get(socket.id);

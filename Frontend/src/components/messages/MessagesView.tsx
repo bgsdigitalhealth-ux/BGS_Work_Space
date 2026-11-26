@@ -272,25 +272,49 @@ export const MessagesView: React.FC = () => {
     };
 
     const handleMeetingEndedAlert = ({ meetingId }: any) => {
+      const normId = String(meetingId || '').trim().toUpperCase();
       setOngoingMeetings(prev => {
         const copy = { ...prev };
         Object.keys(copy).forEach(k => {
-          if (copy[k]?.id === meetingId) delete copy[k];
+          const mId = String(copy[k]?.id || copy[k]?.meetingId || '').trim().toUpperCase();
+          if (mId === normId || k.trim().toUpperCase() === normId) {
+            delete copy[k];
+          }
         });
         return copy;
       });
-      setIncomingMeetingPopup(prev => prev?.meeting?.id === meetingId ? null : prev);
-      setActiveMeetingRoom(prev => prev?.id === meetingId ? null : prev);
+
+      // Dynamically update chat messages list to mark ended
+      setMessages(prev => prev.map(m => {
+        if (m.meeting) {
+          const mId = String(m.meeting.id || m.meeting.meetingId || '').trim().toUpperCase();
+          if (mId === normId) {
+            return { ...m, meeting: { ...m.meeting, status: 'ended' } };
+          }
+        }
+        return m;
+      }));
+
+      setIncomingMeetingPopup(prev => {
+        const pId = String(prev?.meeting?.id || prev?.meeting?.meetingId || '').trim().toUpperCase();
+        return pId === normId ? null : prev;
+      });
+      setActiveMeetingRoom(prev => {
+        const aId = String(prev?.id || prev?.meetingId || '').trim().toUpperCase();
+        return aId === normId ? null : prev;
+      });
     };
 
     const handleMeetingStatusUpdate = ({ meetingId, status, participantsCount }: any) => {
-      if (status === 'ended') {
-        handleMeetingEndedAlert({ meetingId });
+      const normId = String(meetingId || '').trim().toUpperCase();
+      if (status === 'ended' || participantsCount === 0) {
+        handleMeetingEndedAlert({ meetingId: normId });
       } else {
         setOngoingMeetings(prev => {
           const copy = { ...prev };
           Object.keys(copy).forEach(k => {
-            if (copy[k]?.id === meetingId) {
+            const mId = String(copy[k]?.id || copy[k]?.meetingId || '').trim().toUpperCase();
+            if (mId === normId) {
               copy[k] = { ...copy[k], participantsCount };
             }
           });
@@ -387,12 +411,13 @@ export const MessagesView: React.FC = () => {
       setLoadingMessages(true);
       const history = await api.getMessageHistory(conv.id, currentUser.id);
       setMessages(history);
-      const activeMeetMsg = [...history].reverse().find(m => m.meeting && m.meeting.status !== 'ended');
+      const activeMeetMsg = [...history].reverse().find(m => m.meeting && String(m.meeting.status || '').toLowerCase() !== 'ended');
       if (activeMeetMsg?.meeting) {
+        const meetId = String(activeMeetMsg.meeting.id || activeMeetMsg.meeting.meetingId || '').trim().toUpperCase();
         setOngoingMeetings(prev => ({
           ...prev,
-          [conv.id]: activeMeetMsg.meeting!,
-          [activeMeetMsg.meeting!.id]: activeMeetMsg.meeting!
+          [conv.id]: { ...activeMeetMsg.meeting!, id: meetId },
+          [meetId]: { ...activeMeetMsg.meeting!, id: meetId }
         }));
       }
     } catch (err) {
@@ -1471,7 +1496,7 @@ export const MessagesView: React.FC = () => {
             const currentOngoingMeeting = activeConversation
               ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
               : null;
-            if (!currentOngoingMeeting || currentOngoingMeeting.status === 'ended') return null;
+            if (!currentOngoingMeeting || String(currentOngoingMeeting.status || '').toLowerCase() === 'ended') return null;
             const isUserInThisMeeting = activeMeetingRoom?.id === currentOngoingMeeting.id;
             return (
               <div className="bg-gradient-to-r from-[#111b21] via-[#16271e] to-[#111b21] border-b border-[#25D366]/40 p-3 px-5 flex items-center justify-between text-white shadow-md z-20 shrink-0 animate-in slide-in-from-top duration-200">

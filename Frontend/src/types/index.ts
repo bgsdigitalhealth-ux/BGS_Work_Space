@@ -391,6 +391,7 @@ export interface MessageAttachment {
 
 export interface MeetingData {
   id: string;
+  meetingId?: string;
   title: string;
   type: 'direct' | 'group';
   status: 'active' | 'ended';

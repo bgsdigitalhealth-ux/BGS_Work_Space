@@ -4728,18 +4728,50 @@ const getMeetingsForUser = async (user) => {
 };
 
 const endMeeting = async (meetingId) => {
+  const normId = String(meetingId || '').trim().toUpperCase();
   if (!memoryStore.meetings) memoryStore.meetings = [];
-  const m = memoryStore.meetings.find(x => x.meetingId === meetingId || x.id === meetingId || x.customId === meetingId);
+  const m = memoryStore.meetings.find(x => 
+    String(x.meetingId || '').toUpperCase() === normId ||
+    String(x.id || '').toUpperCase() === normId ||
+    String(x.customId || '').toUpperCase() === normId
+  );
   if (m) {
-    m.status = 'Ended';
+    m.status = 'ended';
     m.endedAt = new Date().toISOString();
   }
+
+  // Also dynamically update any chat messages that reference this meeting
+  if (Array.isArray(memoryStore.messages)) {
+    memoryStore.messages.forEach(msg => {
+      if (msg.meeting) {
+        const msgMId = String(msg.meeting.id || msg.meeting.meetingId || '').trim().toUpperCase();
+        if (msgMId === normId) {
+          msg.meeting.status = 'ended';
+          msg.meeting.endedAt = new Date().toISOString();
+        }
+      }
+    });
+  }
+
   if (getStatus()) {
     try {
-      await Meeting.updateOne(
-        { $or: [{ meetingId }, { customId: meetingId }, { _id: meetingId }] },
-        { $set: { status: 'Ended', endedAt: new Date() } }
+      await Meeting.updateMany(
+        { $or: [
+          { meetingId: { $regex: new RegExp(`^${normId}$`, 'i') } },
+          { customId: { $regex: new RegExp(`^${normId}$`, 'i') } },
+          { _id: normId }
+        ]},
+        { $set: { status: 'ended', endedAt: new Date() } }
       );
+      if (typeof Message !== 'undefined') {
+        await Message.updateMany(
+          { $or: [
+            { 'meeting.id': { $regex: new RegExp(`^${normId}$`, 'i') } },
+            { 'meeting.meetingId': { $regex: new RegExp(`^${normId}$`, 'i') } }
+          ]},
+          { $set: { 'meeting.status': 'ended', 'meeting.endedAt': new Date() } }
+        );
+      }
     } catch (e) {
       console.warn('Mongo endMeeting error:', e.message);
     }

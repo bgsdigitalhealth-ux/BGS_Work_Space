@@ -1547,6 +1547,23 @@ router.get('/meetings/:meetingId/verify', async (req, res) => {
   }
 });
 
+router.post('/meetings/:meetingId/end', async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const normId = String(meetingId || '').trim().toUpperCase();
+    const meeting = await dataService.endMeeting(normId);
+    const io = getIO();
+    if (io) {
+      io.emit('meeting_ended', { meetingId: normId });
+      io.emit('meeting_status_update', { meetingId: normId, status: 'ended', participantsCount: 0 });
+    }
+    broadcast('MEETINGS_UPDATED', { meetingId: normId, status: 'ended' });
+    res.json({ success: true, meeting });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --- WPPConnect & WhatsApp Messaging Endpoints ---
 router.get('/wpp/status', (req, res) => {
   try {
