@@ -11,7 +11,8 @@ import {
   CheckCircle2,
   Building2,
   Users,
-  UserCheck
+  UserCheck,
+  Lock
 } from 'lucide-react';
 import { useApp, isUserManager, formatTaskDueDate } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -464,23 +465,32 @@ export const UserAssignWork: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                  {assignMode === 'user_to_self' ? 'Your Email' : 'Recipient Email'}
-                </label>
-                <div className="relative">
-                  <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
-                  <input
-                    type="email"
-                    value={assignMode === 'user_to_self' ? (currentUser?.email || '') : email}
-                    readOnly
-                    placeholder="Recipient email will populate..."
-                    className="w-full pl-8 pr-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 font-medium cursor-not-allowed text-xs"
-                  />
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-gray-700">
+                    {assignMode === 'user_to_self' ? 'Your Email' : 'Recipient Email'}
+                  </label>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 select-none">
+                    <Lock className="w-2.5 h-2.5 text-slate-400" /> Non-editable
+                  </span>
+                </div>
+                <div className="relative flex items-center">
+                  <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 pointer-events-none" />
+                  <div 
+                    tabIndex={-1}
+                    aria-readonly="true"
+                    className="w-full pl-8 pr-8 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-slate-700 font-medium text-xs select-none cursor-not-allowed truncate min-h-[34px] flex items-center"
+                  >
+                    {assignMode === 'user_to_self' 
+                      ? (currentUser?.email || 'Your account email') 
+                      : (email || <span className="text-gray-400 font-normal">Select a teammate above to auto-link email</span>)
+                    }
+                  </div>
+                  <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
                 </div>
                 <p className="text-[10px] text-gray-500 mt-1">
                   {assignMode === 'user_to_self'
                     ? 'Automatically synced with your authenticated account email.'
-                    : 'Auto-populated and locked to the selected recipient’s registered email.'}
+                    : 'Auto-populated and permanently locked to the selected recipient’s registered email.'}
                 </p>
               </div>
             </div>

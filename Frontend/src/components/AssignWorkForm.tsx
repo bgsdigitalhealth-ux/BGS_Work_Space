@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, User, Mail, Phone, AlertCircle, ArrowRight } from 'lucide-react';
+import { Send, User, Mail, Phone, AlertCircle, ArrowRight, Lock } from 'lucide-react';
 import { useApp, formatTaskDueDate } from '../context/AppContext';
 import { api } from '../services/api';
 import { ButtonSpinner } from './common/LoadingSpinner';
@@ -287,21 +287,27 @@ export const AssignWorkForm: React.FC = () => {
         {/* Row 2: Recipient Email & Contact Number (2 Columns for ample breathing room) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Recipient Email ID
-            </label>
-            <div className="relative">
-              <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="email"
-                value={email}
-                readOnly
-                placeholder="Recipient email will populate..."
-                className="w-full pl-8 pr-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-medium cursor-not-allowed text-xs truncate"
-              />
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-slate-600">
+                Recipient Email ID
+              </label>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md border border-slate-200 select-none">
+                <Lock className="w-2.5 h-2.5 text-slate-400" /> Non-editable
+              </span>
+            </div>
+            <div className="relative flex items-center">
+              <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 pointer-events-none" />
+              <div
+                tabIndex={-1}
+                aria-readonly="true"
+                className="w-full pl-8 pr-8 py-2 bg-slate-100/90 border border-slate-200 rounded-xl text-slate-700 font-medium text-xs truncate select-none cursor-not-allowed min-h-[34px] flex items-center"
+              >
+                {email || <span className="text-slate-400 font-normal">Select a member above to auto-link email</span>}
+              </div>
+              <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 pointer-events-none" />
             </div>
             <p className="text-[10px] text-slate-500 mt-1">
-              Auto-populated and locked to the selected member's profile.
+              Auto-populated and permanently locked to the selected member's profile.
             </p>
           </div>
 
