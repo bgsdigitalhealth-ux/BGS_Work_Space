@@ -249,13 +249,14 @@ export const BANNED_EMAILS = [
   'rahul@company.com',
   'priya@company.com',
   'amit@company.com',
-  'sneha@company.com'
+  'sneha@company.com',
+  'haribushan@gmail.com'
 ];
 
 export const isBannedEmail = (email?: string): boolean => {
   if (!email) return false;
   const clean = email.trim().toLowerCase();
-  return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com');
+  return BANNED_EMAILS.includes(clean) || clean.endsWith('@company.com') || clean === 'haribushan@gmail.com';
 };
 
 // Check if a user holds a Manager, Head, Lead, or Administrator role
@@ -1204,7 +1205,8 @@ const fetchTeams = async (deptId: string = '') => {
 const fetchMembers = async (teamId: string = '') => {
   try {
     const data = await api.getMembers(teamId);
-    setMembers(data);
+    const sanitized = (data || []).filter(m => !isBannedEmail(m.email));
+    setMembers(sanitized);
   } catch (e) {
     console.error(e);
   }

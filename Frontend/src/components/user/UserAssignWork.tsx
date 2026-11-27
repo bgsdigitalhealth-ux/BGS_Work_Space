@@ -14,7 +14,7 @@ import {
   UserCheck,
   Lock
 } from 'lucide-react';
-import { useApp, isUserManager, formatTaskDueDate } from '../../context/AppContext';
+import { useApp, isUserManager, formatTaskDueDate, isBannedEmail } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { Assignment } from '../../types';
 
@@ -68,6 +68,7 @@ export const UserAssignWork: React.FC = () => {
   // Filter candidates who are regular users in the SAME team (or all users if Manager)
   const teamMembers = allUsers.filter(u => {
     if (u.role !== 'user') return false;
+    if (isBannedEmail(u.email)) return false;
 
     // Exclude myself (by id, email, memberId, and normalized full name)
     const isMyself = 
