@@ -138,6 +138,8 @@ interface AppContextType {
   openSubmitWorkDrawer: (task?: UserAssignedWork) => void;
   userFilterTab: string;
   setUserFilterTab: (tab: string) => void;
+  detailsOriginNav: string;
+  setDetailsOriginNav: (nav: string) => void;
   userSearchQuery: string;
   setUserSearchQuery: (q: string) => void;
   handleSubmitWork: (payload: { taskId: string; workStatus: string; comment: string }) => Promise<void>;
@@ -340,6 +342,13 @@ export const isTaskAssignedToUser = (
 
   // Match by email
   if (myEmail && (task as any).assigneeEmail && (task as any).assigneeEmail.trim().toLowerCase() === myEmail) return true;
+
+  // Self-assigned work (user assigned to themselves)
+  if (task.assignmentType === 'user_to_self') {
+    if (myId && ((task as any).assignerId === myId || (task as any).assigneeId === myId || task.userId === myId)) return true;
+    if (myEmail && (((task as any).assignerEmail && (task as any).assignerEmail.trim().toLowerCase() === myEmail) || ((task as any).assigneeEmail && (task as any).assigneeEmail.trim().toLowerCase() === myEmail))) return true;
+    if (task.assignedBy && myName && task.assignedBy.toLowerCase().includes(myName)) return true;
+  }
 
   // Match by assigneeName or assignedTo
   const taskAssignee = ((task as any).assigneeName || (task as any).assignedTo || '').trim().toLowerCase();
@@ -567,6 +576,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [isSubmitWorkDrawerOpen, setIsSubmitWorkDrawerOpen] = useState(false);
   const [drawerSelectedTask, setDrawerSelectedTask] = useState<UserAssignedWork | null>(null);
   const [userFilterTab, setUserFilterTab] = useState<string>('In Progress');
+  const [detailsOriginNav, setDetailsOriginNav] = useState<string>('assigned-work');
   const [userSearchQuery, setUserSearchQuery] = useState<string>('');
 
   // Appointments states
@@ -2060,6 +2070,8 @@ return (
       openSubmitWorkDrawer,
       userFilterTab,
       setUserFilterTab,
+      detailsOriginNav,
+      setDetailsOriginNav,
       userSearchQuery,
       setUserSearchQuery,
       handleSubmitWork,

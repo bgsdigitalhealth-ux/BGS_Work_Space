@@ -33,7 +33,9 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
     handleAddUserComment,
     handleEditAssignment,
     handleDeleteAssignment,
-    notify
+    notify,
+    detailsOriginNav,
+    setSelectedUserTask
   } = useApp();
 
   const myMember = (members || []).find(m =>
@@ -150,7 +152,10 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
           Please select a task from your dashboard or assigned work list to view its progression, submission history, and team feedback.
         </p>
         <button
-          onClick={onBack || (() => setUserNav('dashboard'))}
+          onClick={onBack || (() => {
+            setSelectedUserTask(null);
+            setUserNav(detailsOriginNav || 'assigned-work');
+          })}
           className="bg-[#5a36e6] hover:bg-[#4d2ec4] text-white text-xs font-bold px-5 py-2.5 rounded-xl shadow-md transition cursor-pointer"
         >
           Go Back
@@ -320,7 +325,10 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
                 onClick={async () => {
                   await handleDeleteAssignment(task.id);
                   if (onBack) onBack();
-                  else setUserNav('assigned-work');
+                  else {
+                    setSelectedUserTask(null);
+                    setUserNav(detailsOriginNav || 'assigned-work');
+                  }
                 }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-bold bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 transition shadow-sm cursor-pointer"
                 title="Delete this assigned work"

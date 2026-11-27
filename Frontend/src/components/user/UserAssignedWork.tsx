@@ -54,7 +54,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     handleFinishTimer,
     handleDeleteAssignment,
     members,
-    workRequests
+    workRequests,
+    detailsOriginNav
   } = useApp();
 
   const myMember = (members || []).find(m =>
@@ -257,7 +258,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
   const handleBackToViews = () => {
     setSelectedUserTask(null);
     setViewMode(previousViewMode);
-    setUserNav('assigned-work');
+    setUserNav(detailsOriginNav || 'assigned-work');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 

@@ -16,7 +16,9 @@ export const UserHeader: React.FC = () => {
     userToast,
     setUserToast,
     userWorkspace,
-    members
+    members,
+    detailsOriginNav,
+    setSelectedUserTask
   } = useApp();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showNotifs, setShowNotifs] = useState(false);
@@ -168,11 +170,14 @@ export const UserHeader: React.FC = () => {
             {(!isManagerRole && userNav === 'details') ? (
               <button
                 type="button"
-                onClick={() => setUserNav('assigned-work')}
+                onClick={() => {
+                  setUserNav(detailsOriginNav || 'assigned-work');
+                  setSelectedUserTask(null);
+                }}
                 className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-bold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer truncate"
               >
                 <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 shrink-0" />
-                <span className="truncate">Assigned Work Details</span>
+                <span className="truncate">Back to {detailsOriginNav === 'assign-work' ? 'Assign Work' : 'My Assigned Work'}</span>
               </button>
             ) : (!isManagerRole && (userNav === 'assigned-work' || userNav === 'my-work')) ? (
               <div className="flex items-center gap-2 sm:gap-3 min-w-0">

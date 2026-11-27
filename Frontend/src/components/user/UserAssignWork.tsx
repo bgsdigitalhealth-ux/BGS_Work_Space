@@ -12,14 +12,25 @@ import {
   Building2,
   Users,
   UserCheck,
-  Lock
+  Lock,
+  ChevronRight
 } from 'lucide-react';
-import { useApp, isUserManager, formatTaskDueDate, isBannedEmail } from '../../context/AppContext';
+import { useApp, isUserManager, formatTaskDueDate, isBannedEmail, isTaskAssignedToUser } from '../../context/AppContext';
 import { api } from '../../services/api';
-import { Assignment } from '../../types';
+import { Assignment, UserAssignedWork } from '../../types';
 
 export const UserAssignWork: React.FC = () => {
-  const { allUsers, currentUser, members, refreshAll, setUserToast } = useApp();
+  const { 
+    allUsers, 
+    currentUser, 
+    members, 
+    refreshAll, 
+    setUserToast,
+    userWorkspace,
+    setSelectedUserTask,
+    setUserNav,
+    setDetailsOriginNav
+  } = useApp();
 
   const [assignMode, setAssignMode] = useState<'user_to_user' | 'user_to_admin' | 'user_to_self'>('user_to_user');
   const [targetId, setTargetId] = useState('');
@@ -36,6 +47,7 @@ export const UserAssignWork: React.FC = () => {
   const [submitSuccess, setSubmitSuccess] = useState('');
   const [delegatedWork, setDelegatedWork] = useState<Assignment[]>([]);
   const [loadingDelegated, setLoadingDelegated] = useState(false);
+  const [workListTab, setWorkListTab] = useState<'all' | 'assigned_to_me' | 'delegated_by_me'>('all');
 
   // Current user's team and department context
   const myTeam = (currentUser?.team || '').trim().toLowerCase();
@@ -124,6 +136,123 @@ export const UserAssignWork: React.FC = () => {
   useEffect(() => {
     loadDelegatedWork();
   }, [currentUser]);
+
+  // 1. Tasks assigned to current user (incoming tasks + self assigned)
+  const myAssignedTasks = (userWorkspace?.assignedWork || []).filter(t =>
+    isTaskAssignedToUser(t, currentUser, myMember)
+  );
+
+  // 2. Combined unified list with deduplication
+  const unifiedTasks = React.useMemo(() => {
+    const map = new Map<string, any>();
+
+    // Add my assigned tasks (incoming & self-assigned)
+    myAssignedTasks.forEach(t => {
+      const key = t.id || t.taskId || t.title;
+      map.set(key, {
+        id: t.id,
+        taskId: t.taskId || `TSK-${String(t.id).replace(/\D/g, '').slice(-4) || '9521'}`,
+        title: t.title,
+        workTitle: t.title,
+        description: t.description || '',
+        workDescription: t.description || '',
+        priority: t.priority || 'High',
+        dueDate: t.dueDate || 'Today',
+        status: t.status || 'In Progress',
+        assignmentType: t.assignmentType || 'user_to_user',
+        assignedBy: t.assignedBy || 'Colleague',
+        assignerName: t.assignedBy || 'Colleague',
+        assigneeName: t.assigneeName || currentUser?.name || 'You',
+        role: (t as any).role || 'Team Member',
+        progress: t.progress,
+        isAssignedToMe: true,
+        isDelegatedByMe: t.assignmentType === 'user_to_self' || (t as any).assignerId === currentUser?.id,
+        rawTask: t
+      });
+    });
+
+    // Add delegated tasks (tasks assigned by current user)
+    delegatedWork.forEach(d => {
+      const key = d.id || (d as any).taskId || d.workTitle;
+      const existing = map.get(key) || Array.from(map.values()).find(x => x.title === d.workTitle || x.workTitle === d.workTitle);
+      if (existing) {
+        existing.isDelegatedByMe = true;
+        if (!existing.rawAssignment) existing.rawAssignment = d;
+      } else {
+        map.set(key, {
+          id: d.id,
+          taskId: (d as any).taskId || `TSK-${String(d.id).replace(/\D/g, '').slice(-4) || '9521'}`,
+          title: d.workTitle,
+          workTitle: d.workTitle,
+          description: d.workDescription || '',
+          workDescription: d.workDescription || '',
+          priority: d.priority || 'High',
+          dueDate: d.dueDate || 'Today',
+          status: d.status || 'In Progress',
+          assignmentType: d.assignmentType || 'user_to_user',
+          assignedBy: d.assignmentType === 'user_to_self' ? `Self (${currentUser?.name || 'You'})` : `Self (${d.assignerName || currentUser?.name || 'You'})`,
+          assignerName: d.assignerName || currentUser?.name || 'You',
+          assigneeName: d.assignmentType === 'user_to_self' ? `${currentUser?.name} (Self)` : (d.assigneeName || d.role),
+          role: d.role || 'Team Member',
+          progress: d.status === 'Completed' ? 100 : d.status === 'In Review' ? 85 : 60,
+          isAssignedToMe: d.assignmentType === 'user_to_self' || d.assigneeId === currentUser?.id || (d.assigneeEmail && d.assigneeEmail.toLowerCase() === (currentUser?.email || '').toLowerCase()),
+          isDelegatedByMe: true,
+          rawAssignment: d
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [myAssignedTasks, delegatedWork, currentUser]);
+
+  // Filter based on selected tab
+  const displayedTasks = React.useMemo(() => {
+    if (workListTab === 'assigned_to_me') {
+      return unifiedTasks.filter(t => t.isAssignedToMe || t.assignmentType === 'user_to_self');
+    }
+    if (workListTab === 'delegated_by_me') {
+      return unifiedTasks.filter(t => t.isDelegatedByMe);
+    }
+    return unifiedTasks;
+  }, [unifiedTasks, workListTab]);
+
+  const handleOpenTaskDetails = (taskItem: any) => {
+    // 1. Look for full task object in userWorkspace.assignedWork
+    const fromWorkspace = (userWorkspace?.assignedWork || []).find(w =>
+      w.id === taskItem.id ||
+      w.taskId === taskItem.taskId ||
+      (w.title && (w.title === taskItem.workTitle || w.title === taskItem.title))
+    );
+
+    const fullTask: UserAssignedWork = fromWorkspace || {
+      id: taskItem.id || `task-${Date.now()}`,
+      taskId: taskItem.taskId || `TSK-${String(taskItem.id).replace(/\D/g, '').slice(-4) || '9521'}`,
+      title: taskItem.title || taskItem.workTitle || 'Assigned Work',
+      department: taskItem.department || taskItem.departmentName || currentUser?.department || 'General',
+      team: taskItem.team || taskItem.teamName || currentUser?.team || 'Team',
+      priority: taskItem.priority || 'High',
+      dueDate: taskItem.dueDate || 'Today',
+      status: (taskItem.status as any) || 'In Progress',
+      assignedBy: taskItem.assignedBy || (taskItem.assignmentType === 'user_to_self' ? `Self (${taskItem.assignerName || currentUser?.name || 'You'})` : `Team Member (${taskItem.assignerName || 'Colleague'})`),
+      assignerRole: taskItem.assignerRole || 'user',
+      assignmentType: taskItem.assignmentType || 'user_to_user',
+      assignedOn: taskItem.assignedOn || (taskItem.createdAt ? new Date(taskItem.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Today'),
+      description: taskItem.description || taskItem.workDescription || '',
+      progress: taskItem.progress !== undefined ? Number(taskItem.progress) : (taskItem.status === 'Completed' ? 100 : taskItem.status === 'Under Review' ? 85 : 60),
+      comments: taskItem.comments || [],
+      attachments: taskItem.attachments || [],
+      userId: taskItem.assigneeId || currentUser?.id,
+      assigneeId: taskItem.assigneeId || currentUser?.id,
+      assigneeName: taskItem.assigneeName || currentUser?.name,
+      assigneeEmail: taskItem.assigneeEmail || currentUser?.email,
+      assignedTo: taskItem.assigneeName || currentUser?.name
+    };
+
+    setDetailsOriginNav('assign-work');
+    setSelectedUserTask(fullTask);
+    setUserNav('details');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   // Set default selection when mode changes or teamMembers update
   useEffect(() => {
@@ -672,54 +801,158 @@ export const UserAssignWork: React.FC = () => {
           </form>
         </div>
 
-        {/* Right: Delegated Work List (5 cols) */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-100 p-6 shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-100">
+        {/* Right: Work Overview & Clickable Cards List (5 cols) */}
+        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-100 p-5 sm:p-6 shadow-sm flex flex-col">
+          <div className="flex items-center justify-between mb-3 pb-3 border-b border-gray-100">
             <div className="flex items-center gap-2">
               <ClipboardList className="w-4 h-4 text-indigo-600" />
-              <h3 className="font-bold text-gray-900 text-sm">Work Delegated by You</h3>
+              <h3 className="font-bold text-gray-900 text-sm">Work Overview</h3>
             </div>
-            <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600">
-              {delegatedWork.length} Items
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-600 border border-indigo-100">
+              {displayedTasks.length} {displayedTasks.length === 1 ? 'Task' : 'Tasks'}
             </span>
           </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[460px] pr-1">
+          {/* Filter Tabs */}
+          <div className="flex items-center gap-1.5 p-1 bg-gray-100/80 rounded-xl mb-4 text-xs font-semibold">
+            <button
+              type="button"
+              onClick={() => setWorkListTab('all')}
+              className={`flex-1 py-1.5 px-2 rounded-lg transition text-center cursor-pointer ${
+                workListTab === 'all'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              All ({unifiedTasks.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkListTab('assigned_to_me')}
+              className={`flex-1 py-1.5 px-2 rounded-lg transition text-center cursor-pointer ${
+                workListTab === 'assigned_to_me'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Assigned to Me ({unifiedTasks.filter(t => t.isAssignedToMe || t.assignmentType === 'user_to_self').length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setWorkListTab('delegated_by_me')}
+              className={`flex-1 py-1.5 px-2 rounded-lg transition text-center cursor-pointer ${
+                workListTab === 'delegated_by_me'
+                  ? 'bg-white text-indigo-700 shadow-xs font-bold'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Delegated ({unifiedTasks.filter(t => t.isDelegatedByMe).length})
+            </button>
+          </div>
+
+          <div className="space-y-3 flex-1 overflow-y-auto max-h-[500px] pr-1">
             {loadingDelegated ? (
-              <div className="py-12 text-center text-xs text-gray-400">Loading your delegated tasks...</div>
-            ) : delegatedWork.length === 0 ? (
+              <div className="py-12 text-center text-xs text-gray-400">Loading work cards...</div>
+            ) : displayedTasks.length === 0 ? (
               <div className="py-12 text-center text-xs text-gray-400">
-                No work delegated yet. Use the form on the left to assign tasks to teammates.
+                No work found in this view. Use the form on the left to assign or self-assign tasks.
               </div>
             ) : (
-              delegatedWork.map((item) => (
-                <div key={item.id} className="p-3.5 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-gray-900 line-clamp-1">{item.workTitle}</span>
-                    <div className="flex items-center gap-1.5">
-                      {item.assignmentType === 'user_to_self' && (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
-                          Self
+              displayedTasks.map((item) => {
+                const priorityColor =
+                  item.priority === 'High' ? 'bg-amber-500' :
+                  item.priority === 'Low' ? 'bg-emerald-500' :
+                  'bg-blue-500';
+
+                const isSelf = item.assignmentType === 'user_to_self';
+                const isIncoming = (item.isAssignedToMe && !isSelf);
+
+                return (
+                  <div
+                    key={item.id}
+                    onClick={() => handleOpenTaskDetails(item)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleOpenTaskDetails(item);
+                      }
+                    }}
+                    title="Click to view full completed work details"
+                    className="p-4 rounded-xl border border-gray-200/90 bg-white hover:bg-indigo-50/20 hover:border-[#5a36e6] hover:shadow-md transition-all cursor-pointer group space-y-2.5 relative overflow-hidden select-none focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                  >
+                    {/* Top Priority Stripe */}
+                    <div className={`absolute top-0 left-0 right-0 h-1 ${priorityColor}`} />
+
+                    {/* Header Row: Title & Badges */}
+                    <div className="flex items-start justify-between gap-2 pt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                          <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-700">
+                            {item.taskId || `TSK-${String(item.id).replace(/\D/g, '').slice(-4) || '9521'}`}
+                          </span>
+                          {isSelf && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                              Self Assign
+                            </span>
+                          )}
+                          {!isSelf && item.assignmentType && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                              {item.assignmentType === 'user_to_user' ? 'User → User' : item.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Admin → User'}
+                            </span>
+                          )}
+                        </div>
+                        <h4 className="font-bold text-xs text-gray-900 group-hover:text-[#5a36e6] transition-colors line-clamp-1">
+                          {item.workTitle || item.title}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-1 shrink-0">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          item.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          item.status === 'Under Review' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                          'bg-blue-50 text-blue-700 border border-blue-200'
+                        }`}>
+                          {item.status}
                         </span>
-                      )}
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-                        {item.status}
-                      </span>
+                      </div>
+                    </div>
+
+                    {/* Description preview if present */}
+                    {(item.workDescription || item.description) && (
+                      <p className="text-[11px] text-gray-500 line-clamp-2 bg-gray-50/70 p-2 rounded-lg">
+                        {item.workDescription || item.description}
+                      </p>
+                    )}
+
+                    {/* People & Dates Row */}
+                    <div className="flex items-center justify-between text-[11px] text-gray-500 pt-1 border-t border-gray-100">
+                      <div className="flex items-center gap-1.5 min-w-0 truncate">
+                        <span className="truncate">
+                          {isSelf ? (
+                            <span>By: <strong className="text-gray-700">Self ({currentUser?.name || 'You'})</strong></span>
+                          ) : isIncoming ? (
+                            <span>From: <strong className="text-gray-700">{item.assignerName || item.assignedBy || 'Colleague'}</strong></span>
+                          ) : (
+                            <span>To: <strong className="text-gray-700">{item.assigneeName || item.role}</strong></span>
+                          )}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="flex items-center gap-1 text-[11px] text-gray-600 font-medium">
+                          <Clock className="w-3 h-3 text-indigo-500" />
+                          {formatTaskDueDate(item.dueDate) || 'Today'}
+                        </span>
+                        <span className="text-[#5a36e6] group-hover:translate-x-0.5 transition-transform flex items-center font-bold text-[10px]">
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between text-[11px] text-gray-500">
-                    <span>
-                      To: <strong className="text-gray-700">
-                        {item.assignmentType === 'user_to_self' ? `${item.assigneeName || 'You'} (Self)` : (item.assigneeName || item.role)}
-                      </strong>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-indigo-500" />
-                      {formatTaskDueDate(item.dueDate) || 'Today'}
-                    </span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
