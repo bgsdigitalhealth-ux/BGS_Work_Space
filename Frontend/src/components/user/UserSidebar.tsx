@@ -40,7 +40,8 @@ export const UserSidebar: React.FC = () => {
 
   const myMember = (members || []).find(m =>
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
-    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+    (currentUser?.name && m.name && m.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
   );
   const isManager = isUserManager(currentUser, myMember) || currentUser?.role === 'manager' || currentUser?.role === 'admin';
 

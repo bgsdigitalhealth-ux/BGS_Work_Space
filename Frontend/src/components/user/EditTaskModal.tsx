@@ -21,6 +21,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [departmentId, setDepartmentId] = useState('');
   const [teamId, setTeamId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [assigneeEmail, setAssigneeEmail] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [priority, setPriority] = useState<'High' | 'Medium' | 'Low'>('Medium');
   const [status, setStatus] = useState<string>('In Progress');
@@ -34,6 +35,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
       setDepartmentId(task.departmentId || '');
       setTeamId(task.teamId || '');
       setAssigneeId(task.assigneeId || task.userId || '');
+      setAssigneeEmail(task.assigneeEmail || '');
       const toISODate = (val?: string) => {
         if (!val || val.trim().toLowerCase() === 'today') return new Date().toISOString().split('T')[0];
         if (/^\d{4}-\d{2}-\d{2}$/.test(val.trim())) return val.trim();
@@ -83,7 +85,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
         team: selectedTeam ? selectedTeam.name : task.team,
         assigneeId,
         assigneeName: selectedMember ? selectedMember.name : task.assigneeName,
-        assigneeEmail: selectedMember ? selectedMember.email : task.assigneeEmail,
+        assigneeEmail: assigneeEmail.trim() || (selectedMember ? selectedMember.email : task.assigneeEmail),
         dueDate: formatTaskDueDate(dueDate) || dueDate,
         priority,
         status,
@@ -208,7 +210,12 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
               </label>
               <select
                 value={assigneeId}
-                onChange={(e) => setAssigneeId(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setAssigneeId(val);
+                  const mem = members.find(m => m.id === val);
+                  if (mem?.email) setAssigneeEmail(mem.email);
+                }}
                 className="w-full px-3 py-2 text-xs bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#5a36e6] font-medium text-gray-800"
               >
                 <option value="">Select Assignee</option>
@@ -216,6 +223,13 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   <option key={m.id} value={m.id}>{m.name} ({m.role || 'Member'})</option>
                 ))}
               </select>
+              <input
+                type="email"
+                value={assigneeEmail}
+                onChange={(e) => setAssigneeEmail(e.target.value)}
+                placeholder="Assignee email (editable)..."
+                className="w-full px-3 py-1.5 mt-1.5 text-[11px] bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5a36e6] text-gray-700"
+              />
             </div>
 
             <div>

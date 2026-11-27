@@ -40,11 +40,13 @@ export const UserAssignWork: React.FC = () => {
   const myTeam = (currentUser?.team || '').trim().toLowerCase();
   const myDept = (currentUser?.department || '').trim().toLowerCase();
   const myEmail = (currentUser?.email || '').trim().toLowerCase();
+  const myName = (currentUser?.name || '').trim().toLowerCase();
 
-  // Find member record for currentUser if exists
+  // Find member record for currentUser if exists (match by id, email, or full name)
   const myMember = members.find(m => 
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
-    (myEmail && m.email && m.email.toLowerCase() === myEmail)
+    (myEmail && m.email && m.email.toLowerCase() === myEmail) ||
+    (myName && m.name && m.name.trim().toLowerCase() === myName)
   );
   const myTeamId = myMember ? myMember.teamId : (currentUser as any)?.teamId;
   const myDeptId = myMember ? myMember.departmentId : (currentUser as any)?.departmentId;
@@ -53,8 +55,14 @@ export const UserAssignWork: React.FC = () => {
   // Filter candidates who are regular users in the SAME team (or all users if Manager)
   const teamMembers = allUsers.filter(u => {
     if (u.role !== 'user') return false;
-    // Exclude myself
-    if (u.id === currentUser?.id || (u.email && u.email.toLowerCase() === myEmail)) return false;
+
+    // Exclude myself (by id, email, memberId, and full name)
+    const isMyself = 
+      (currentUser?.id && (u.id === currentUser.id || (u as any).userId === currentUser.id)) ||
+      (myEmail && u.email && u.email.trim().toLowerCase() === myEmail) ||
+      (myMember && (u.id === myMember.id || (u as any).userId === myMember.id || (u.email && myMember.email && u.email.trim().toLowerCase() === myMember.email.trim().toLowerCase()))) ||
+      (myName && u.name && u.name.trim().toLowerCase() === myName);
+    if (isMyself) return false;
 
     // Managers can assign to ANY team member across ALL teams!
     if (isManager) return true;
@@ -112,10 +120,10 @@ export const UserAssignWork: React.FC = () => {
         const defaultUser = teamMembers[0];
         setTargetId(defaultUser.id);
         setTargetName(defaultUser.name);
-        setEmail(defaultUser.email);
+        setEmail(defaultUser.email || '');
         setRole(defaultUser.teamRole || 'Team Member');
       } else {
-        setTargetId('');
+        setTargetId('custom');
         setTargetName('');
         setEmail('');
         setRole('Team Member');
@@ -125,7 +133,7 @@ export const UserAssignWork: React.FC = () => {
       const defaultAdmin = adminUsers[0] || { id: 'usr-admin', name: 'Administrator', email: 'bgsmchhospitalnagarur@gmail.com' };
       setTargetId(defaultAdmin.id);
       setTargetName(defaultAdmin.name);
-      setEmail(defaultAdmin.email);
+      setEmail(defaultAdmin.email || '');
       setRole('Administrator');
     } else {
       // user_to_self
@@ -136,13 +144,19 @@ export const UserAssignWork: React.FC = () => {
     }
   }, [assignMode, allUsers, members, currentUser]);
 
-  const handleUserSelect = (userId: string) => {
-    setTargetId(userId);
-    const u = teamMembers.find(m => m.id === userId);
+  const handleUserSelect = (val: string) => {
+    setTargetId(val);
+    if (val === 'custom') {
+      setTargetName('');
+      setEmail('');
+      setRole('Team Member');
+      return;
+    }
+    const u = teamMembers.find(m => m.id === val);
     if (u) {
       setTargetName(u.name);
-      setEmail(u.email);
-      setRole(u.teamRole || 'Team Member');
+      setEmail(u.email || '');
+      setRole(u.teamRole || u.team || 'Team Member');
     }
   };
 
@@ -151,7 +165,7 @@ export const UserAssignWork: React.FC = () => {
     const a = adminUsers.find(u => u.id === adminId);
     if (a) {
       setTargetName(a.name);
-      setEmail(a.email);
+      setEmail(a.email || '');
       setRole('Administrator');
     }
   };
@@ -166,21 +180,35 @@ export const UserAssignWork: React.FC = () => {
       return;
     }
 
-    if (assignMode !== 'user_to_self' && !targetId) {
-      setSubmitError(
-        assignMode === 'user_to_user' 
-          ? 'Please select a teammate in your team to assign work to.' 
-          : 'Please select an administrator.'
-      );
+    if (assignMode === 'user_to_user') {
+      if (targetId === 'custom' && !targetName.trim()) {
+        setSubmitError('Please enter the teammate’s name.');
+        return;
+      }
+      if (!targetId) {
+        setSubmitError('Please select or specify a teammate to assign work to.');
+        return;
+      }
+    } else if (assignMode === 'user_to_admin' && !targetId) {
+      setSubmitError('Please select an administrator.');
+      return;
+    }
+
+    if (!email.trim()) {
+      setSubmitError('Please enter a valid recipient email address.');
       return;
     }
 
     try {
       setSubmitting(true);
       const chosenDue = formatTaskDueDate(dueDate) || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-      const finalTargetId = assignMode === 'user_to_self' ? (currentUser?.id || 'usr-user') : targetId;
-      const finalTargetName = assignMode === 'user_to_self' ? (currentUser?.name || 'Self') : targetName;
-      const finalEmail = assignMode === 'user_to_self' ? (currentUser?.email || '') : email;
+      const finalTargetId = assignMode === 'user_to_self' 
+        ? (currentUser?.id || 'usr-user') 
+        : (targetId === 'custom' ? `usr-${Date.now()}` : targetId);
+      const finalTargetName = assignMode === 'user_to_self' 
+        ? (currentUser?.name || 'Self') 
+        : (targetId === 'custom' ? targetName.trim() : targetName);
+      const finalEmail = email.trim();
 
       await api.createAssignment({
         workTitle: workTitle.trim(),
@@ -390,21 +418,37 @@ export const UserAssignWork: React.FC = () => {
                   )}
 
                   {assignMode === 'user_to_user' ? (
-                    <select
-                      value={targetId}
-                      onChange={(e) => handleUserSelect(e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
-                      required
-                    >
-                      {teamMembers.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name} ({m.teamRole || m.team || 'Teammate'})
-                        </option>
-                      ))}
-                      {teamMembers.length === 0 && (
-                        <option value="">No other teammates in your team ({currentUser?.team || 'General'})</option>
+                    <div>
+                      <select
+                        value={targetId}
+                        onChange={(e) => handleUserSelect(e.target.value)}
+                        className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium cursor-pointer"
+                        required
+                      >
+                        {teamMembers.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name} ({m.teamRole || m.team || 'Teammate'})
+                          </option>
+                        ))}
+                        <option value="custom">✏️ Other / Custom Teammate (Enter details)</option>
+                      </select>
+
+                      {targetId === 'custom' && (
+                        <div className="mt-2.5">
+                          <label className="block text-[11px] font-bold text-gray-700 mb-1">
+                            Teammate Full Name <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={targetName}
+                            onChange={(e) => setTargetName(e.target.value)}
+                            placeholder="Enter teammate's full name..."
+                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 text-xs transition"
+                            required
+                          />
+                        </div>
                       )}
-                    </select>
+                    </div>
                   ) : assignMode === 'user_to_admin' ? (
                     <select
                       value={targetId}
@@ -430,9 +474,9 @@ export const UserAssignWork: React.FC = () => {
                     />
                   )}
                 </div>
-                {assignMode === 'user_to_user' && teamMembers.length === 0 && (
+                {assignMode === 'user_to_user' && teamMembers.length === 0 && targetId !== 'custom' && (
                   <p className="text-[11px] text-amber-600 mt-1">
-                    No other users are in your team yet. You can switch to <strong>User → Admin</strong> or <strong>Self Assign Work</strong> above.
+                    No other users are currently in your team. You can enter a custom teammate above, or switch to <strong>User → Admin</strong> or <strong>Self Assign Work</strong>.
                   </p>
                 )}
                 {assignMode === 'user_to_self' && (
@@ -443,19 +487,24 @@ export const UserAssignWork: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-gray-700 mb-1">
-                  {assignMode === 'user_to_self' ? 'Your Email' : 'Recipient Email'}
+                <label className="block text-[11px] font-bold text-gray-700 mb-1 flex items-center justify-between">
+                  <span>{assignMode === 'user_to_self' ? 'Your Email' : 'Recipient Email'} <span className="text-red-500">*</span></span>
+                  <span className="text-[10px] text-indigo-600 font-semibold">Editable</span>
                 </label>
                 <div className="relative">
                   <Mail className="w-3.5 h-3.5 text-gray-400 absolute left-3 top-2.5" />
                   <input
                     type="email"
-                    value={assignMode === 'user_to_self' ? (currentUser?.email || '') : email}
-                    readOnly
-                    placeholder="Recipient email will populate..."
-                    className="w-full pl-8 pr-3 py-2 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 font-medium cursor-not-allowed"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="Enter or customize recipient email..."
+                    className="w-full pl-8 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-gray-800 text-xs transition"
+                    required
                   />
                 </div>
+                <p className="text-[10px] text-gray-400 mt-1">
+                  Auto-populated based on recipient. You can customize or update this email directly.
+                </p>
               </div>
             </div>
 

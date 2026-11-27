@@ -380,7 +380,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   // Find member corresponding to current user to check manager role accurately
   const myMember = (members || []).find(m =>
     (currentUser?.id && (m.id === currentUser.id || (m as any).userId === currentUser.id)) ||
-    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase())
+    (currentUser?.email && m.email && m.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+    (currentUser?.name && m.name && m.name.trim().toLowerCase() === currentUser.name.trim().toLowerCase())
   );
 
   const isMgr = isUserManager(currentUser, myMember);
