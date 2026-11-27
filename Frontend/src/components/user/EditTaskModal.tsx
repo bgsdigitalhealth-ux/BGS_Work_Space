@@ -224,13 +224,6 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
                   <option key={m.id} value={m.id}>{m.name} ({m.role || 'Member'})</option>
                 ))}
               </select>
-              <input
-                type="email"
-                value={assigneeEmail}
-                onChange={(e) => setAssigneeEmail(e.target.value)}
-                placeholder="Assignee email (editable)..."
-                className="w-full px-3 py-1.5 mt-1.5 text-[11px] bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#5a36e6] text-gray-700"
-              />
             </div>
 
             <div>

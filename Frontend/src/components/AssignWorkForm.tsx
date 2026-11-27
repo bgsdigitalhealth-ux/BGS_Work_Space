@@ -287,23 +287,21 @@ export const AssignWorkForm: React.FC = () => {
         {/* Row 2: Recipient Email & Contact Number (2 Columns for ample breathing room) */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
-              <span>Recipient Email ID <span className="text-red-500">*</span></span>
-              <span className="text-[10px] text-indigo-600 font-semibold">Editable</span>
+            <label className="block text-[11px] font-bold text-slate-600 mb-1">
+              Recipient Email ID
             </label>
             <div className="relative">
               <Mail className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter or customize recipient email..."
-                className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800 text-xs truncate transition"
-                required
+                readOnly
+                placeholder="Recipient email will populate..."
+                className="w-full pl-8 pr-3 py-2 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-medium cursor-not-allowed text-xs truncate"
               />
             </div>
-            <p className="text-[10px] text-slate-400 mt-1">
-              Auto-populated from member profile. You can edit this email if needed.
+            <p className="text-[10px] text-slate-500 mt-1">
+              Auto-populated and locked to the selected member's profile.
             </p>
           </div>
 
