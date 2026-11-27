@@ -6179,7 +6179,7 @@ const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, us
       );
     }
     if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
-      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId || (t as any).teamName === teamId);
+      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId || t.teamName === teamId);
     }
   }
 
