@@ -45,7 +45,8 @@ const BANNED_EMAILS = [
   'rahul@company.com',
   'priya@company.com',
   'amit@company.com',
-  'sneha@company.com'
+  'sneha@company.com',
+  'haribushan@gmail.com'
 ];
 
 const isBannedEmail = (email) => {
@@ -161,7 +162,8 @@ const loadStore = () => {
           'rahul@company.com',
           'priya@company.com',
           'amit@company.com',
-          'sneha@company.com'
+          'sneha@company.com',
+          'haribushan@gmail.com'
         ];
         if (!Array.isArray(memoryStore.deletedEmails)) {
           memoryStore.deletedEmails = [...bannedEmails];
@@ -224,7 +226,8 @@ const loadStore = () => {
     'rahul@company.com',
     'priya@company.com',
     'amit@company.com',
-    'sneha@company.com'
+    'sneha@company.com',
+    'haribushan@gmail.com'
   ];
   memoryStore.users = (memoryStore.users || []).filter(u => !isBannedEmail(u.email));
   saveStore();

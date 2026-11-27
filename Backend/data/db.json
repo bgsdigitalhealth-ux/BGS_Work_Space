@@ -26,58 +26,9 @@
       "teamId": "team-mgmt",
       "departmentId": "dept-dhac",
       "avatar": "D"
-    },
-    {
-      "id": "mem-1795150363089-466",
-      "name": "Haribushan Kumar",
-      "email": "haribushan@gmail.com",
-      "phone": "9988776655",
-      "role": "Developer",
-      "assignedWork": "",
-      "teamId": "team-1795150363088-71",
-      "departmentId": "dept-1795150363088-476",
-      "avatar": "H"
     }
   ],
-  "assignments": [
-    {
-      "id": "user-task-1795150363103-41",
-      "customId": "user-task-1795150363103-41",
-      "workTitle": "Assigned Work",
-      "workDescription": "",
-      "priority": "Medium",
-      "dueDate": "Today",
-      "status": "In Progress",
-      "progress": 60,
-      "role": "Developer",
-      "teamId": "general",
-      "departmentId": "",
-      "assigneeId": "usr-user",
-      "assigneeName": "Haribushan Kumar",
-      "assigneeEmail": "",
-      "updatedAt": "2026-11-25T04:24:16.412Z"
-    },
-    {
-      "id": "assign-1795150363089-980",
-      "teamId": "team-1795150363088-71",
-      "departmentId": "",
-      "workTitle": "Build Model Pipeline",
-      "workDescription": "Setup PyTorch pipeline",
-      "role": "Developer",
-      "priority": "Medium",
-      "dueDate": "20 Nov 2026",
-      "status": "In Progress",
-      "assignerId": "",
-      "assignerName": "Haribushan Kumar",
-      "assignerRole": "user",
-      "assignerEmail": "haribushan@gmail.com",
-      "assigneeName": "Haribushan Kumar",
-      "assigneeRole": "user",
-      "assigneeEmail": "haribushan@gmail.com",
-      "assignmentType": "user_to_self",
-      "createdAt": "2026-11-20T04:52:43.103Z"
-    }
-  ],
+  "assignments": [],
   "tasks": [
     {
       "id": "task-1795580694875-41",
@@ -92,19 +43,6 @@
       "assignedBy": "Admin (Admin)",
       "assignerRole": "admin",
       "assignmentType": "admin_to_user"
-    },
-    {
-      "id": "task-1795150363103-370",
-      "teamId": "team-1795150363088-71",
-      "assignmentId": "assign-1795150363089-980",
-      "memberName": "Haribushan Kumar",
-      "title": "Build Model Pipeline",
-      "priority": "Medium",
-      "completed": false,
-      "date": "2026-11-20",
-      "assignedBy": "Self (Haribushan Kumar)",
-      "assignerRole": "user",
-      "assignmentType": "user_to_self"
     }
   ],
   "workDone": [
@@ -285,153 +223,7 @@
   "messages": [],
   "userWorkspace": {
     "stats": {},
-    "assignedWork": [
-      {
-        "id": "user-task-1795150363103-41",
-        "taskId": "TSK-3103",
-        "title": "Assigned Work",
-        "department": "Research & Innovation",
-        "team": "Neural Network Team",
-        "priority": "Medium",
-        "dueDate": "Today",
-        "status": "In Progress",
-        "assignedBy": "Self (Haribushan Kumar)",
-        "assignerRole": "user",
-        "assignerId": "",
-        "assignmentType": "user_to_self",
-        "assignedOn": "20 Nov 2026",
-        "description": "",
-        "progress": 60,
-        "comments": [],
-        "userId": "usr-user",
-        "assigneeId": "usr-user",
-        "assigneeEmail": "",
-        "assigneeName": "Haribushan Kumar",
-        "assignedTo": "Haribushan Kumar",
-        "teamId": "general",
-        "departmentId": "",
-        "workStartedDate": "24 Nov 2026, 04:03 PM",
-        "workStartedTime": "04:03 PM",
-        "workStartedAt": "2026-11-24T10:33:47.404Z",
-        "timerState": {
-          "status": "idle",
-          "activeSeconds": 0,
-          "pausedSeconds": 0,
-          "isPaused": false
-        },
-        "activityLog": [
-          {
-            "id": "act-1795516427404-600",
-            "type": "progress_update",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-24T10:33:47.404Z",
-            "details": {
-              "oldProgress": 0,
-              "newProgress": 60
-            },
-            "message": "Progress updated from 0% to 60% by Admin"
-          },
-          {
-            "id": "act-1795516427416-378",
-            "type": "started",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-24T10:33:47.404Z",
-            "details": {
-              "progress": 60
-            },
-            "message": "Work started by Admin"
-          },
-          {
-            "id": "act-1795580656400-201",
-            "type": "status_change",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.400Z",
-            "details": {
-              "oldStatus": "In Progress",
-              "newStatus": "Completed"
-            },
-            "message": "Status changed from In Progress to Completed by Admin"
-          },
-          {
-            "id": "act-1795580656400-950",
-            "type": "progress_update",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.400Z",
-            "details": {
-              "oldProgress": 60,
-              "newProgress": 100
-            },
-            "message": "Progress updated from 60% to 100% by Admin"
-          },
-          {
-            "id": "act-1795580656411-886",
-            "type": "deliverable_submitted",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.400Z",
-            "details": {
-              "progress": 100
-            },
-            "message": "Work deliverables submitted for review by Admin"
-          },
-          {
-            "id": "act-1795580656411-21",
-            "type": "completed",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.400Z",
-            "details": {
-              "progress": 100
-            },
-            "message": "Work marked completed by Admin"
-          },
-          {
-            "id": "act-1795580656412-260",
-            "type": "status_change",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.412Z",
-            "details": {
-              "oldStatus": "Completed",
-              "newStatus": "In Progress"
-            },
-            "message": "Status changed from Completed to In Progress by Admin"
-          },
-          {
-            "id": "act-1795580656412-71",
-            "type": "progress_update",
-            "performedBy": "Admin",
-            "performedByRole": "admin",
-            "performedById": "",
-            "timestamp": "2026-11-25T04:24:16.412Z",
-            "details": {
-              "oldProgress": 100,
-              "newProgress": 60
-            },
-            "message": "Progress updated from 100% to 60% by Admin"
-          }
-        ],
-        "updatedAt": "2026-11-25T04:24:16.412Z",
-        "assignmentId": "user-task-1795150363103-41",
-        "submittedDate": "Under Review",
-        "submittedTime": "09:54 AM",
-        "submittedAt": "2026-11-25T04:24:16.400Z",
-        "completedDate": "25 Nov 2026, 09:54 AM",
-        "completedTime": "09:54 AM",
-        "completedAt": "2026-11-25T04:24:16.400Z"
-      }
-    ],
+    "assignedWork": [],
     "history": [],
     "recentActivities": []
   },
@@ -459,20 +251,6 @@
       "teamRole": "Team Head",
       "avatar": "D",
       "title": "Team Head"
-    },
-    {
-      "id": "usr-1795150363089-696",
-      "name": "Haribushan Kumar",
-      "email": "haribushan@gmail.com",
-      "password": "",
-      "hasPassword": false,
-      "role": "user",
-      "memberId": "mem-1795150363089-466",
-      "department": "dept-1795150363088-476",
-      "team": "team-1795150363088-71",
-      "teamRole": "Developer",
-      "avatar": "H",
-      "title": "Developer"
     }
   ],
   "meetings": [],
@@ -482,7 +260,8 @@
     "rahul@company.com",
     "priya@company.com",
     "amit@company.com",
-    "sneha@company.com"
+    "sneha@company.com",
+    "haribushan@gmail.com"
   ],
   "attendance": [],
   "timeLogs": [],
