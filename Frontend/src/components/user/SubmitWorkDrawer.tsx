@@ -10,7 +10,7 @@ import {
   Calendar,
   Clock
 } from 'lucide-react';
-import { useApp, isTaskAssignedToUser } from '../../context/AppContext';
+import { useApp, isTaskAssignedToUser, formatTaskDueDate } from '../../context/AppContext';
 
 export const SubmitWorkDrawer: React.FC = () => {
   const {
@@ -191,7 +191,7 @@ export const SubmitWorkDrawer: React.FC = () => {
                   </div>
                   <div className="flex items-center gap-1.5">
                     <Clock className="w-3.5 h-3.5 text-gray-400" />
-                    <span>Due: {currentTask.dueDate || 'Scheduled'}</span>
+                    <span>Due: {formatTaskDueDate(currentTask.dueDate) || 'Scheduled'}</span>
                   </div>
                 </div>
               </div>

@@ -665,7 +665,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-[11px] text-slate-600 line-clamp-2 bg-slate-50 p-2 rounded-lg">{req.description}</p>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
                   <span>From: <strong>{req.senderName}</strong></span>
-                  {req.dueDate && <span>Due: {req.dueDate}</span>}
+                  {req.dueDate && <span>Due: {formatTaskDueDate(req.dueDate)}</span>}
                 </div>
               </div>
             ))}
@@ -809,7 +809,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
               const TaskIcon = getTaskIcon(task.title);
               const commentsCount = task.comments?.length || 0;
               const attachmentsCount = task.attachments?.length || 0;
-              const isDueToday = task.dueDate?.toLowerCase().includes('today');
+              const todayFormatted = formatTaskDueDate('Today');
+              const isDueToday = task.dueDate?.toLowerCase().includes('today') || (task.dueDate && formatTaskDueDate(task.dueDate) === todayFormatted);
 
               return (
                 <div

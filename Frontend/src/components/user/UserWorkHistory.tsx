@@ -6,7 +6,7 @@ import {
   Send,
   ChevronRight
 } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useApp, formatTaskDueDate } from '../../context/AppContext';
 
 export const UserWorkHistory: React.FC = () => {
   const { 
@@ -187,7 +187,7 @@ export const UserWorkHistory: React.FC = () => {
                   {activeItem.title}
                 </h3>
                 <p className="text-xs text-gray-500 font-medium mt-1">
-                  Assigned by {activeItem.assignedBy} &bull; Due {activeItem.dueDate}
+                  Assigned by {activeItem.assignedBy} &bull; Due {formatTaskDueDate(activeItem.dueDate) || 'No due date'}
                 </p>
               </div>
               <div>{getStatusBadge(activeItem.status)}</div>

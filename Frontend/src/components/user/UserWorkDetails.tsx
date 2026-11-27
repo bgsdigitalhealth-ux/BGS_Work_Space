@@ -225,11 +225,12 @@ export const UserWorkDetails: React.FC<UserWorkDetailsProps> = ({ onBack, taskOv
       if (dueDateStr.toLowerCase() === 'today') return 'Due Today';
       if (dueDateStr.toLowerCase() === 'tomorrow') return '1 Day Left';
       let due: Date | null = null;
-      if (dueDateStr.includes('-')) {
-        const parts = dueDateStr.split('-');
+      if (dueDateStr.includes('/') || dueDateStr.includes('-')) {
+        const sep = dueDateStr.includes('/') ? '/' : '-';
+        const parts = dueDateStr.split(sep);
         if (parts[0].length === 4) {
-          due = new Date(dueDateStr);
-        } else {
+          due = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+        } else if (parts.length >= 3) {
           due = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
         }
       } else {

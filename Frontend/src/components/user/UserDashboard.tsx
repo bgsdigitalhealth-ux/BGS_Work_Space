@@ -316,7 +316,7 @@ export const UserDashboard: React.FC = () => {
                     {req.dueDate && (
                       <div className="flex items-center gap-1 text-[11px] text-slate-500">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Due: {req.dueDate}</span>
+                        <span>Due: {formatTaskDueDate(req.dueDate)}</span>
                       </div>
                     )}
                   </div>
