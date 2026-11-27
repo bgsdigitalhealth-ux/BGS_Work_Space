@@ -18,6 +18,14 @@ export const normalizeDateStr = (raw?: string | null): string | null => {
   if (m) {
     return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`;
   }
+  // Match DD/MM/YYYY or DD-MM-YYYY (e.g. 27/11/2026)
+  const ddmmyyyy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (ddmmyyyy) {
+    const day = ddmmyyyy[1].padStart(2, '0');
+    const month = ddmmyyyy[2].padStart(2, '0');
+    const year = ddmmyyyy[3];
+    return `${year}-${month}-${day}`;
+  }
   // Try Date parsing
   const d = new Date(s);
   if (!isNaN(d.getTime())) {

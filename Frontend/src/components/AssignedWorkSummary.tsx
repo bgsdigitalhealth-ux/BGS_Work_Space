@@ -1,6 +1,6 @@
 import React from 'react';
 import { Layers, Calendar, Trash2, CheckCircle2, RotateCcw } from 'lucide-react';
-import { useApp } from '../context/AppContext';
+import { useApp, formatTaskDueDate } from '../context/AppContext';
 
 export const AssignedWorkSummary: React.FC = () => {
   const {
@@ -228,7 +228,7 @@ export const AssignedWorkSummary: React.FC = () => {
                 <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
                   <div className="flex items-center gap-1.5 text-slate-500 font-medium">
                     <Calendar className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                    <span>{item.dueDate || 'No due date'}</span>
+                    <span>{formatTaskDueDate(item.dueDate) || 'No due date'}</span>
                   </div>
                   <div className="shrink-0">{getStatusBadge(item.status)}</div>
                 </div>

@@ -410,9 +410,14 @@ export const AssignWorkForm: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-[11px] font-bold text-slate-600 mb-1">
-              Due Date <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[11px] font-bold text-slate-600">
+                Due Date <span className="text-red-500">*</span>
+              </label>
+              <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                {formatTaskDueDate(dueDate) || 'Select Date'}
+              </span>
+            </div>
             <div className="relative">
               <input
                 type="date"
@@ -422,6 +427,48 @@ export const AssignWorkForm: React.FC = () => {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-slate-800 text-xs cursor-pointer"
                 required
               />
+            </div>
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setDueDate(new Date().toISOString().split('T')[0])}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 transition cursor-pointer"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 1);
+                  setDueDate(d.toISOString().split('T')[0]);
+                }}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 transition cursor-pointer"
+              >
+                Tomorrow
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 3);
+                  setDueDate(d.toISOString().split('T')[0]);
+                }}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 transition cursor-pointer"
+              >
+                +3 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const d = new Date();
+                  d.setDate(d.getDate() + 7);
+                  setDueDate(d.toISOString().split('T')[0]);
+                }}
+                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-600 text-slate-600 transition cursor-pointer"
+              >
+                +1 Week
+              </button>
             </div>
           </div>
 

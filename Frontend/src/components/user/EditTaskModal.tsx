@@ -227,10 +227,15 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
-                <span>Deadline (Due Date)</span>
-              </label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-gray-700 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Deadline (Due Date)</span>
+                </label>
+                <span className="text-[10px] font-bold text-[#5a36e6] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
+                  {formatTaskDueDate(dueDate) || 'Select Date'}
+                </span>
+              </div>
               <input
                 type="date"
                 value={dueDate}
