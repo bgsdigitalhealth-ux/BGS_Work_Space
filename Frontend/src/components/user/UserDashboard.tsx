@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
-import { 
-  ClipboardList, 
-  Clock, 
-  Calendar, 
-  CheckCircle2, 
-  Search, 
-  Upload, 
-  Play, 
-  FileText, 
-  Image as ImageIcon, 
-  Share2, 
-  BarChart3, 
+import {
+  ClipboardList,
+  Clock,
+  Calendar,
+  CheckCircle2,
+  Search,
+  Upload,
+  Play,
+  FileText,
+  Image as ImageIcon,
+  Share2,
+  BarChart3,
   Send,
   ChevronDown,
   ShieldCheck
@@ -22,11 +22,11 @@ import { ActiveBreakBanner } from '../break/ActiveBreakBanner';
 import { DashboardPunchLockGate } from './DashboardPunchLockGate';
 
 export const UserDashboard: React.FC = () => {
-  const { 
+  const {
     currentUser,
-    userWorkspace, 
+    userWorkspace,
     members,
-    setUserNav, 
+    setUserNav,
     setSelectedUserTask,
     openSubmitWorkDrawer,
     userFilterTab,
@@ -76,7 +76,7 @@ export const UserDashboard: React.FC = () => {
     inProgress: assignedList.filter(t => t.status === 'In Progress').length,
     upcomingWork: assignedList.filter(t => t.status === 'Not Started' || (t.status as any) === 'To Do').length,
     completedWork: assignedList.filter(t => t.status === 'Completed').length,
-    completionPercentage: assignedList.length > 0 
+    completionPercentage: assignedList.length > 0
       ? Math.round((assignedList.filter(t => t.status === 'Completed').length / assignedList.length) * 100)
       : 0,
     completedFractionText: `${assignedList.filter(t => t.status === 'Completed').length} of ${assignedList.length} Tasks`
@@ -156,7 +156,7 @@ export const UserDashboard: React.FC = () => {
         {/* Top 5 KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Total Assigned */}
-        <div 
+        <div
           onClick={() => setUserFilterTab('All')}
           role="button"
           tabIndex={0}
@@ -174,7 +174,7 @@ export const UserDashboard: React.FC = () => {
         </div>
 
         {/* Recent Work */}
-        <div 
+        <div
           onClick={() => setUserFilterTab('In Progress')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -188,7 +188,7 @@ export const UserDashboard: React.FC = () => {
         </div>
 
         {/* Upcoming Work */}
-        <div 
+        <div
           onClick={() => setUserFilterTab('Upcoming Work')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -202,7 +202,7 @@ export const UserDashboard: React.FC = () => {
         </div>
 
         {/* Completed Work */}
-        <div 
+        <div
           onClick={() => setUserFilterTab('Completed Work')}
           className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex items-center gap-4 hover:shadow-md transition cursor-pointer"
         >
@@ -361,22 +361,20 @@ export const UserDashboard: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setManagerScope('my')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      managerScope === 'my'
-                        ? 'bg-white text-[#5a36e6] shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${managerScope === 'my'
+                      ? 'bg-white text-[#5a36e6] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     My Work ({myAssignedList.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setManagerScope('team')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      managerScope === 'team'
-                        ? 'bg-white text-[#5a36e6] shadow-xs'
-                        : 'text-gray-600 hover:text-gray-900'
-                    }`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${managerScope === 'team'
+                      ? 'bg-white text-[#5a36e6] shadow-xs'
+                      : 'text-gray-600 hover:text-gray-900'
+                      }`}
                   >
                     Team Work ({rawAssigned.length})
                   </button>
@@ -443,11 +441,10 @@ export const UserDashboard: React.FC = () => {
           <div className="flex items-center gap-2 mb-5 border-b border-gray-100 pb-4 overflow-x-auto no-scrollbar">
             <button
               onClick={() => setUserFilterTab('In Progress')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer ${
-                userFilterTab === 'In Progress' || (userFilterTab as any) === 'Recent Work'
-                  ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm cursor-pointer ${userFilterTab === 'In Progress' || (userFilterTab as any) === 'Recent Work'
+                ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
             >
               <Clock className="w-3.5 h-3.5" />
               Recent Work ({stats.inProgress})
@@ -455,11 +452,10 @@ export const UserDashboard: React.FC = () => {
 
             <button
               onClick={() => setUserFilterTab('Upcoming Work')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${
-                userFilterTab === 'Upcoming Work'
-                  ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${userFilterTab === 'Upcoming Work'
+                ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
             >
               <Calendar className="w-3.5 h-3.5" />
               Upcoming Work ({stats.upcomingWork})
@@ -467,11 +463,10 @@ export const UserDashboard: React.FC = () => {
 
             <button
               onClick={() => setUserFilterTab('Completed Work')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${
-                userFilterTab === 'Completed Work'
-                  ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm ${userFilterTab === 'Completed Work'
+                ? 'bg-[#5a36e6] text-white shadow-indigo-600/20'
+                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                }`}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
               Completed Work ({stats.completedWork})
@@ -504,7 +499,7 @@ export const UserDashboard: React.FC = () => {
                     const IconComponent = getTaskIcon(task.title);
 
                     return (
-                      <tr 
+                      <tr
                         key={task.id}
                         className="hover:bg-purple-50/40 transition group cursor-pointer"
                         onClick={() => handleRowClick(task)}
@@ -521,17 +516,16 @@ export const UserDashboard: React.FC = () => {
                                   {task.title}
                                 </span>
                                 {task.assignmentType && (
-                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${
-                                    task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
+                                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 ${task.assignmentType === 'admin_to_user' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' :
                                     task.assignmentType === 'user_to_user' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                                    task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
-                                    task.assignmentType === 'user_to_self' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                                    'bg-gray-50 text-gray-700 border border-gray-200'
-                                  }`}>
+                                      task.assignmentType === 'user_to_admin' ? 'bg-amber-50 text-amber-700 border border-amber-200' :
+                                        task.assignmentType === 'user_to_self' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                          'bg-gray-50 text-gray-700 border border-gray-200'
+                                    }`}>
                                     {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
-                                     task.assignmentType === 'user_to_user' ? 'User → User' :
-                                     task.assignmentType === 'user_to_admin' ? 'User → Admin' :
-                                     task.assignmentType === 'user_to_self' ? 'Self Assign' : 'Admin → Admin'}
+                                      task.assignmentType === 'user_to_user' ? 'User → User' :
+                                        task.assignmentType === 'user_to_admin' ? 'User → Admin' :
+                                          task.assignmentType === 'user_to_self' ? 'Self Assign' : 'Admin → Admin'}
                                   </span>
                                 )}
                               </div>
@@ -693,7 +687,7 @@ export const UserDashboard: React.FC = () => {
         <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
           <div className="flex items-center justify-between mb-5">
             <h3 className="text-base font-bold text-gray-900">Recent Activity</h3>
-            <button 
+            <button
               onClick={() => setUserNav('work-history')}
               className="text-xs font-bold text-[#5a36e6] hover:underline"
             >
@@ -709,13 +703,12 @@ export const UserDashboard: React.FC = () => {
             ) : (
               userWorkspace.recentActivities.map((act) => (
                 <div key={act.id} className="flex items-start gap-3.5 p-2 rounded-xl hover:bg-gray-50/70 transition">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${
-                    act.type === 'submitted'
-                      ? 'bg-emerald-100 text-emerald-600'
-                      : act.type === 'started'
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${act.type === 'submitted'
+                    ? 'bg-emerald-100 text-emerald-600'
+                    : act.type === 'started'
                       ? 'bg-blue-100 text-blue-600'
                       : 'bg-purple-100 text-[#5a36e6]'
-                  }`}>
+                    }`}>
                     {act.type === 'submitted' ? (
                       <CheckCircle2 className="w-4 h-4" />
                     ) : act.type === 'started' ? (

@@ -166,6 +166,7 @@ export interface AttendancePunch {
   punchIn: string;
   punchOut?: string | null;
   durationSeconds?: number;
+  autoPunchedOut?: boolean;
 }
 
 export interface AttendanceRecord {
@@ -186,6 +187,8 @@ export interface AttendanceRecord {
   firstPunchIn?: string | null;
   lastPunchOut?: string | null;
   punchCount?: number;
+  autoPunchedOut?: boolean;
+  timezoneOffset?: number;
 }
 
 export interface BreakTimeRecord {
@@ -388,6 +391,7 @@ export interface MessageAttachment {
 
 export interface MeetingData {
   id: string;
+  meetingId?: string;
   title: string;
   type: 'direct' | 'group';
   status: 'active' | 'ended';
@@ -412,6 +416,7 @@ export interface ChatMessage {
   text: string;
   attachment?: MessageAttachment | null;
   meeting?: MeetingData | null;
+  isGroup?: boolean;
   status: 'sent' | 'delivered' | 'read';
   readAt?: string;
   createdAt: string;
@@ -422,16 +427,25 @@ export interface ConversationParticipant {
   id: string;
   name: string;
   email: string;
-  role: 'admin' | 'user';
+  role: 'admin' | 'user' | 'group';
   avatar?: string;
   phone?: string;
   department?: string;
   team?: string;
+  isGroup?: boolean;
 }
 
 export interface Conversation {
   id: string;
   customId?: string;
+  isGroup?: boolean;
+  groupName?: string;
+  teamId?: string;
+  teamName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  groupAdmin?: string;
+  groupAdminEmail?: string;
   participants: string[];
   participantEmails: string[];
   otherUser: ConversationParticipant;

@@ -59,7 +59,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
       aria-modal="true"
     >
       <div
-        className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200/80 transform animate-in zoom-in-95 duration-200 relative overflow-hidden"
+        className="bg-white rounded-2xl max-w-md w-full max-h-[90dvh] overflow-y-auto responsive-dialog p-5 sm:p-6 shadow-2xl border border-slate-200/80 transform animate-in zoom-in-95 duration-200 relative"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top Accent Strip */}
@@ -77,15 +77,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <button
           type="button"
           onClick={onCancel}
-          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition cursor-pointer"
+          className="touch-target absolute top-3 right-3 text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-100 transition cursor-pointer"
           title="Close dialog"
+          aria-label="Close dialog"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-start gap-4 mb-4">
+        <div className="flex items-start gap-3 sm:gap-4 mb-4">
           <div
-            className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${
+            className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 ${
               isDanger
                 ? 'bg-rose-50 text-rose-600 ring-4 ring-rose-50/50'
                 : isWarning
@@ -104,8 +105,8 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             )}
           </div>
 
-          <div className="flex-1 min-w-0 pr-4">
-            <h3 className="text-base font-bold text-slate-900 leading-snug">{title}</h3>
+          <div className="flex-1 min-w-0 pr-6">
+            <h3 className="text-sm sm:text-base font-bold text-slate-900 leading-snug">{title}</h3>
             <p className="text-xs sm:text-sm text-slate-600 leading-relaxed mt-1.5 whitespace-pre-line">
               {message}
             </p>
@@ -127,18 +128,18 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         )}
 
         {/* Action Buttons */}
-        <div className="flex items-center justify-end gap-2.5 mt-6 pt-3 border-t border-slate-100">
+        <div className="flex items-center justify-end gap-2.5 mt-5 pt-3 border-t border-slate-100 flex-wrap sm:flex-nowrap">
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs sm:text-sm transition cursor-pointer"
+            className="touch-target px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold text-xs sm:text-sm transition cursor-pointer w-full sm:w-auto"
           >
             {cancelText}
           </button>
           <button
             type="button"
             onClick={() => onConfirm(isPrompt ? inputValue : undefined)}
-            className={`px-5 py-2 rounded-xl text-white font-semibold text-xs sm:text-sm transition flex items-center gap-1.5 shadow-sm cursor-pointer ${
+            className={`touch-target px-5 py-2.5 rounded-xl text-white font-semibold text-xs sm:text-sm transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer w-full sm:w-auto ${
               isDanger
                 ? 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'
                 : isWarning

@@ -151,57 +151,58 @@ export const UserHeader: React.FC = () => {
         </div>
       )}
 
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200/80 px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-3 shadow-2xs shrink-0">
         {/* Dynamic Title / Breadcrumb with Mobile Menu Toggle */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
-            className="p-2 rounded-xl text-gray-700 bg-white border border-gray-200/80 hover:bg-gray-50 lg:hidden shadow-xs shrink-0 cursor-pointer"
+            className="touch-target p-2 rounded-xl text-gray-700 bg-white border border-gray-200/80 hover:bg-gray-50 lg:hidden shadow-2xs shrink-0 cursor-pointer"
             title="Open Menu"
+            aria-label="Open navigation menu"
           >
             <Menu className="w-5 h-5" />
           </button>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             {(!isManagerRole && userNav === 'details') ? (
               <button
                 type="button"
                 onClick={() => setUserNav('assigned-work')}
-                className="flex items-center gap-2.5 text-xl lg:text-2xl font-extrabold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer"
+                className="flex items-center gap-2 text-base sm:text-lg lg:text-xl font-bold text-[#111827] hover:text-[#5a36e6] transition cursor-pointer truncate"
               >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
-                <span>Assigned Work - Details</span>
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 shrink-0" />
+                <span className="truncate">Assigned Work Details</span>
               </button>
             ) : (!isManagerRole && (userNav === 'assigned-work' || userNav === 'my-work')) ? (
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   onClick={() => setUserNav('dashboard')}
-                  className="p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-sm cursor-pointer"
+                  className="touch-target p-1.5 sm:p-2 rounded-xl bg-white border border-gray-200 text-gray-600 hover:text-[#5a36e6] hover:border-[#5a36e6]/30 transition shadow-2xs cursor-pointer shrink-0"
                   title="Back to Dashboard"
                 >
-                  <ArrowLeft className="w-5 h-5" />
+                  <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
-                <div>
-                  <h1 className="text-2xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-                    {headerInfo.title}
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2 truncate">
+                    <span className="truncate">{headerInfo.title}</span>
                     {displayTaskCount > 0 ? (
-                      <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200">
-                        {displayTaskCount} {displayTaskCount === 1 ? 'Task' : 'Tasks'}
+                      <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#5a36e6] border border-purple-200 shrink-0">
+                        {displayTaskCount}
                       </span>
                     ) : null}
                   </h1>
-                  <p className="text-xs text-[#6b7280] font-medium mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-[#6b7280] font-medium truncate hidden sm:block">
                     {headerInfo.desc}
                   </p>
                 </div>
               </div>
             ) : (
-              <div>
-                <h1 className="text-2xl lg:text-3xl font-extrabold text-[#111827] tracking-tight flex items-center gap-2">
-                  {headerInfo.title}
+              <div className="min-w-0">
+                <h1 className="text-base sm:text-xl lg:text-2xl font-extrabold text-[#111827] tracking-tight truncate flex items-center gap-2">
+                  <span className="truncate">{headerInfo.title}</span>
                 </h1>
-                <p className="text-sm text-[#6b7280] font-medium mt-1">
+                <p className="text-[11px] sm:text-xs text-[#6b7280] font-medium truncate hidden sm:block mt-0.5">
                   {headerInfo.desc}
                 </p>
               </div>
@@ -210,17 +211,18 @@ export const UserHeader: React.FC = () => {
         </div>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-3 relative">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 relative">
 
           {/* Notification Bell */}
           <div className="relative">
             <button
               onClick={() => setShowNotifs(!showNotifs)}
-              className="relative p-2.5 rounded-xl bg-white border border-gray-200/80 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition shadow-sm"
+              className="touch-target relative p-2 sm:p-2.5 rounded-xl bg-white border border-gray-200/80 text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition shadow-2xs cursor-pointer"
+              aria-label="View notifications"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
               {unreadNotificationCount > 0 && (
-                <span className="absolute top-2 right-2 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white animate-pulse" />
+                <span className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2 h-2 rounded-full bg-[#ef4444] ring-2 ring-white animate-pulse" />
               )}
             </button>
             <NotificationDropdown isOpen={showNotifs} onClose={() => setShowNotifs(false)} />
@@ -230,23 +232,24 @@ export const UserHeader: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-3 bg-white border border-gray-200/80 px-3.5 py-2 rounded-xl shadow-sm hover:border-gray-300 transition cursor-pointer"
+              className="touch-target flex items-center gap-2 sm:gap-2.5 bg-white border border-gray-200/80 px-2 sm:px-3 py-1.5 rounded-xl shadow-2xs hover:border-gray-300 transition cursor-pointer"
+              aria-label="User profile menu"
             >
               {currentUser?.avatar?.startsWith('data:') || currentUser?.avatar?.startsWith('http') ? (
-                <img src={currentUser.avatar} alt={currentUser.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-purple-100 shadow-xs" />
+                <img src={currentUser.avatar} alt={currentUser.name} className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover ring-1 ring-purple-100 shadow-2xs shrink-0" />
               ) : (
-                <div className="w-8 h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-sm uppercase">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#5a36e6] text-white flex items-center justify-center font-bold text-xs tracking-wider shadow-2xs uppercase shrink-0">
                   {currentUser?.avatar || (currentUser?.name ? currentUser.name.substring(0, 2).toUpperCase() : 'TM')}
                 </div>
               )}
-              <div className="text-left hidden sm:block">
-                <div className="text-xs font-bold text-gray-900 leading-tight">{currentUser?.name || 'Team Member'}</div>
-                <div className="text-[10px] text-gray-500 font-medium">
+              <div className="text-left hidden md:block max-w-[120px] lg:max-w-[160px]">
+                <div className="text-xs font-bold text-gray-900 leading-tight truncate">{currentUser?.name || 'Team Member'}</div>
+                <div className="text-[10px] text-gray-500 font-medium truncate">
                   {currentUser?.teamRole || currentUser?.title || (currentUser?.role === 'admin' ? 'Administrator' : 'Team Member')}
                   {currentUser?.team ? ` • ${currentUser.team}` : ''}
                 </div>
               </div>
-              <ChevronDown className="w-4 h-4 text-gray-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-gray-400 hidden sm:block shrink-0" />
             </button>
 
             {/* Dropdown Menu */}

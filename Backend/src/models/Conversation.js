@@ -6,6 +6,42 @@ const conversationSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
+  isGroup: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  groupName: {
+    type: String,
+    default: ''
+  },
+  teamId: {
+    type: String,
+    default: '',
+    index: true
+  },
+  teamName: {
+    type: String,
+    default: ''
+  },
+  departmentId: {
+    type: String,
+    default: ''
+  },
+  departmentName: {
+    type: String,
+    default: ''
+  },
+  groupAdmin: {
+    type: String,
+    default: ''
+  },
+  groupAdminEmail: {
+    type: String,
+    default: '',
+    lowercase: true,
+    trim: true
+  },
   participants: [{
     type: String,
     required: true

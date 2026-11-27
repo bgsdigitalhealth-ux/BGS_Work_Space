@@ -1,19 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { LogIn, Lock, Calendar, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const DashboardPunchLockGate: React.FC = () => {
   const { todayAttendance, handlePunchIn, currentUser, isAttendanceLoading } = useApp();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentTime, setCurrentTime] = useState<Date>(new Date());
-
-  // Real-time ticking clock for attendance punch
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  }, []);
 
   const isPunchedIn = todayAttendance?.status === 'punched_in';
 
@@ -31,21 +22,12 @@ export const DashboardPunchLockGate: React.FC = () => {
     }
   };
 
-  const formattedTime = currentTime.toLocaleTimeString('en-US', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true
-  });
-
-  const formattedDate = currentTime.toLocaleDateString('en-US', {
+  const formattedDate = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
     year: 'numeric',
     month: 'short',
     day: 'numeric'
   });
-
-  const totalWorkedTodayHrs = (todayAttendance?.totalSeconds ? todayAttendance.totalSeconds / 3600 : 0).toFixed(2);
 
   return (
     <div className="relative z-30 my-4 animate-in fade-in zoom-in-95 duration-300">
@@ -82,20 +64,17 @@ export const DashboardPunchLockGate: React.FC = () => {
               </h2>
 
               <p className="text-xs sm:text-sm text-slate-600 font-medium max-w-2xl leading-relaxed">
-                Your workspace dashboard and task actions are <strong className="text-slate-800 font-bold">locked</strong> until you punch in. Start your attendance session to track your working hours and begin managing your assignments.
+                Your workspace dashboard and task actions are <strong className="text-slate-800 font-bold">locked</strong> until you punch in. Start your attendance session to begin managing your assignments.
               </p>
             </div>
           </div>
 
-          {/* Right: Big Punch CTA & Live Time */}
+          {/* Right: Big Punch CTA (Zero live clock or time display) */}
           <div className="flex flex-col sm:flex-row lg:flex-col items-start sm:items-center lg:items-end gap-3.5 shrink-0 bg-white/90 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-amber-200/80 shadow-md">
             <div className="text-left sm:text-right">
-              <div className="flex items-center sm:justify-end gap-1.5 text-xs font-bold text-slate-500">
+              <div className="flex items-center sm:justify-end gap-1.5 text-xs font-bold text-slate-600">
                 <Calendar className="w-3.5 h-3.5 text-indigo-500" />
                 <span>{formattedDate}</span>
-              </div>
-              <div className="font-mono text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
-                {formattedTime}
               </div>
             </div>
 
@@ -109,8 +88,8 @@ export const DashboardPunchLockGate: React.FC = () => {
               <span>{isProcessing ? 'Recording Attendance...' : 'Punch In (Present)'}</span>
             </button>
 
-            <div className="text-[11px] font-semibold text-slate-400 text-left sm:text-right">
-              Logged today: <strong className="text-slate-700">{totalWorkedTodayHrs} hrs</strong> • Instant dashboard unlock
+            <div className="text-[11px] font-semibold text-slate-500 text-left sm:text-right">
+              Instant dashboard unlock
             </div>
           </div>
         </div>

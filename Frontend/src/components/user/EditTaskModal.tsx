@@ -100,38 +100,39 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200 overflow-y-auto">
       <div 
-        className="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-gray-100 overflow-hidden my-8"
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-xl w-full max-h-[92dvh] flex flex-col shadow-2xl border border-gray-100 my-auto overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-md shadow-indigo-600/20">
+        <div className="p-4 sm:p-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-indigo-50 to-purple-50 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#5a36e6] text-white flex items-center justify-center font-bold shadow-md shadow-indigo-600/20 shrink-0">
               <Edit3 className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-gray-900">Edit Assigned Work</h3>
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-base font-bold text-gray-900 truncate">Edit Assigned Work</h3>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-100 text-indigo-700 shrink-0">
                   {task.taskId || task.id}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 font-medium">Assignment & Task Editor</p>
+              <p className="text-xs text-gray-500 font-medium truncate">Assignment & Task Editor</p>
             </div>
           </div>
           <button 
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-gray-200/60 flex items-center justify-center text-gray-400 hover:text-gray-600 transition"
+            className="touch-target p-2 rounded-full hover:bg-gray-200/60 flex items-center justify-center text-gray-400 hover:text-gray-600 transition shrink-0 cursor-pointer"
+            aria-label="Close dialog"
           >
-            <X className="w-4 h-4" />
+            <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
           {/* Work Title */}
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1">

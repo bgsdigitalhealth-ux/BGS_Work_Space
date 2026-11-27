@@ -3,7 +3,8 @@ const mongoose = require('mongoose');
 const punchSchema = new mongoose.Schema({
   punchIn: { type: Date, required: true },
   punchOut: { type: Date, default: null },
-  durationSeconds: { type: Number, default: 0 }
+  durationSeconds: { type: Number, default: 0 },
+  autoPunchedOut: { type: Boolean, default: false }
 }, { _id: false });
 
 const attendanceSchema = new mongoose.Schema({
@@ -55,6 +56,14 @@ const attendanceSchema = new mongoose.Schema({
   },
   punches: [punchSchema],
   totalSeconds: {
+    type: Number,
+    default: 0
+  },
+  autoPunchedOut: {
+    type: Boolean,
+    default: false
+  },
+  timezoneOffset: {
     type: Number,
     default: 0
   }

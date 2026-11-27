@@ -46,6 +46,10 @@ const messageSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  isGroup: {
+    type: Boolean,
+    default: false
+  },
   text: {
     type: String,
     default: ''

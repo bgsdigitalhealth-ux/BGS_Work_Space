@@ -558,8 +558,9 @@ router.put('/assignments/:id', async (req, res) => {
 // --- Attendance (Punch In / Punch Out) ---
 router.get('/attendance/today', async (req, res) => {
   try {
-    const { userId, userEmail } = req.query;
-    const result = await dataService.getTodayAttendance(userId, userEmail);
+    const { userId, userEmail, tzOffset } = req.query;
+    const offset = tzOffset !== undefined ? Number(tzOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.getTodayAttendance(userId, userEmail, offset);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -568,8 +569,9 @@ router.get('/attendance/today', async (req, res) => {
 
 router.get('/attendance/records', async (req, res) => {
   try {
-    const { userId, userEmail, limit } = req.query;
-    const records = await dataService.getAttendanceRecords({ userId, userEmail, limit: limit ? Number(limit) : 60 });
+    const { userId, userEmail, limit, tzOffset } = req.query;
+    const offset = tzOffset !== undefined ? Number(tzOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const records = await dataService.getAttendanceRecords({ userId, userEmail, limit: limit ? Number(limit) : 60, timezoneOffset: offset });
     res.json(records);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -578,9 +580,10 @@ router.get('/attendance/records', async (req, res) => {
 
 router.post('/attendance/punch-in', async (req, res) => {
   try {
-    const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName } = req.body;
+    const { userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset } = req.body;
     if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
-    const result = await dataService.recordPunchIn({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName });
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.recordPunchIn({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset: offset });
     broadcast('ATTENDANCE_UPDATED', { type: 'punch_in', ...result });
     res.json(result);
   } catch (err) {
@@ -590,11 +593,23 @@ router.post('/attendance/punch-in', async (req, res) => {
 
 router.post('/attendance/punch-out', async (req, res) => {
   try {
-    const { userId, userEmail } = req.body;
+    const { userId, userEmail, timezoneOffset } = req.body;
     if (!userId && !userEmail) return res.status(400).json({ error: 'User identifier is required' });
-    const result = await dataService.recordPunchOut({ userId, userEmail });
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.recordPunchOut({ userId, userEmail, timezoneOffset: offset });
     broadcast('ATTENDANCE_UPDATED', { type: 'punch_out', ...result });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/attendance/auto-midnight', async (req, res) => {
+  try {
+    const { timezoneOffset } = req.body;
+    const offset = timezoneOffset !== undefined ? Number(timezoneOffset) : (req.headers['x-timezone-offset'] !== undefined ? Number(req.headers['x-timezone-offset']) : null);
+    const result = await dataService.checkAndApplyAutoMidnightPunchOut(offset);
+    res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1300,6 +1315,47 @@ router.post('/messages/conversations/start', async (req, res) => {
   }
 });
 
+router.post('/messages/conversations/group', async (req, res) => {
+  try {
+    const { currentUserId, groupName, teamId, teamName, departmentId, departmentName, participantEmails } = req.body;
+    if (!currentUserId || !groupName || (!teamId && !teamName)) {
+      return res.status(400).json({ error: 'currentUserId, groupName, and team are required to create a team group.' });
+    }
+    const conversation = await dataService.createGroupConversation({
+      currentUserId,
+      groupName,
+      teamId,
+      teamName,
+      departmentId,
+      departmentName,
+      participantEmails
+    });
+    const io = getIO();
+    if (io) {
+      if (Array.isArray(conversation.participants)) {
+        conversation.participants.forEach(pId => {
+          io.to(`user_${pId}`).emit('conversation_updated', {
+            conversationId: conversation.customId || conversation.id,
+            lastMessage: conversation.lastMessage
+          });
+        });
+      }
+      if (Array.isArray(conversation.participantEmails)) {
+        conversation.participantEmails.forEach(pEmail => {
+          io.to(`user_${pEmail}`).emit('conversation_updated', {
+            conversationId: conversation.customId || conversation.id,
+            lastMessage: conversation.lastMessage
+          });
+        });
+      }
+    }
+    broadcast('MESSAGES_UPDATED', { conversationId: conversation.customId || conversation.id });
+    res.status(201).json(conversation);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 router.get('/messages/history/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
@@ -1486,6 +1542,23 @@ router.get('/meetings/:meetingId/verify', async (req, res) => {
       return res.status(403).json(verification);
     }
     res.json(verification);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/meetings/:meetingId/end', async (req, res) => {
+  try {
+    const { meetingId } = req.params;
+    const normId = String(meetingId || '').trim().toUpperCase();
+    const meeting = await dataService.endMeeting(normId);
+    const io = getIO();
+    if (io) {
+      io.emit('meeting_ended', { meetingId: normId });
+      io.emit('meeting_status_update', { meetingId: normId, status: 'ended', participantsCount: 0 });
+    }
+    broadcast('MEETINGS_UPDATED', { meetingId: normId, status: 'ended' });
+    res.json({ success: true, meeting });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

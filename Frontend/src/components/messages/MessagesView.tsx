@@ -23,16 +23,13 @@ import {
   SquarePen,
   ArrowLeft,
   Copy,
-  PhoneOff,
-  MicOff,
-  VideoOff,
-  Monitor,
   CheckCircle2
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { getSocket, connectSocketUser } from '../../services/socket';
 import { Conversation, ChatMessage, EligibleUser, MeetingData } from '../../types';
+import { MeetingRoom } from '../meet/MeetingRoom';
 
 export const MessagesView: React.FC = () => {
   const { currentUser, departments = [], teams = [], members = [] } = useApp();
@@ -44,10 +41,17 @@ export const MessagesView: React.FC = () => {
   const [loadingConversations, setLoadingConversations] = useState<boolean>(true);
   const [loadingMessages, setLoadingMessages] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterTab, setFilterTab] = useState<'All' | 'Unread' | 'Admin' | 'Users'>('All');
+  const [filterTab, setFilterTab] = useState<'All' | 'Unread' | 'Groups' | 'Admin' | 'Users'>('All');
 
   // Leftmost mini rail navigation tab
   const [activeRailTab, setActiveRailTab] = useState<'chats' | 'calls' | 'status' | 'groups' | 'ai' | 'settings'>('chats');
+
+  // Group Chat Modal
+  const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState<boolean>(false);
+  const [selectedGroupTeamId, setSelectedGroupTeamId] = useState<string>('');
+  const [groupNameInput, setGroupNameInput] = useState<string>('');
+  const [selectedGroupMemberEmails, setSelectedGroupMemberEmails] = useState<string[]>([]);
+  const [creatingGroup, setCreatingGroup] = useState<boolean>(false);
 
   // Chat input state
   const [inputText, setInputText] = useState<string>('');
@@ -78,10 +82,6 @@ export const MessagesView: React.FC = () => {
 
   // Active in-meeting room
   const [activeMeetingRoom, setActiveMeetingRoom] = useState<MeetingData | null>(null);
-  const [meetingMuted, setMeetingMuted] = useState<boolean>(false);
-  const [meetingVideoOff, setMeetingVideoOff] = useState<boolean>(false);
-  const [meetingScreenSharing, setMeetingScreenSharing] = useState<boolean>(false);
-  const [meetingTimer, setMeetingTimer] = useState<number>(0);
 
   // Incoming meeting banner popup
   const [incomingMeetingPopup, setIncomingMeetingPopup] = useState<{
@@ -89,6 +89,9 @@ export const MessagesView: React.FC = () => {
     conversationId: string;
     senderName: string;
   } | null>(null);
+
+  // Active ongoing meetings tracker for conversations and teams
+  const [ongoingMeetings, setOngoingMeetings] = useState<{ [key: string]: MeetingData }>({});
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
@@ -250,13 +253,72 @@ export const MessagesView: React.FC = () => {
       }
     };
 
-    // Real-time meeting alert popup
+    // Real-time meeting alert popup & ongoing tracker
     const handleMeetingPopupAlert = (data: any) => {
       if (data && data.meeting) {
-        setIncomingMeetingPopup({
-          meeting: data.meeting,
-          conversationId: data.conversationId,
-          senderName: data.senderName || 'Team Member'
+        if (data.senderName && data.senderName !== currentUser?.name) {
+          setIncomingMeetingPopup({
+            meeting: data.meeting,
+            conversationId: data.conversationId,
+            senderName: data.senderName || 'Team Member'
+          });
+        }
+        setOngoingMeetings(prev => ({
+          ...prev,
+          [data.conversationId || data.meeting.id]: data.meeting,
+          [data.meeting.id]: data.meeting
+        }));
+      }
+    };
+
+    const handleMeetingEndedAlert = ({ meetingId }: any) => {
+      const normId = String(meetingId || '').trim().toUpperCase();
+      setOngoingMeetings(prev => {
+        const copy = { ...prev };
+        Object.keys(copy).forEach(k => {
+          const mId = String(copy[k]?.id || copy[k]?.meetingId || '').trim().toUpperCase();
+          if (mId === normId || k.trim().toUpperCase() === normId) {
+            delete copy[k];
+          }
+        });
+        return copy;
+      });
+
+      // Dynamically update chat messages list to mark ended
+      setMessages(prev => prev.map(m => {
+        if (m.meeting) {
+          const mId = String(m.meeting.id || m.meeting.meetingId || '').trim().toUpperCase();
+          if (mId === normId) {
+            return { ...m, meeting: { ...m.meeting, status: 'ended' } };
+          }
+        }
+        return m;
+      }));
+
+      setIncomingMeetingPopup(prev => {
+        const pId = String(prev?.meeting?.id || prev?.meeting?.meetingId || '').trim().toUpperCase();
+        return pId === normId ? null : prev;
+      });
+      setActiveMeetingRoom(prev => {
+        const aId = String(prev?.id || prev?.meetingId || '').trim().toUpperCase();
+        return aId === normId ? null : prev;
+      });
+    };
+
+    const handleMeetingStatusUpdate = ({ meetingId, status, participantsCount }: any) => {
+      const normId = String(meetingId || '').trim().toUpperCase();
+      if (status === 'ended' || participantsCount === 0) {
+        handleMeetingEndedAlert({ meetingId: normId });
+      } else {
+        setOngoingMeetings(prev => {
+          const copy = { ...prev };
+          Object.keys(copy).forEach(k => {
+            const mId = String(copy[k]?.id || copy[k]?.meetingId || '').trim().toUpperCase();
+            if (mId === normId) {
+              copy[k] = { ...copy[k], participantsCount };
+            }
+          });
+          return copy;
         });
       }
     };
@@ -269,6 +331,8 @@ export const MessagesView: React.FC = () => {
     socket.on('user_typing', handleUserTyping);
     socket.on('meeting_popup', handleMeetingPopupAlert);
     socket.on('meeting_started', handleMeetingPopupAlert);
+    socket.on('meeting_ended', handleMeetingEndedAlert);
+    socket.on('meeting_status_update', handleMeetingStatusUpdate);
 
     // Initial fetch of active online users via REST immediately
     api.getOnlineUsers().then((list) => {
@@ -296,6 +360,8 @@ export const MessagesView: React.FC = () => {
       socket.off('user_typing', handleUserTyping);
       socket.off('meeting_popup', handleMeetingPopupAlert);
       socket.off('meeting_started', handleMeetingPopupAlert);
+      socket.off('meeting_ended', handleMeetingEndedAlert);
+      socket.off('meeting_status_update', handleMeetingStatusUpdate);
     };
   }, [currentUser, activeConversation]);
 
@@ -345,6 +411,15 @@ export const MessagesView: React.FC = () => {
       setLoadingMessages(true);
       const history = await api.getMessageHistory(conv.id, currentUser.id);
       setMessages(history);
+      const activeMeetMsg = [...history].reverse().find(m => m.meeting && String(m.meeting.status || '').toLowerCase() !== 'ended');
+      if (activeMeetMsg?.meeting) {
+        const meetId = String(activeMeetMsg.meeting.id || activeMeetMsg.meeting.meetingId || '').trim().toUpperCase();
+        setOngoingMeetings(prev => ({
+          ...prev,
+          [conv.id]: { ...activeMeetMsg.meeting!, id: meetId },
+          [meetId]: { ...activeMeetMsg.meeting!, id: meetId }
+        }));
+      }
     } catch (err) {
       console.error('Failed to load messages:', err);
     } finally {
@@ -365,6 +440,9 @@ export const MessagesView: React.FC = () => {
 
     const socket = getSocket();
     const other = activeConversation.otherUser;
+    const recipientEmail = activeConversation.isGroup
+      ? (activeConversation.teamName || 'group').toLowerCase()
+      : (other?.email || '').toLowerCase().trim();
 
     const payload = {
       conversationId: activeConversation.id,
@@ -372,7 +450,8 @@ export const MessagesView: React.FC = () => {
       senderEmail: (currentUser.email || '').toLowerCase().trim(),
       senderName: currentUser.name || 'User',
       senderRole: currentUser.role || 'user',
-      recipientEmail: (other.email || '').toLowerCase().trim(),
+      recipientEmail,
+      isGroup: !!activeConversation.isGroup,
       text: textToSend,
       attachment: attachment || null
     };
@@ -455,33 +534,12 @@ export const MessagesView: React.FC = () => {
     setShowEmojiPicker(false);
   };
 
-  // Meeting Timer Effect
-  useEffect(() => {
-    let interval: any = null;
-    if (activeMeetingRoom) {
-      interval = setInterval(() => {
-        setMeetingTimer(prev => prev + 1);
-      }, 1000);
-    } else {
-      setMeetingTimer(0);
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [activeMeetingRoom]);
-
-  const formatMeetingTimer = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
   // Create & Start Meeting (Direct or Group Meeting)
   const handleStartMeeting = () => {
     if (!currentUser) return;
     const code = `MEET-WKHUB-${Math.floor(1000 + Math.random() * 9000)}`;
     const finalTitle = meetingTitle.trim() || (meetingType === 'group'
-      ? (selectedMeetingGroupTeam !== 'All Teams' ? `${selectedMeetingGroupTeam} Group Meeting` : 'Team Workspace Group Meeting')
+      ? (selectedMeetingGroupTeam !== 'All Teams' ? `${selectedMeetingGroupTeam} Team Group Meeting` : (activeConversation?.teamName ? `${activeConversation.teamName} Team Group Meeting` : 'Team Workspace Group Meeting'))
       : (activeConversation?.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : 'Direct Video Meeting'));
 
     const newMeeting: MeetingData = {
@@ -501,28 +559,36 @@ export const MessagesView: React.FC = () => {
     // Send Meeting message directly into the conversation
     if (activeConversation) {
       const other = activeConversation.otherUser;
+      const recipientEmail = activeConversation.isGroup
+        ? (activeConversation.teamName || 'group').toLowerCase()
+        : (other?.email || '').toLowerCase().trim();
       const payload = {
         conversationId: activeConversation.id,
         senderId: currentUser.id,
         senderEmail: (currentUser.email || '').toLowerCase().trim(),
         senderName: currentUser.name || 'User',
         senderRole: currentUser.role || 'user',
-        recipientEmail: (other.email || '').toLowerCase().trim(),
-        text: `📹 ${meetingType === 'group' ? 'Group Meeting' : 'Video Call'} started: "${finalTitle}". Click "Join Meeting" below.`,
+        recipientEmail,
+        isGroup: !!activeConversation.isGroup,
+        text: `📹 ${meetingType === 'group' ? 'Team Group Meeting' : 'Video Call'} started: "${finalTitle}". Click "Join Meeting" below.`,
         attachment: null,
         meeting: newMeeting
       };
       socket.emit('send_message', payload);
     } else if (conversations.length > 0) {
       const firstConv = conversations[0];
+      const recipientEmail = firstConv.isGroup
+        ? (firstConv.teamName || 'group').toLowerCase()
+        : (firstConv.otherUser?.email || '').toLowerCase().trim();
       const payload = {
         conversationId: firstConv.id,
         senderId: currentUser.id,
         senderEmail: (currentUser.email || '').toLowerCase().trim(),
         senderName: currentUser.name || 'User',
         senderRole: currentUser.role || 'user',
-        recipientEmail: (firstConv.otherUser.email || '').toLowerCase().trim(),
-        text: `📹 ${meetingType === 'group' ? 'Group Meeting' : 'Video Call'} started: "${finalTitle}". Click "Join Meeting" below.`,
+        recipientEmail,
+        isGroup: !!firstConv.isGroup,
+        text: `📹 ${meetingType === 'group' ? 'Team Group Meeting' : 'Video Call'} started: "${finalTitle}". Click "Join Meeting" below.`,
         attachment: null,
         meeting: newMeeting
       };
@@ -530,16 +596,21 @@ export const MessagesView: React.FC = () => {
       selectConversation(firstConv);
     }
 
+    setOngoingMeetings(prev => ({
+      ...prev,
+      [activeConversation?.id || code]: newMeeting,
+      [code]: newMeeting,
+      ...(activeConversation?.teamName ? { [activeConversation.teamName]: newMeeting } : {})
+    }));
+
     setIsMeetingModalOpen(false);
     setMeetingTitle('');
     setActiveMeetingRoom(newMeeting);
-    setMeetingTimer(0);
   };
 
   // Join Existing Meeting (from chat card or banner)
   const handleJoinMeeting = (meeting: MeetingData) => {
     setActiveMeetingRoom(meeting);
-    setMeetingTimer(0);
     setIsMeetingModalOpen(false);
   };
 
@@ -581,6 +652,137 @@ export const MessagesView: React.FC = () => {
       return prefix.charAt(0).toUpperCase() + prefix.slice(1);
     }
     return 'Team Member';
+  };
+
+  // Helper: Get members belonging to a team (by team ID or team Name)
+  const getTeamMembers = (teamId: string) => {
+    const teamObj = teams.find(t => t.id === teamId || (t as any)._id === teamId);
+    const teamName = teamObj?.name;
+    const list: { id: string; name: string; email: string; role: string; avatar?: string }[] = [];
+    const seenEmails = new Set<string>();
+
+    eligibleUsers.forEach(u => {
+      const matchTeam = (teamId && (u.team === teamId || (u as any).teamId === teamId)) ||
+        (teamName && (u.team === teamName || (u as any).teamName === teamName));
+      const member = members.find(m => m.email?.toLowerCase().trim() === u.email.toLowerCase().trim());
+      const matchMember = member && (member.teamId === teamId || (teamName && (member as any).team === teamName));
+      if (matchTeam || matchMember) {
+        const emailLower = u.email.toLowerCase().trim();
+        if (!seenEmails.has(emailLower)) {
+          seenEmails.add(emailLower);
+          list.push({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            role: u.role,
+            avatar: u.avatar
+          });
+        }
+      }
+    });
+
+    members.forEach(m => {
+      if (m.teamId === teamId || (teamName && (m as any).team === teamName)) {
+        const emailLower = (m.email || '').toLowerCase().trim();
+        if (emailLower && !seenEmails.has(emailLower)) {
+          seenEmails.add(emailLower);
+          list.push({
+            id: m.id,
+            name: m.name,
+            email: m.email,
+            role: m.role || 'user',
+            avatar: m.avatar
+          });
+        }
+      }
+    });
+
+    return list;
+  };
+
+  // "+ Create Team Group" Modal & Actions
+  const openNewGroupModal = async () => {
+    setIsNewGroupModalOpen(true);
+    let currentEligible = eligibleUsers;
+    if (currentEligible.length === 0) {
+      try {
+        currentEligible = await api.getEligibleUsers(currentUser?.id);
+        setEligibleUsers(currentEligible);
+      } catch (err) {
+        console.error('Failed to load eligible users:', err);
+      }
+    }
+
+    const defaultTeam = teams.find(t =>
+      t.id === currentUser?.team ||
+      t.name === currentUser?.team ||
+      t.id === (currentUser as any)?.teamId ||
+      t.name === (currentUser as any)?.teamName
+    ) || teams[0];
+
+    if (defaultTeam) {
+      setSelectedGroupTeamId(defaultTeam.id);
+      setGroupNameInput(`${defaultTeam.name} Team Chat`);
+      const teamMems = getTeamMembers(defaultTeam.id);
+      setSelectedGroupMemberEmails(teamMems.map(m => m.email.toLowerCase().trim()));
+    }
+  };
+
+  const handleTeamChangeForGroup = (teamId: string) => {
+    setSelectedGroupTeamId(teamId);
+    const teamObj = teams.find(t => t.id === teamId || (t as any)._id === teamId);
+    if (teamObj) {
+      setGroupNameInput(`${teamObj.name} Team Chat`);
+      const teamMems = getTeamMembers(teamId);
+      setSelectedGroupMemberEmails(teamMems.map(m => m.email.toLowerCase().trim()));
+    }
+  };
+
+  const toggleGroupMemberSelection = (email: string) => {
+    const lower = email.toLowerCase().trim();
+    setSelectedGroupMemberEmails(prev =>
+      prev.includes(lower) ? prev.filter(e => e !== lower) : [...prev, lower]
+    );
+  };
+
+  const handleCreateTeamGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+    const teamObj = teams.find(t => t.id === selectedGroupTeamId || (t as any)._id === selectedGroupTeamId);
+    if (!teamObj) {
+      alert('Please select a team for this group.');
+      return;
+    }
+    if (!groupNameInput.trim()) {
+      alert('Please enter a group name.');
+      return;
+    }
+    if (selectedGroupMemberEmails.length === 0) {
+      alert('Please select at least one member for the team group.');
+      return;
+    }
+
+    try {
+      setCreatingGroup(true);
+      const dept = departments.find(d => d.id === teamObj.departmentId);
+      const newGroupConv = await api.createGroupConversation({
+        currentUserId: currentUser.id,
+        groupName: groupNameInput.trim(),
+        teamId: teamObj.id,
+        teamName: teamObj.name,
+        departmentId: teamObj.departmentId || dept?.id,
+        departmentName: dept?.name || '',
+        participantEmails: selectedGroupMemberEmails
+      });
+
+      setIsNewGroupModalOpen(false);
+      await loadConversations(false);
+      selectConversation(newGroupConv);
+    } catch (err: any) {
+      alert(err.message || 'Failed to create team group');
+    } finally {
+      setCreatingGroup(false);
+    }
   };
 
   // "+ New Chat" Action & Modal
@@ -631,15 +833,19 @@ export const MessagesView: React.FC = () => {
 
     if (filterTab === 'Unread') {
       list = list.filter(c => (c.unread || 0) > 0);
+    } else if (filterTab === 'Groups') {
+      list = list.filter(c => c.isGroup);
     } else if (filterTab === 'Admin') {
-      list = list.filter(c => c.otherUser?.role === 'admin');
+      list = list.filter(c => !c.isGroup && c.otherUser?.role === 'admin');
     } else if (filterTab === 'Users') {
-      list = list.filter(c => c.otherUser?.role === 'user');
+      list = list.filter(c => !c.isGroup && c.otherUser?.role === 'user');
     }
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter(c =>
+        (c.groupName || '').toLowerCase().includes(q) ||
+        (c.teamName || '').toLowerCase().includes(q) ||
         (c.otherUser?.email || '').toLowerCase().includes(q) ||
         (c.otherUser?.name || '').toLowerCase().includes(q) ||
         (c.lastMessage?.text || '').toLowerCase().includes(q)
@@ -801,7 +1007,7 @@ export const MessagesView: React.FC = () => {
           <button
             onClick={() => {
               setActiveRailTab('groups');
-              openNewChatModal();
+              setFilterTab('Groups');
             }}
             aria-label="Teams"
             className={`w-12 py-1.5 rounded-xl flex flex-col items-center justify-center gap-1 transition-colors cursor-pointer ${activeRailTab === 'groups' ? 'bg-[#d9fdd3] text-[#008069]' : 'text-slate-600 hover:bg-slate-200/60'
@@ -858,8 +1064,13 @@ export const MessagesView: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setMeetingTitle(activeConversation?.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : '');
+                setMeetingTitle(activeConversation?.isGroup
+                  ? `${activeConversation.groupName || activeConversation.teamName} Online Meeting`
+                  : (activeConversation?.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : ''));
                 setMeetingType('group');
+                if (activeConversation?.teamName) {
+                  setSelectedMeetingGroupTeam(activeConversation.teamName);
+                }
                 setIsMeetingModalOpen(true);
                 setMeetingTab('create');
               }}
@@ -868,6 +1079,16 @@ export const MessagesView: React.FC = () => {
             >
               <Video className="w-5 h-5 stroke-[2.2]" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#25D366] ring-2 ring-white animate-pulse" />
+            </button>
+
+            {/* Create Team Group Action */}
+            <button
+              type="button"
+              onClick={openNewGroupModal}
+              className="p-2 rounded-full hover:bg-emerald-50 text-[#008069] transition-colors cursor-pointer"
+              title="Create Team Group Chat"
+            >
+              <Users className="w-5 h-5" />
             </button>
 
             <button
@@ -899,14 +1120,29 @@ export const MessagesView: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setIsHeaderMenuOpen(false);
-                      setMeetingType('group');
-                      setMeetingTab('create');
-                      setIsMeetingModalOpen(true);
+                      openNewGroupModal();
                     }}
                     className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-[#008069] flex items-center gap-2.5 transition-colors cursor-pointer"
                   >
                     <Users className="w-4 h-4 text-[#00a884]" />
-                    <span>Start Group Meeting</span>
+                    <span>Create Team Group Chat</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsHeaderMenuOpen(false);
+                      setMeetingType('group');
+                      setMeetingTab('create');
+                      if (activeConversation?.teamName) {
+                        setSelectedMeetingGroupTeam(activeConversation.teamName);
+                      }
+                      setIsMeetingModalOpen(true);
+                    }}
+                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-gray-700 hover:bg-emerald-50 hover:text-[#008069] flex items-center gap-2.5 transition-colors cursor-pointer"
+                  >
+                    <Video className="w-4 h-4 text-[#00a884]" />
+                    <span>Start Group Online Meeting</span>
                   </button>
 
                   <button
@@ -960,10 +1196,11 @@ export const MessagesView: React.FC = () => {
           </div>
         </div>
 
-        {/* Filter Pills: All, Unread, Admin, Users (Matching Screenshot 2) */}
+        {/* Filter Pills: All, Unread, Groups, Admin, Users */}
         <div className="px-3 py-2 flex items-center gap-1.5 border-b border-[#f0f2f5] overflow-x-auto no-scrollbar">
-          {(['All', 'Unread', 'Admin', 'Users'] as const).map(tab => {
+          {(['All', 'Unread', 'Groups', 'Admin', 'Users'] as const).map(tab => {
             const isActive = filterTab === tab;
+            const groupsCount = conversations.filter(c => c.isGroup).length;
             return (
               <button
                 key={tab}
@@ -973,7 +1210,11 @@ export const MessagesView: React.FC = () => {
                   : 'bg-[#f0f2f5] text-[#54656f] hover:bg-gray-200/80'
                   }`}
               >
-                {tab === 'Unread' && totalUnreadCount > 0 ? `Unread (${totalUnreadCount})` : tab}
+                {tab === 'Unread' && totalUnreadCount > 0
+                  ? `Unread (${totalUnreadCount})`
+                  : tab === 'Groups' && groupsCount > 0
+                    ? `Groups (${groupsCount})`
+                    : tab}
               </button>
             );
           })}
@@ -989,23 +1230,34 @@ export const MessagesView: React.FC = () => {
                 <MessageSquare className="w-6 h-6" />
               </div>
               <p className="text-sm font-semibold text-[#111b21]">No chats yet</p>
-              <p className="text-xs text-[#54656f] mt-1">Start a conversation with any registered member or admin</p>
-              <button
-                onClick={openNewChatModal}
-                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New Chat</span>
-              </button>
+              <p className="text-xs text-[#54656f] mt-1">Start a conversation with any registered member or create a team group</p>
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <button
+                  onClick={openNewGroupModal}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[#008069] text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Users className="w-3.5 h-3.5" />
+                  <span>New Team Group</span>
+                </button>
+                <button
+                  onClick={openNewChatModal}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-[#00a884] hover:bg-[#008f6f] text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>New Chat</span>
+                </button>
+              </div>
             </div>
           ) : (
             filteredConversations.map(conv => {
               const other = conv.otherUser;
               const isSelected = activeConversation && (activeConversation.id === conv.id || activeConversation.customId === conv.id);
-              const isOnline = isUserOnline(other);
+              const isOnline = !conv.isGroup && isUserOnline(other);
               const unread = conv.unread || 0;
-              const initials = getInitials(other?.name, other?.email);
-              const avatarStyle = getAvatarBg(other?.email || other?.name || 'user');
+              const initials = conv.isGroup
+                ? (conv.groupName || 'TG').substring(0, 2).toUpperCase()
+                : getInitials(other?.name, other?.email);
+              const avatarStyle = getAvatarBg(conv.isGroup ? (conv.groupName || conv.teamName || 'group') : (other?.email || other?.name || 'user'));
 
               return (
                 <div
@@ -1016,11 +1268,17 @@ export const MessagesView: React.FC = () => {
                     : 'hover:bg-[#f5f6f6]'
                     }`}
                 >
-                  {/* WhatsApp Circular Avatar with Online Dot */}
+                  {/* WhatsApp Circular Avatar with Online Dot or Team Icon */}
                   <div className="relative shrink-0">
-                    <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-2xs ${avatarStyle}`}>
-                      {initials}
-                    </div>
+                    {conv.isGroup ? (
+                      <div className="w-12 h-12 rounded-full flex items-center justify-center bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-700 text-white font-bold text-sm shadow-2xs">
+                        <Users className="w-5 h-5 text-white" />
+                      </div>
+                    ) : (
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm shadow-2xs ${avatarStyle}`}>
+                        {initials}
+                      </div>
+                    )}
                     {isOnline && (
                       <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-[#25D366] border-2 border-white" title="Online" />
                     )}
@@ -1029,9 +1287,18 @@ export const MessagesView: React.FC = () => {
                   {/* Middle Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1">
-                      <h3 className="font-medium text-sm text-slate-900 truncate">
-                        {other?.name || other?.email || 'Registered User'}
-                      </h3>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h3 className="font-medium text-sm text-slate-900 truncate">
+                          {conv.isGroup
+                            ? (conv.groupName || `${conv.teamName || 'Team'} Group`)
+                            : (other?.name || other?.email || 'Registered User')}
+                        </h3>
+                        {conv.isGroup && (
+                          <span className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            👥 {conv.teamName || 'Team'}
+                          </span>
+                        )}
+                      </div>
                       <span className={`text-[11px] shrink-0 ${unread > 0 ? 'text-[#25D366] font-semibold' : 'text-slate-500'}`}>
                         {formatTime(conv.lastMessage?.timestamp || conv.updatedAt)}
                       </span>
@@ -1049,7 +1316,9 @@ export const MessagesView: React.FC = () => {
                           </span>
                         )}
                         <p className="text-xs text-slate-500 line-clamp-1 leading-snug" title={conv.lastMessage?.text || ''}>
-                          {conv.lastMessage?.text || 'Draft a message...'}
+                          {conv.isGroup && conv.lastMessage?.senderName && conv.lastMessage?.senderId !== currentUser?.id
+                            ? `${conv.lastMessage.senderName}: ${conv.lastMessage.text}`
+                            : (conv.lastMessage?.text || 'Draft a message...')}
                         </p>
                       </div>
 
@@ -1094,10 +1363,16 @@ export const MessagesView: React.FC = () => {
               </button>
 
               <div className="relative shrink-0">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(activeConversation.otherUser?.email || 'user')}`}>
-                  {getInitials(activeConversation.otherUser?.name, activeConversation.otherUser?.email)}
-                </div>
-                {isUserOnline(activeConversation.otherUser) && (
+                {activeConversation.isGroup ? (
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-700 text-white font-bold text-xs shadow-2xs">
+                    <Users className="w-5 h-5 text-white" />
+                  </div>
+                ) : (
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs ${getAvatarBg(activeConversation.otherUser?.email || 'user')}`}>
+                    {getInitials(activeConversation.otherUser?.name, activeConversation.otherUser?.email)}
+                  </div>
+                )}
+                {!activeConversation.isGroup && isUserOnline(activeConversation.otherUser) && (
                   <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-[#25D366] border-2 border-white" />
                 )}
               </div>
@@ -1105,16 +1380,26 @@ export const MessagesView: React.FC = () => {
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-sm text-[#111b21] truncate">
-                    {activeConversation.otherUser?.name || activeConversation.otherUser?.email}
+                    {activeConversation.isGroup
+                      ? (activeConversation.groupName || `${activeConversation.teamName || 'Team'} Group`)
+                      : (activeConversation.otherUser?.name || activeConversation.otherUser?.email)}
                   </h3>
-                  {activeConversation.otherUser?.role === 'admin' && (
+                  {activeConversation.isGroup ? (
+                    <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
+                      👥 {activeConversation.teamName || 'Team'}
+                    </span>
+                  ) : activeConversation.otherUser?.role === 'admin' ? (
                     <span className="px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 text-[10px] font-semibold">
                       Admin
                     </span>
-                  )}
+                  ) : null}
                 </div>
                 <p className="text-[11px] leading-tight">
-                  {otherUserTyping ? (
+                  {activeConversation.isGroup ? (
+                    <span className="text-[#54656f] font-medium">
+                      {activeConversation.participantEmails?.length || activeConversation.participants?.length || 'Team'} members • Team Group
+                    </span>
+                  ) : otherUserTyping ? (
                     <span className="text-[#00a884] font-medium animate-pulse">typing...</span>
                   ) : isUserOnline(activeConversation.otherUser) ? (
                     <span className="text-[#00a884] font-medium">Online</span>
@@ -1131,25 +1416,57 @@ export const MessagesView: React.FC = () => {
               <button
                 type="button"
                 onClick={() => {
-                  setMeetingTitle(activeConversation.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : 'Direct Video Meeting');
-                  setMeetingType('direct');
+                  const ongoing = activeConversation
+                    ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+                    : null;
+                  if (ongoing && ongoing.status !== 'ended') {
+                    handleJoinMeeting(ongoing);
+                    return;
+                  }
+
+                  if (activeConversation.isGroup) {
+                    setMeetingTitle(`${activeConversation.groupName || activeConversation.teamName || 'Team'} Online Meeting`);
+                    setMeetingType('group');
+                    if (activeConversation.teamName) {
+                      setSelectedMeetingGroupTeam(activeConversation.teamName);
+                    }
+                  } else {
+                    setMeetingTitle(activeConversation.otherUser?.name ? `Meeting with ${activeConversation.otherUser.name}` : 'Direct Video Meeting');
+                    setMeetingType('direct');
+                  }
                   setIsMeetingModalOpen(true);
                   setMeetingTab('create');
                 }}
                 className="p-2 rounded-full hover:bg-[#d9fdd3] text-[#008069] transition-colors cursor-pointer"
-                title="Start Video Meeting (or Group Call)"
+                title={activeConversation.isGroup ? "Start Team Group Online Meeting" : "Start Video Meeting"}
               >
                 <Video className="w-5 h-5 stroke-[2.2]" />
               </button>
               <button
                 onClick={() => {
-                  setMeetingTitle(activeConversation.otherUser?.name ? `Voice Call with ${activeConversation.otherUser.name}` : 'Voice Call');
-                  setMeetingType('direct');
+                  const ongoing = activeConversation
+                    ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+                    : null;
+                  if (ongoing && ongoing.status !== 'ended') {
+                    handleJoinMeeting(ongoing);
+                    return;
+                  }
+
+                  if (activeConversation.isGroup) {
+                    setMeetingTitle(`${activeConversation.groupName || activeConversation.teamName || 'Team'} Voice Conference`);
+                    setMeetingType('group');
+                    if (activeConversation.teamName) {
+                      setSelectedMeetingGroupTeam(activeConversation.teamName);
+                    }
+                  } else {
+                    setMeetingTitle(activeConversation.otherUser?.name ? `Voice Call with ${activeConversation.otherUser.name}` : 'Voice Call');
+                    setMeetingType('direct');
+                  }
                   setIsMeetingModalOpen(true);
                   setMeetingTab('create');
                 }}
                 className="p-2 rounded-full hover:bg-gray-200/60 transition-colors cursor-pointer"
-                title="Voice Call"
+                title={activeConversation.isGroup ? "Start Team Group Voice Conference" : "Voice Call"}
               >
                 <Phone className="w-5 h-5" />
               </button>
@@ -1173,6 +1490,41 @@ export const MessagesView: React.FC = () => {
               </button>
             </div>
           </div>
+
+          {/* Persistent Ongoing Meeting Banner in Conversation */}
+          {(() => {
+            const currentOngoingMeeting = activeConversation
+              ? (ongoingMeetings[activeConversation.id] || (activeConversation.teamName ? ongoingMeetings[activeConversation.teamName] : null))
+              : null;
+            if (!currentOngoingMeeting || String(currentOngoingMeeting.status || '').toLowerCase() === 'ended') return null;
+            const isUserInThisMeeting = activeMeetingRoom?.id === currentOngoingMeeting.id;
+            return (
+              <div className="bg-gradient-to-r from-[#111b21] via-[#16271e] to-[#111b21] border-b border-[#25D366]/40 p-3 px-5 flex items-center justify-between text-white shadow-md z-20 shrink-0 animate-in slide-in-from-top duration-200">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 rounded-full bg-[#25D366] text-white flex items-center justify-center shadow-lg shadow-emerald-950/60 shrink-0 animate-pulse">
+                    <Video className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs text-white truncate">Online Video Meeting is Ongoing</span>
+                      <span className="px-2 py-0.5 rounded-full bg-[#25D366]/20 text-[#25D366] text-[10px] font-bold border border-[#25D366]/40 shrink-0">LIVE</span>
+                    </div>
+                    <p className="text-[11px] text-gray-300 truncate mt-0.5">
+                      {currentOngoingMeeting.title} • Hosted by {currentOngoingMeeting.hostName || 'Host'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleJoinMeeting(currentOngoingMeeting)}
+                  className="px-4 py-2 rounded-xl bg-[#25D366] hover:bg-[#20ba59] text-white font-bold text-xs shadow-lg shadow-emerald-900/50 flex items-center gap-2 transition cursor-pointer shrink-0"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>{isUserInThisMeeting ? 'Return to Call' : 'Join Meeting'}</span>
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Real-time Incoming Meeting Popup Banner ("popup on message") */}
           {incomingMeetingPopup && (
@@ -1736,6 +2088,199 @@ export const MessagesView: React.FC = () => {
         </div>
       )}
 
+      {/* ---------------- CREATE TEAM GROUP MODAL ---------------- */}
+      {isNewGroupModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl w-full max-w-lg border border-gray-100 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="p-4 px-6 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-emerald-50/80 to-teal-50/40">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#00a884] text-white flex items-center justify-center shadow-xs">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-[#111b21]">Create Team Group Chat</h3>
+                  <p className="text-xs text-[#667781]">Group chats are organized team-wise</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsNewGroupModalOpen(false)}
+                className="p-1.5 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-200/60 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body Form */}
+            <form onSubmit={handleCreateTeamGroup} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="p-5 space-y-4 overflow-y-auto">
+                {/* 1. Select Team */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Select Team <span className="text-emerald-600 font-semibold">(Required)</span>
+                  </label>
+                  <select
+                    value={selectedGroupTeamId}
+                    onChange={e => handleTeamChangeForGroup(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884] font-medium"
+                    required
+                  >
+                    {teams.length === 0 ? (
+                      <option value="">No teams available</option>
+                    ) : (
+                      teams.map(t => {
+                        const dept = departments.find(d => d.id === t.departmentId);
+                        return (
+                          <option key={t.id} value={t.id}>
+                            {t.name} {dept ? `(${dept.name})` : ''}
+                          </option>
+                        );
+                      })
+                    )}
+                  </select>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Groups are scoped strictly to a particular team.
+                  </p>
+                </div>
+
+                {/* 2. Group Name */}
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 mb-1.5">
+                    Group Name
+                  </label>
+                  <input
+                    type="text"
+                    value={groupNameInput}
+                    onChange={e => setGroupNameInput(e.target.value)}
+                    placeholder="e.g. Neural Network Team Chat"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#00a884]"
+                    required
+                  />
+                </div>
+
+                {/* 3. Team Members Checklist */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-xs font-bold text-gray-700">
+                      Team Members ({selectedGroupMemberEmails.length} selected)
+                    </label>
+                    {(() => {
+                      const currentTeamMems = getTeamMembers(selectedGroupTeamId);
+                      const allSelected = currentTeamMems.length > 0 && currentTeamMems.every(m =>
+                        selectedGroupMemberEmails.includes(m.email.toLowerCase().trim())
+                      );
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (allSelected) {
+                              setSelectedGroupMemberEmails(
+                                currentUser?.email ? [currentUser.email.toLowerCase().trim()] : []
+                              );
+                            } else {
+                              setSelectedGroupMemberEmails(
+                                currentTeamMems.map(m => m.email.toLowerCase().trim())
+                              );
+                            }
+                          }}
+                          className="text-xs text-[#008069] font-semibold hover:underline cursor-pointer"
+                        >
+                          {allSelected ? 'Deselect All' : 'Select All'}
+                        </button>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="max-h-52 overflow-y-auto border border-gray-200 rounded-2xl p-2 divide-y divide-gray-100 bg-gray-50/50">
+                    {(() => {
+                      const currentTeamMems = getTeamMembers(selectedGroupTeamId);
+                      if (currentTeamMems.length === 0) {
+                        return (
+                          <div className="p-4 text-center text-xs text-gray-500">
+                            No registered members found in this team yet.
+                          </div>
+                        );
+                      }
+                      return currentTeamMems.map(member => {
+                        const isChecked = selectedGroupMemberEmails.includes(member.email.toLowerCase().trim());
+                        const isCreator = currentUser?.email && member.email.toLowerCase().trim() === currentUser.email.toLowerCase().trim();
+                        return (
+                          <label
+                            key={member.email}
+                            className={`p-2.5 flex items-center justify-between rounded-xl cursor-pointer transition-colors ${
+                              isChecked ? 'bg-emerald-50/60' : 'hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleGroupMemberSelection(member.email)}
+                                disabled={Boolean(isCreator)}
+                                className="w-4 h-4 text-[#00a884] rounded border-gray-300 focus:ring-[#00a884] accent-[#00a884]"
+                              />
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${getAvatarBg(member.email || member.name)}`}>
+                                {getInitials(member.name, member.email)}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-semibold text-xs text-gray-900 truncate">
+                                    {member.name}
+                                  </span>
+                                  {isCreator && (
+                                    <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-gray-200 text-gray-700">
+                                      You
+                                    </span>
+                                  )}
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-semibold ${
+                                    member.role === 'admin' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'
+                                  }`}>
+                                    {member.role === 'admin' ? 'Admin' : 'Member'}
+                                  </span>
+                                </div>
+                                <p className="text-[10px] text-gray-500 truncate">{member.email}</p>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      });
+                    })()}
+                  </div>
+                </div>
+
+                {/* Team Info Banner */}
+                <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-900 flex items-start gap-2.5">
+                  <CheckCircle2 className="w-4 h-4 text-[#00a884] shrink-0 mt-0.5" />
+                  <p className="leading-snug">
+                    All selected team members will have real-time access to this group chat and will receive notifications when messages or group online meetings are launched.
+                  </p>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 px-6 border-t border-gray-100 flex items-center justify-end gap-2.5 bg-gray-50 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsNewGroupModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl border border-gray-200 hover:bg-white text-xs font-semibold text-gray-600 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingGroup || selectedGroupMemberEmails.length === 0}
+                  className="px-5 py-2.5 rounded-xl bg-[#00a884] hover:bg-[#008f6f] disabled:opacity-50 text-white text-xs font-bold shadow-md shadow-emerald-700/20 flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Users className="w-4 h-4" />
+                  <span>{creatingGroup ? 'Creating Group...' : 'Create Team Group'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ---------------- 5. CREATE & JOIN MEETING MODAL ---------------- */}
       {isMeetingModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
@@ -1976,235 +2521,13 @@ export const MessagesView: React.FC = () => {
         </div>
       )}
 
-      {/* ---------------- 6. LIVE VIRTUAL MEETING ROOM OVERLAY ---------------- */}
+      {/* ---------------- 6. LIVE VIRTUAL MEETING ROOM (WHATSAPP WEB STYLE WebRTC) ---------------- */}
       {activeMeetingRoom && (
-        <div className="fixed inset-0 z-50 bg-[#0c1317] flex flex-col select-none text-white animate-in zoom-in-95 duration-200">
-          {/* Room Top Header Bar */}
-          <div className="p-3.5 px-6 bg-[#111b21] border-b border-[#202c33] flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-9 h-9 rounded-xl bg-[#25D366] text-white flex items-center justify-center shadow-xs shrink-0">
-                <Video className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-bold text-sm text-white truncate">
-                    {activeMeetingRoom.title}
-                  </h3>
-                  <span className="px-2 py-0.5 rounded-full bg-[#00a884]/20 text-[#25D366] text-[10px] font-bold shrink-0">
-                    {activeMeetingRoom.type === 'group' ? '👥 Group Meeting' : '👤 Direct Call'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-[11px] text-gray-400 mt-0.5">
-                  <span className="flex items-center gap-1 font-mono text-emerald-400 font-semibold">
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    {formatMeetingTimer(meetingTimer)}
-                  </span>
-                  <span>•</span>
-                  <span>Host: {activeMeetingRoom.hostName || 'WorkHub Host'}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Room ID Pill & Copy */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="hidden sm:flex items-center gap-1.5 px-3 py-1 rounded-xl bg-[#202c33] border border-[#2a3942] text-xs">
-                <span className="text-gray-400 text-[11px]">ID:</span>
-                <span className="font-mono text-emerald-400 font-bold text-xs">{activeMeetingRoom.id}</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    navigator.clipboard.writeText(activeMeetingRoom.id);
-                    alert(`Meeting ID ${activeMeetingRoom.id} copied to clipboard!`);
-                  }}
-                  className="p-1 hover:text-white text-gray-400 transition-colors cursor-pointer"
-                  title="Copy Meeting ID"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setActiveMeetingRoom(null)}
-                className="p-2 rounded-xl bg-[#202c33] hover:bg-[#2a3942] text-gray-300 hover:text-white transition-colors cursor-pointer"
-                title="Minimize / Close View"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Main Video Stage Grid */}
-          <div className="flex-1 overflow-y-auto p-4 md:p-6 flex items-center justify-center">
-            <div className={`grid gap-4 w-full max-w-6xl h-full max-h-[680px] ${activeMeetingRoom.type === 'group'
-              ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-2'
-              : 'grid-cols-1 sm:grid-cols-2'
-              }`}>
-              {/* Tile 1: You (Current User) */}
-              <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-emerald-500/40 shadow-xl flex flex-col items-center justify-center group min-h-[220px]">
-                {meetingVideoOff ? (
-                  <div className="flex flex-col items-center gap-3">
-                    <div className={`w-24 h-24 rounded-full flex items-center justify-center font-bold text-2xl shadow-lg ring-4 ring-emerald-500/30 ${getAvatarBg(currentUser?.email || 'user')}`}>
-                      {getInitials(currentUser?.name, currentUser?.email)}
-                    </div>
-                    <span className="text-xs text-gray-400 font-medium">Camera is turned off</span>
-                  </div>
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-[#1a2e26] via-[#111b21] to-[#0d1e18] flex items-center justify-center relative">
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,168,132,0.15),transparent_70%)]" />
-                    <div className="flex flex-col items-center gap-3 z-10">
-                      <div className={`w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl ring-4 ring-[#25D366]/40 ${getAvatarBg(currentUser?.email || 'user')}`}>
-                        {getInitials(currentUser?.name, currentUser?.email)}
-                      </div>
-                      <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-emerald-300">
-                        <span className="w-2 h-2 rounded-full bg-[#25D366] animate-pulse" />
-                        <span>HD Live Video Feed Active</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Tile Label */}
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                  <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
-                    <span>You ({currentUser?.name || 'User'})</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">Host</span>
-                  </div>
-                  <div className={`p-1.5 rounded-lg ${meetingMuted ? 'bg-red-500/80 text-white' : 'bg-black/60 text-emerald-400'}`}>
-                    {meetingMuted ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  </div>
-                </div>
-              </div>
-
-              {/* Tile 2: Partner / Host Participant */}
-              <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                  <div className="flex flex-col items-center gap-3 z-10">
-                    <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-purple-600 text-white ring-4 ring-purple-500/30">
-                      {activeMeetingRoom.hostName?.substring(0, 2).toUpperCase() || 'TM'}
-                    </div>
-                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-purple-300">
-                      <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-ping" />
-                      <span>Connected • Audio Active</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                  <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white flex items-center gap-2">
-                    <span>{activeMeetingRoom.hostName || 'Connected Member'}</span>
-                  </div>
-                  <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                    <Mic className="w-4 h-4" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Tiles 3 & 4 (Shown for Group Meetings) */}
-              {activeMeetingRoom.type === 'group' && (
-                <>
-                  <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                    <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                      <div className="flex flex-col items-center gap-3 z-10">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-teal-600 text-white ring-4 ring-teal-500/30">
-                          TL
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-teal-300">
-                          <span>Team Collaborator</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                      <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white">
-                        <span>Team Lead (Online)</span>
-                      </div>
-                      <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                        <Mic className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="relative rounded-2xl overflow-hidden bg-[#111b21] border border-[#202c33] shadow-xl flex flex-col items-center justify-center min-h-[220px]">
-                    <div className="w-full h-full bg-gradient-to-br from-[#182229] to-[#0c1317] flex items-center justify-center relative">
-                      <div className="flex flex-col items-center gap-3 z-10">
-                        <div className="w-20 h-20 rounded-full flex items-center justify-center font-bold text-2xl shadow-xl bg-amber-600 text-white ring-4 ring-amber-500/30">
-                          WK
-                        </div>
-                        <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-xs text-[11px] text-amber-300">
-                          <span>Workspace Participant</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-xs z-20">
-                      <div className="px-3 py-1 rounded-lg bg-black/60 backdrop-blur-md font-semibold text-white">
-                        <span>Workspace Member</span>
-                      </div>
-                      <div className="p-1.5 rounded-lg bg-black/60 text-emerald-400">
-                        <Mic className="w-4 h-4" />
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Bottom Dock Control Bar */}
-          <div className="p-4 bg-[#111b21] border-t border-[#202c33] flex items-center justify-center gap-4 shrink-0">
-            {/* Toggle Mic */}
-            <button
-              type="button"
-              onClick={() => setMeetingMuted(!meetingMuted)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingMuted
-                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title={meetingMuted ? "Unmute Microphone" : "Mute Microphone"}
-            >
-              {meetingMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-            </button>
-
-            {/* Toggle Video Camera */}
-            <button
-              type="button"
-              onClick={() => setMeetingVideoOff(!meetingVideoOff)}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingVideoOff
-                ? 'bg-red-500 hover:bg-red-600 text-white ring-2 ring-red-400/40'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title={meetingVideoOff ? "Turn On Camera" : "Turn Off Camera"}
-            >
-              {meetingVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
-            </button>
-
-            {/* Toggle Screen Share */}
-            <button
-              type="button"
-              onClick={() => {
-                setMeetingScreenSharing(!meetingScreenSharing);
-                alert(!meetingScreenSharing ? "Screen Sharing active: Presenting your workspace." : "Screen Sharing stopped.");
-              }}
-              className={`p-3.5 rounded-full transition-all cursor-pointer shadow-lg ${meetingScreenSharing
-                ? 'bg-[#00a884] text-white ring-2 ring-emerald-400/50'
-                : 'bg-[#202c33] hover:bg-[#2a3942] text-white'
-                }`}
-              title="Share Screen"
-            >
-              <Monitor className="w-5 h-5" />
-            </button>
-
-            {/* Leave / End Call */}
-            <button
-              type="button"
-              onClick={() => setActiveMeetingRoom(null)}
-              className="px-6 py-3.5 rounded-full bg-red-600 hover:bg-red-700 text-white font-bold text-xs shadow-lg shadow-red-900/40 flex items-center gap-2 transition-all cursor-pointer ring-2 ring-red-500/30"
-              title="Leave Meeting"
-            >
-              <PhoneOff className="w-5 h-5" />
-              <span>Leave Call</span>
-            </button>
-          </div>
-        </div>
+        <MeetingRoom
+          meetingId={activeMeetingRoom.id}
+          initialMeeting={activeMeetingRoom}
+          onLeave={() => setActiveMeetingRoom(null)}
+        />
       )}
     </div>
   );

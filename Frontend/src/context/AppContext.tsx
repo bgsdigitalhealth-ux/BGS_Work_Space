@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import {
   Department,
   Team,
@@ -191,6 +191,7 @@ interface AppContextType {
 
   // Attendance & Time Tracking
   todayAttendance: AttendanceRecord | null;
+  liveAttendanceSeconds: number;
   isAttendanceLoading: boolean;
   attendanceRecords: AttendanceRecord[];
   refreshTodayAttendance: () => Promise<void>;
@@ -343,6 +344,58 @@ export const filterTasksForUser = (tasks: UserAssignedWork[], user: User | null,
 
   // Managers and Admins can see all tasks
   return tasks;
+};
+
+// Helper to calculate total attendance seconds accurately (completed punches + live active punch)
+export const calculateTotalAttendanceSeconds = (rec: AttendanceRecord | null): number => {
+  if (!rec) return 0;
+
+  let completed = 0;
+  let activePunchInTime: number | null = null;
+
+  if (Array.isArray(rec.punches) && rec.punches.length > 0) {
+    for (const p of rec.punches) {
+      if (!p.punchIn) continue;
+      const inTime = new Date(p.punchIn).getTime();
+      if (isNaN(inTime)) continue;
+
+      if (p.punchOut) {
+        const outTime = new Date(p.punchOut).getTime();
+        if (!isNaN(outTime) && outTime >= inTime) {
+          const dur = (typeof p.durationSeconds === 'number' && p.durationSeconds > 0)
+            ? p.durationSeconds
+            : Math.round((outTime - inTime) / 1000);
+          completed += dur;
+        }
+      } else {
+        // Active unclosed punch
+        activePunchInTime = inTime;
+      }
+    }
+  } else if (rec.totalSeconds && rec.totalSeconds > 0) {
+    completed = rec.totalSeconds;
+  }
+
+  if (rec.status === 'punched_in') {
+    if (!activePunchInTime && rec.currentPunchIn) {
+      const cIn = new Date(rec.currentPunchIn).getTime();
+      if (!isNaN(cIn)) activePunchInTime = cIn;
+    }
+    if (!activePunchInTime && Array.isArray(rec.punches) && rec.punches.length > 0) {
+      const last = rec.punches[rec.punches.length - 1];
+      if (last?.punchIn) {
+        const lastIn = new Date(last.punchIn).getTime();
+        if (!isNaN(lastIn)) activePunchInTime = lastIn;
+      }
+    }
+
+    if (activePunchInTime) {
+      const activeElapsed = Math.max(0, Math.floor((Date.now() - activePunchInTime) / 1000));
+      return completed + activeElapsed;
+    }
+  }
+
+  return Math.max(completed, rec.totalSeconds || 0);
 };
 
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
@@ -536,9 +589,50 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   }, []);
 
   // Attendance & Task Time Tracking
-  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(null);
+  const [todayAttendance, setTodayAttendance] = useState<AttendanceRecord | null>(() => {
+    try {
+      const saved = localStorage.getItem('workhub_today_attendance');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return null;
+  });
+  const [liveAttendanceSeconds, setLiveAttendanceSeconds] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('workhub_today_attendance');
+      if (saved) {
+        return calculateTotalAttendanceSeconds(JSON.parse(saved));
+      }
+    } catch {}
+    return 0;
+  });
+  const todayAttendanceRef = useRef<AttendanceRecord | null>(todayAttendance);
   const [isAttendanceLoading, setIsAttendanceLoading] = useState<boolean>(true);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
+
+  useEffect(() => {
+    todayAttendanceRef.current = todayAttendance;
+    setLiveAttendanceSeconds(calculateTotalAttendanceSeconds(todayAttendance));
+    if (todayAttendance) {
+      try {
+        localStorage.setItem('workhub_today_attendance', JSON.stringify(todayAttendance));
+      } catch {}
+    }
+  }, [todayAttendance]);
+
+  // Central 1-second ticker that never unmounts while user is logged in
+  useEffect(() => {
+    const tick = () => {
+      const rec = todayAttendanceRef.current;
+      if (rec && rec.status === 'punched_in') {
+        const currentSecs = calculateTotalAttendanceSeconds(rec);
+        setLiveAttendanceSeconds(currentSecs);
+      }
+    };
+
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isManagerOrAdmin = Boolean(
     currentUser?.role === 'admin' ||
@@ -584,6 +678,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }
   }, [currentUser?.id, currentUser?.email]);
 
+  // Real-time midnight auto-punch-out watcher:
+  // Checks if the date has rolled over past midnight 11:59 PM to auto-close sessions and update UI
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const checkMidnightRollover = () => {
+      const now = new Date();
+      const localTodayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+      if (todayAttendance?.status === 'punched_in' && todayAttendance.date && todayAttendance.date < localTodayStr) {
+        // Date rolled over while user was punched in!
+        api.autoMidnightPunchOut().finally(() => {
+          refreshTodayAttendance();
+          refreshAttendanceRecords();
+        });
+      }
+    };
+
+    const interval = setInterval(checkMidnightRollover, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id, todayAttendance?.status, todayAttendance?.date]);
+
   const handlePunchIn = async () => {
     if (!currentUser) return;
     try {
@@ -595,6 +711,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         departmentId: currentUser.department
       });
       setTodayAttendance(rec);
+      todayAttendanceRef.current = rec;
+      setLiveAttendanceSeconds(calculateTotalAttendanceSeconds(rec));
+      try {
+        localStorage.setItem('workhub_today_attendance', JSON.stringify(rec));
+      } catch {}
       await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
       notify('Punch in recorded successfully!', 'success', 'Attendance');
     } catch (e: any) {
@@ -610,6 +731,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         userEmail: currentUser.email
       });
       setTodayAttendance(rec);
+      todayAttendanceRef.current = rec;
+      setLiveAttendanceSeconds(calculateTotalAttendanceSeconds(rec));
+      try {
+        localStorage.setItem('workhub_today_attendance', JSON.stringify(rec));
+      } catch {}
       await Promise.all([refreshTodayAttendance(), refreshAttendanceRecords()]);
       notify('Punch out recorded successfully!', 'success', 'Attendance');
     } catch (e: any) {
@@ -1038,7 +1164,7 @@ const fetchDepartments = async () => {
   }
 };
 
-const fetchTeams = async (deptId: string) => {
+const fetchTeams = async (deptId: string = '') => {
   try {
     const data = await api.getTeams(deptId);
     setTeams(data);
@@ -1052,7 +1178,7 @@ const fetchTeams = async (deptId: string) => {
   }
 };
 
-const fetchMembers = async (teamId: string) => {
+const fetchMembers = async (teamId: string = '') => {
   try {
     const data = await api.getMembers(teamId);
     setMembers(data);
@@ -1345,6 +1471,8 @@ const refreshAll = async () => {
   const promises: Promise<any>[] = [
     fetchStats(),
     fetchDepartments(),
+    fetchTeams(),
+    fetchMembers(),
     fetchAllUsers(),
     refreshUserWorkspace(),
     refreshAppointments(),
@@ -1354,7 +1482,6 @@ const refreshAll = async () => {
     promises.push(fetchTeams(selectedDepartment.id));
   }
   if (selectedTeam) {
-    promises.push(fetchMembers(selectedTeam.id));
     promises.push(fetchAssignments(selectedTeam.id));
     promises.push(fetchTasks(selectedTeam.id));
     promises.push(fetchWorkDone(selectedTeam.id));
@@ -1372,6 +1499,7 @@ useEffect(() => {
 useEffect(() => {
   if (!currentUser) return;
   refreshUserWorkspace();
+  refreshNotifications();
   let isMounted = true;
   api.validateSession(currentUser.id, currentUser.email).then((res) => {
     if (!isMounted) return;
@@ -1439,15 +1567,13 @@ useEffect(() => {
   }
 }, [selectedDepartment]);
 
-// When selected team changes, load members, assignments, tasks, work done
+// When selected team changes, load assignments, tasks, work done
 useEffect(() => {
   if (selectedTeam) {
-    fetchMembers(selectedTeam.id);
     fetchAssignments(selectedTeam.id);
     fetchTasks(selectedTeam.id);
     fetchWorkDone(selectedTeam.id);
   } else {
-    setMembers([]);
     setAssignments([]);
     setTasks([]);
     setWorkDone([]);
@@ -1562,7 +1688,7 @@ const handleDeleteMember = async (id: string) => {
   if (!ok) return;
   try {
     await api.deleteMember(id);
-    if (selectedTeam) fetchMembers(selectedTeam.id);
+    await fetchMembers();
     fetchStats();
     notify('Team member removed successfully.', 'success');
   } catch (e: any) {
@@ -1948,6 +2074,7 @@ return (
       fetchWppStatus,
       restartWpp,
       todayAttendance,
+      liveAttendanceSeconds,
       isAttendanceLoading,
       attendanceRecords,
       refreshTodayAttendance,

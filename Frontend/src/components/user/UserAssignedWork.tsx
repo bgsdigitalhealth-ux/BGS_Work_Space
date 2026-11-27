@@ -18,8 +18,8 @@ import {
   MessageSquare,
   Paperclip,
   LayoutGrid,
-  List,
   Kanban,
+  List,
   Play,
   Pause,
   RotateCcw,
@@ -137,6 +137,9 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
     if (teamFilter !== 'All' && task.team !== teamFilter) return false;
     return true;
   });
+
+  
+  
 
   // KPI stats computed strictly from teamFilteredTasks (Dashboard counts follow the same filter)
   const totalCount = teamFilteredTasks.length;
@@ -459,7 +462,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
           </div>
 
           {/* View Mode Switcher + Action Button */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-3 shrink-0 flex-wrap sm:flex-nowrap">
             {/* View Switcher: Card | List | Kanban */}
             <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200/70">
               <button
@@ -516,7 +519,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             <button
               type="button"
               onClick={() => setUserNav('assign-work')}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#5a36e6] hover:bg-[#4828c4] text-white font-bold text-xs transition shadow-md shadow-indigo-600/20 cursor-pointer whitespace-nowrap"
             >
               <Send className="w-3.5 h-3.5" />
               <span>+ Assign Work</span>
@@ -533,16 +536,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleTotalWorkClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTotalWorkClick(); } }}
             title="Click to view all tasks"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isTotalActive
-                ? 'bg-indigo-50/80 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
-                : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 hover:border-slate-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isTotalActive
+              ? 'bg-indigo-50/80 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
+              : 'bg-slate-50 border-slate-100 hover:bg-slate-100/70 hover:border-slate-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isTotalActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-indigo-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isTotalActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-indigo-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
+                }`}>
                 <ClipboardList className="w-4 h-4" />
               </div>
               <div>
@@ -550,9 +551,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-slate-900">{totalCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isTotalActive ? 'text-[#5a36e6]' : 'text-slate-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isTotalActive ? 'text-[#5a36e6]' : 'text-slate-300'
+              }`} />
           </div>
 
           {/* In Progress */}
@@ -562,16 +562,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleInProgressClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleInProgressClick(); } }}
             title="Click to filter by In Progress work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isInProgressActive
-                ? 'bg-purple-100/90 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
-                : 'bg-purple-50/50 border-purple-100 hover:bg-purple-100/60 hover:border-purple-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isInProgressActive
+              ? 'bg-purple-100/90 border-[#5a36e6] ring-2 ring-[#5a36e6]/25 shadow-sm'
+              : 'bg-purple-50/50 border-purple-100 hover:bg-purple-100/60 hover:border-purple-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isInProgressActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-purple-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isInProgressActive ? 'bg-[#5a36e6] text-white shadow-sm' : 'bg-purple-100 text-[#5a36e6] group-hover:bg-[#5a36e6] group-hover:text-white'
+                }`}>
                 <Clock className="w-4 h-4" />
               </div>
               <div>
@@ -579,9 +577,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-purple-900">{inProgressCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isInProgressActive ? 'text-[#5a36e6]' : 'text-purple-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isInProgressActive ? 'text-[#5a36e6]' : 'text-purple-300'
+              }`} />
           </div>
 
           {/* To Do / Pending */}
@@ -591,16 +588,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleTodoClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleTodoClick(); } }}
             title="Click to filter by To Do / Pending work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isTodoActive
-                ? 'bg-blue-100/90 border-blue-600 ring-2 ring-blue-500/25 shadow-sm'
-                : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/60 hover:border-blue-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isTodoActive
+              ? 'bg-blue-100/90 border-blue-600 ring-2 ring-blue-500/25 shadow-sm'
+              : 'bg-blue-50/50 border-blue-100 hover:bg-blue-100/60 hover:border-blue-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isTodoActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isTodoActive ? 'bg-blue-600 text-white shadow-sm' : 'bg-blue-100 text-blue-600 group-hover:bg-blue-600 group-hover:text-white'
+                }`}>
                 <AlertCircle className="w-4 h-4" />
               </div>
               <div>
@@ -608,9 +603,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-blue-900">{todoCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isTodoActive ? 'text-blue-600' : 'text-blue-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isTodoActive ? 'text-blue-600' : 'text-blue-300'
+              }`} />
           </div>
 
           {/* High Priority */}
@@ -620,16 +614,14 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             onClick={handleHighPriorityClick}
             onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleHighPriorityClick(); } }}
             title="Click to filter by High Priority work"
-            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${
-              isHighPriorityActive
-                ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-500/25 shadow-sm'
-                : 'bg-rose-50/50 border-rose-100 hover:bg-rose-100/60 hover:border-rose-200'
-            }`}
+            className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all duration-200 select-none group hover:shadow-md hover:scale-[1.02] active:scale-[0.98] ${isHighPriorityActive
+              ? 'bg-rose-100/90 border-rose-600 ring-2 ring-rose-500/25 shadow-sm'
+              : 'bg-rose-50/50 border-rose-100 hover:bg-rose-100/60 hover:border-rose-200'
+              }`}
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${
-                isHighPriorityActive ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-100 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
-              }`}>
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold transition-all ${isHighPriorityActive ? 'bg-rose-600 text-white shadow-sm' : 'bg-rose-100 text-rose-600 group-hover:bg-rose-600 group-hover:text-white'
+                }`}>
                 <Tag className="w-4 h-4" />
               </div>
               <div>
@@ -637,9 +629,8 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                 <p className="text-base font-extrabold text-rose-900">{highPriorityCount}</p>
               </div>
             </div>
-            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${
-              isHighPriorityActive ? 'text-rose-600' : 'text-rose-300'
-            }`} />
+            <ChevronRight className={`w-4 h-4 transition-transform group-hover:translate-x-0.5 ${isHighPriorityActive ? 'text-rose-600' : 'text-rose-300'
+              }`} />
           </div>
         </div>
       </div>
@@ -684,7 +675,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
 
       {/* Filter & Search Bar - Shared across all three views */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        {/* Status Tabs (shown for Card & List views; Kanban separates columns by status) */}
+        {/* Status Tabs (shown for Card & List views; Kanban organizes by status columns) */}
         {viewMode !== 'kanban' ? (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 no-scrollbar">
             {(['All', 'To Do', 'In Progress', 'Under Review', 'Completed'] as const).map(st => {
@@ -713,11 +704,11 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
             })}
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 rounded-xl bg-indigo-50 text-[#5a36e6] border border-indigo-200/60 text-xs font-bold flex items-center gap-1.5">
+          <div className="flex items-center gap-2 text-xs font-bold text-gray-700">
+            <div className="w-6 h-6 rounded-lg bg-indigo-50 text-[#5a36e6] flex items-center justify-center shrink-0">
               <Kanban className="w-3.5 h-3.5" />
-              Interactive Workflow Columns (4 Stages)
-            </span>
+            </div>
+            <span>Interactive Workflow Columns (4 Stages)</span>
           </div>
         )}
 
@@ -850,7 +841,7 @@ export const UserAssignedWork: React.FC<UserAssignedWorkProps> = ({ initialView,
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                             {task.assignmentType === 'admin_to_user' ? 'Admin → User' :
                               task.assignmentType === 'user_to_user' ? 'User → User' :
-                              task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Assigned Work'}
+                                task.assignmentType === 'user_to_admin' ? 'User → Admin' : 'Assigned Work'}
                           </span>
                         )}
                       </div>

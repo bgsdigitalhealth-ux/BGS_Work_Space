@@ -212,28 +212,31 @@ export const Header: React.FC = () => {
         </div>
       )}
 
-      <header className="h-16 bg-white border-b border-slate-200/80 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+      <header className="h-16 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0">
         {/* Left: Mobile Trigger & Quick Page Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => setMobileSidebarOpen(true)}
-            className="md:hidden p-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+            className="lg:hidden touch-target p-2 rounded-xl text-slate-700 hover:text-slate-900 hover:bg-slate-100 transition cursor-pointer"
+            title="Open navigation menu"
           >
             <Menu className="w-5 h-5" />
           </button>
-          <div className="hidden sm:block">
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Workspace Hub</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 sm:text-slate-500 uppercase tracking-wider truncate max-w-[120px] sm:max-w-none">
+              Workspace Hub
+            </span>
           </div>
         </div>
 
         {/* Right Action Icons & Profile */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {/* WhatsApp Notification Service Status Pill & Modal Launcher */}
           <button
             type="button"
             onClick={handleOpenWppModal}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs ${isWppReady
+            className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-xl text-xs font-semibold border transition cursor-pointer shadow-2xs ${isWppReady
               ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80'
               : isWppReconnecting
                 ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100/80'
@@ -244,8 +247,8 @@ export const Header: React.FC = () => {
             title="Manage automated WhatsApp delivery, background reconnection, and disconnection alerts"
           >
             <Smartphone className="w-3.5 h-3.5 shrink-0" />
-            <span className="hidden md:inline">WhatsApp:</span>
-            <span className="font-bold flex items-center gap-1.5">
+            <span className="hidden lg:inline">WhatsApp:</span>
+            <span className="font-bold hidden sm:flex items-center gap-1.5">
               <span className={`w-2 h-2 rounded-full ${isWppReady
                 ? 'bg-emerald-500 animate-pulse'
                 : isWppReconnecting
@@ -255,6 +258,9 @@ export const Header: React.FC = () => {
                     : 'bg-slate-400'
                 }`} />
               {isWppReady ? 'Connected' : isWppReconnecting ? 'Reconnecting' : isWppActionRequired ? 'Action Required' : 'Disconnected'}
+            </span>
+            <span className="sm:hidden flex items-center">
+              <span className={`w-2 h-2 rounded-full ${isWppReady ? 'bg-emerald-500' : isWppActionRequired ? 'bg-amber-500' : 'bg-slate-400'}`} />
             </span>
             {pendingCount > 0 && (
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-900 font-bold">
@@ -267,7 +273,7 @@ export const Header: React.FC = () => {
           <button
             type="button"
             onClick={refreshAll}
-            className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
+            className="touch-target p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition cursor-pointer"
             title="Refresh All Data"
           >
             <RefreshCw className="w-4 h-4" />
@@ -278,7 +284,7 @@ export const Header: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowNotifs(!showNotifs)}
-              className="p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition relative cursor-pointer"
+              className="touch-target p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition relative cursor-pointer"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -293,23 +299,23 @@ export const Header: React.FC = () => {
             )}
           </div>
 
-          <div className="h-6 w-px bg-slate-200 mx-1" />
+          <div className="h-6 w-px bg-slate-200 mx-0.5 sm:mx-1" />
 
           {/* User Profile Pill */}
           <div className="relative">
             <button
               type="button"
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="flex items-center gap-2.5 p-1.5 pr-2.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              className="touch-target flex items-center gap-2 p-1.5 sm:pr-2.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
             >
-              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
                 {currentUser?.avatar || currentUser?.name?.charAt(0) || 'U'}
               </div>
-              <div className="text-left hidden sm:block">
-                <p className="text-xs font-bold text-slate-800 leading-none">{currentUser?.name || 'User'}</p>
-                <p className="text-[10px] text-slate-400 capitalize mt-0.5">{currentUser?.role || 'Member'}</p>
+              <div className="text-left hidden md:block">
+                <p className="text-xs font-bold text-slate-800 leading-none truncate max-w-[120px]">{currentUser?.name || 'User'}</p>
+                <p className="text-[10px] text-slate-400 capitalize mt-0.5 truncate">{currentUser?.role || 'Member'}</p>
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 hidden sm:block" />
             </button>
 
             {showProfileMenu && (

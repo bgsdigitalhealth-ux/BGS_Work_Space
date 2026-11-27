@@ -3277,6 +3277,11 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
       if (role === 'admin') {
         orClauses.push({ recipientRole: 'admin' });
         orClauses.push({ recipientRole: 'all' });
+      } else if (role === 'manager') {
+        orClauses.push({ recipientRole: 'manager' });
+        orClauses.push({ recipientRole: 'all' });
+        if (cleanUserId) orClauses.push({ recipientUserId: cleanUserId });
+        if (cleanEmail) orClauses.push({ recipientEmail: cleanEmail });
       } else if (role === 'user') {
         orClauses.push({ recipientRole: 'all' });
         if (cleanUserId) {
@@ -3294,7 +3299,10 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
 
       const filter = orClauses.length > 0 ? { $or: orClauses } : {};
       const list = await Notification.find(filter).sort({ createdAt: -1 }).lean();
-      return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
+      if (list && list.length > 0) {
+        return list.map(n => ({ ...n, id: n.customId || n._id.toString() }));
+      }
+      // If Mongo collection returned 0 results, fall back seamlessly to memoryStore
     } catch (e) {
       console.warn('Mongo notifications read error:', e.message);
     }
@@ -3306,6 +3314,8 @@ const getNotifications = async (role = 'all', userId = null, email = null) => {
   let list = memoryStore.notifications;
   if (role === 'admin') {
     list = list.filter(n => n.recipientRole === 'admin' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail === cleanEmail));
+  } else if (role === 'manager') {
+    list = list.filter(n => n.recipientRole === 'manager' || n.recipientRole === 'all' || (cleanUserId && n.recipientUserId === cleanUserId) || (cleanEmail && n.recipientEmail && n.recipientEmail.toLowerCase() === cleanEmail));
   } else if (role === 'user') {
     list = list.filter(n => {
       const isBreakNotif = (n.title && n.title.includes('Break')) || (n.message && n.message.includes('break'));
@@ -3395,7 +3405,7 @@ const markAllNotificationsRead = async (role) => {
     memoryStore.notifications = [];
   }
   memoryStore.notifications.forEach(n => {
-    if (!role || n.recipientRole === role) {
+    if (!role || role === 'all' || n.recipientRole === role) {
       n.read = true;
     }
   });
@@ -3403,7 +3413,7 @@ const markAllNotificationsRead = async (role) => {
 
   if (getStatus()) {
     try {
-      const filter = role ? { recipientRole: role } : {};
+      const filter = (role && role !== 'all') ? { recipientRole: role } : {};
       await Notification.updateMany(filter, { read: true });
     } catch (e) {
       console.warn('Mongo mark all read error:', e.message);
@@ -4020,6 +4030,125 @@ const findOrCreateConversation = async (user1Id, user2Email) => {
   };
 };
 
+const createGroupConversation = async ({
+  currentUserId,
+  groupName,
+  teamId,
+  teamName,
+  departmentId = '',
+  departmentName = '',
+  participantEmails = []
+}) => {
+  if (!groupName || !groupName.trim()) {
+    throw new Error('Group name is required');
+  }
+  if (!teamId && !teamName) {
+    throw new Error('Team selection is required. Groups must be scoped team-wise.');
+  }
+
+  const allEligible = await getEligibleUsers();
+  const creator = allEligible.find(u => u.id === currentUserId || u.email === (currentUserId || '').toLowerCase().trim());
+  if (!creator) {
+    throw new Error('Creator user identity could not be verified in database.');
+  }
+
+  // Find team in memoryStore or db
+  const team = (memoryStore.teams || []).find(t => t.id === teamId || t.name === teamName);
+  const resolvedTeamName = team?.name || teamName || 'Team';
+  const resolvedTeamId = team?.id || teamId || '';
+  const resolvedDeptName = team?.departmentName || departmentName || '';
+  const resolvedDeptId = team?.departmentId || departmentId || '';
+
+  // Get all members of this particular team
+  const teamMembers = (memoryStore.members || []).filter(m =>
+    (resolvedTeamId && m.teamId === resolvedTeamId) ||
+    (resolvedTeamName && m.team && m.team.toLowerCase().trim() === resolvedTeamName.toLowerCase().trim())
+  );
+
+  // Collect participant emails from input, or default to all members of that team
+  let emails = Array.isArray(participantEmails) && participantEmails.length > 0
+    ? participantEmails.map(e => (e || '').toLowerCase().trim()).filter(Boolean)
+    : teamMembers.map(m => (m.email || '').toLowerCase().trim()).filter(Boolean);
+
+  // Always include creator
+  if (!emails.includes(creator.email.toLowerCase().trim())) {
+    emails.push(creator.email.toLowerCase().trim());
+  }
+
+  // Deduplicate emails
+  emails = Array.from(new Set(emails));
+
+  // Resolve participant IDs
+  const pIds = emails.map(email => {
+    const u = allEligible.find(usr => usr.email === email);
+    if (u) return u.id;
+    const m = (memoryStore.members || []).find(mem => (mem.email || '').toLowerCase().trim() === email);
+    return m ? (m.userId || m.id) : email;
+  });
+
+  const pIdsDeduped = Array.from(new Set(pIds));
+
+  // Initialize unread counts map
+  const unreadMap = {};
+  pIdsDeduped.forEach(id => {
+    unreadMap[id] = 0;
+  });
+
+  const convId = generateId('conv');
+  const groupConv = {
+    id: convId,
+    customId: convId,
+    isGroup: true,
+    groupName: groupName.trim(),
+    teamId: resolvedTeamId,
+    teamName: resolvedTeamName,
+    departmentId: resolvedDeptId,
+    departmentName: resolvedDeptName,
+    groupAdmin: creator.id,
+    groupAdminEmail: creator.email,
+    participants: pIdsDeduped,
+    participantEmails: emails,
+    lastMessage: {
+      text: `🎉 Team Group "${groupName.trim()}" created for ${resolvedTeamName}`,
+      senderId: creator.id,
+      senderEmail: creator.email,
+      senderName: creator.name,
+      timestamp: new Date().toISOString(),
+      status: 'sent'
+    },
+    unreadCounts: unreadMap,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+  memoryStore.conversations.unshift(groupConv);
+  saveStore();
+
+  if (getStatus()) {
+    try {
+      await Conversation.create(groupConv);
+    } catch (e) {
+      console.warn('Mongo create group conversation error:', e.message);
+    }
+  }
+
+  return {
+    ...groupConv,
+    otherUser: {
+      id: resolvedTeamId || convId,
+      name: groupConv.groupName,
+      email: `${resolvedTeamName} Group`,
+      role: 'group',
+      avatar: groupConv.groupName.charAt(0).toUpperCase(),
+      isGroup: true,
+      team: resolvedTeamName,
+      department: resolvedDeptName
+    },
+    unread: 0
+  };
+};
+
 const getConversationsForUser = async (userId, userEmail = '') => {
   const allEligible = await getEligibleUsers();
   const currentUser = allEligible.find(u => u.id === userId || (userEmail && u.email === userEmail.toLowerCase().trim()));
@@ -4055,6 +4184,40 @@ const getConversationsForUser = async (userId, userEmail = '') => {
   }
 
   return list.map(c => {
+    let unread = 0;
+    if (c.unreadCounts) {
+      if (typeof c.unreadCounts.get === 'function') {
+        unread = c.unreadCounts.get(myId) || 0;
+      } else {
+        unread = c.unreadCounts[myId] || (myEmail ? c.unreadCounts[myEmail] : 0) || 0;
+      }
+    }
+
+    if (c.isGroup) {
+      return {
+        ...c,
+        id: c.customId || c.id || c._id?.toString(),
+        isGroup: true,
+        groupName: c.groupName || `${c.teamName || 'Team'} Group`,
+        teamId: c.teamId || '',
+        teamName: c.teamName || '',
+        departmentId: c.departmentId || '',
+        departmentName: c.departmentName || '',
+        groupAdmin: c.groupAdmin || '',
+        otherUser: {
+          id: c.teamId || c.customId || c.id,
+          name: c.groupName || `${c.teamName || 'Team'} Group`,
+          email: c.teamName ? `${c.teamName} Group` : 'Team Group',
+          role: 'group',
+          avatar: (c.groupName || 'G').charAt(0).toUpperCase(),
+          isGroup: true,
+          team: c.teamName,
+          department: c.departmentName
+        },
+        unread
+      };
+    }
+
     const otherEmail = (c.participantEmails || []).find(e => e !== myEmail) || '';
     const otherId = (c.participants || []).find(id => id !== myId) || '';
     const otherUser = allEligible.find(u => (otherEmail && u.email === otherEmail) || (otherId && u.id === otherId)) || {
@@ -4064,15 +4227,6 @@ const getConversationsForUser = async (userId, userEmail = '') => {
       role: 'user',
       avatar: (otherEmail || 'U').charAt(0).toUpperCase()
     };
-
-    let unread = 0;
-    if (c.unreadCounts) {
-      if (typeof c.unreadCounts.get === 'function') {
-        unread = c.unreadCounts.get(myId) || 0;
-      } else {
-        unread = c.unreadCounts[myId] || (myEmail ? c.unreadCounts[myEmail] : 0) || 0;
-      }
-    }
 
     return {
       ...c,
@@ -4123,11 +4277,27 @@ const createMessage = async (data) => {
   if (!senderId || !senderEmail) throw new Error('Sender identity is required');
   if (!text && !attachment && !meeting) throw new Error('Message content, attachment, or meeting is required');
 
-  const allEligible = await getEligibleUsers();
-  const recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
+  if (!memoryStore.conversations) memoryStore.conversations = [];
+  let conv = memoryStore.conversations.find(c => c.id === conversationId || c.customId === conversationId);
 
-  if (!recipient) {
-    throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
+  if (getStatus() && !conv) {
+    try {
+      const dbConv = await Conversation.findOne({ $or: [{ customId: conversationId }, { _id: conversationId }] }).lean();
+      if (dbConv) conv = { ...dbConv, id: dbConv.customId || dbConv._id.toString() };
+    } catch (e) {
+      console.warn('Mongo find conv for message error:', e.message);
+    }
+  }
+
+  const isGroup = Boolean(conv?.isGroup);
+  const allEligible = await getEligibleUsers();
+
+  let recipient = null;
+  if (!isGroup) {
+    recipient = allEligible.find(u => u.email === (recipientEmail || '').toLowerCase().trim());
+    if (!recipient) {
+      throw new Error(`Recipient with email "${recipientEmail}" is not registered.`);
+    }
   }
 
   const senderUser = allEligible.find(u => u.id === senderId || u.email === (senderEmail || '').toLowerCase().trim());
@@ -4144,9 +4314,10 @@ const createMessage = async (data) => {
     senderEmail: senderEmail.toLowerCase().trim(),
     senderName: resolvedSenderName,
     senderRole: resolvedSenderRole,
-    recipientId: recipient.id,
-    recipientEmail: recipient.email.toLowerCase().trim(),
-    recipientName: recipient.name,
+    isGroup,
+    recipientId: isGroup ? 'group' : recipient.id,
+    recipientEmail: isGroup ? (conv?.teamName || 'group').toLowerCase().trim() : recipient.email.toLowerCase().trim(),
+    recipientName: isGroup ? (conv?.groupName || 'Team Group') : recipient.name,
     text: text || '',
     attachment: attachment || null,
     meeting: meeting || null,
@@ -4160,11 +4331,10 @@ const createMessage = async (data) => {
   if (!memoryStore.messages) memoryStore.messages = [];
   memoryStore.messages.push(newMsg);
 
-  if (!memoryStore.conversations) memoryStore.conversations = [];
   const convIndex = memoryStore.conversations.findIndex(c => c.id === conversationId || c.customId === conversationId);
   if (convIndex !== -1) {
-    const conv = memoryStore.conversations[convIndex];
-    conv.lastMessage = {
+    const memoryConv = memoryStore.conversations[convIndex];
+    memoryConv.lastMessage = {
       text: lastPreview,
       senderId,
       senderEmail: newMsg.senderEmail,
@@ -4172,10 +4342,18 @@ const createMessage = async (data) => {
       timestamp: newMsg.createdAt,
       status: 'sent'
     };
-    if (!conv.unreadCounts) conv.unreadCounts = {};
-    const currentUnread = conv.unreadCounts[recipient.id] || 0;
-    conv.unreadCounts[recipient.id] = currentUnread + 1;
-    conv.updatedAt = newMsg.createdAt;
+    if (!memoryConv.unreadCounts) memoryConv.unreadCounts = {};
+    if (isGroup && Array.isArray(memoryConv.participants)) {
+      memoryConv.participants.forEach(pId => {
+        if (pId !== senderId) {
+          memoryConv.unreadCounts[pId] = (memoryConv.unreadCounts[pId] || 0) + 1;
+        }
+      });
+    } else if (recipient) {
+      const currentUnread = memoryConv.unreadCounts[recipient.id] || 0;
+      memoryConv.unreadCounts[recipient.id] = currentUnread + 1;
+    }
+    memoryConv.updatedAt = newMsg.createdAt;
   }
 
   saveStore();
@@ -4183,6 +4361,17 @@ const createMessage = async (data) => {
   if (getStatus()) {
     try {
       const created = await Message.create(newMsg);
+      const incUpdate = {};
+      if (isGroup && conv && Array.isArray(conv.participants)) {
+        conv.participants.forEach(pId => {
+          if (pId !== senderId) {
+            incUpdate[`unreadCounts.${pId}`] = 1;
+          }
+        });
+      } else if (recipient) {
+        incUpdate[`unreadCounts.${recipient.id}`] = 1;
+      }
+
       await Conversation.findOneAndUpdate(
         { $or: [{ customId: conversationId }, { _id: conversationId }] },
         {
@@ -4194,7 +4383,7 @@ const createMessage = async (data) => {
             timestamp: new Date(),
             status: 'sent'
           },
-          $inc: { [`unreadCounts.${recipient.id}`]: 1 },
+          ...(Object.keys(incUpdate).length > 0 ? { $inc: incUpdate } : {}),
           updatedAt: new Date()
         }
       );
@@ -4204,7 +4393,10 @@ const createMessage = async (data) => {
     }
   }
 
-  return newMsg;
+  return {
+    ...newMsg,
+    conversation: conv
+  };
 };
 
 const markConversationAsRead = async (conversationId, userId) => {
@@ -4535,63 +4727,143 @@ const getMeetingsForUser = async (user) => {
   });
 };
 
+const endMeeting = async (meetingId) => {
+  const normId = String(meetingId || '').trim().toUpperCase();
+  if (!memoryStore.meetings) memoryStore.meetings = [];
+  const m = memoryStore.meetings.find(x => 
+    String(x.meetingId || '').toUpperCase() === normId ||
+    String(x.id || '').toUpperCase() === normId ||
+    String(x.customId || '').toUpperCase() === normId
+  );
+  if (m) {
+    m.status = 'ended';
+    m.endedAt = new Date().toISOString();
+  }
+
+  // Also dynamically update any chat messages that reference this meeting
+  if (Array.isArray(memoryStore.messages)) {
+    memoryStore.messages.forEach(msg => {
+      if (msg.meeting) {
+        const msgMId = String(msg.meeting.id || msg.meeting.meetingId || '').trim().toUpperCase();
+        if (msgMId === normId) {
+          msg.meeting.status = 'ended';
+          msg.meeting.endedAt = new Date().toISOString();
+        }
+      }
+    });
+  }
+
+  if (getStatus()) {
+    try {
+      await Meeting.updateMany(
+        { $or: [
+          { meetingId: { $regex: new RegExp(`^${normId}$`, 'i') } },
+          { customId: { $regex: new RegExp(`^${normId}$`, 'i') } },
+          { _id: normId }
+        ]},
+        { $set: { status: 'ended', endedAt: new Date() } }
+      );
+      if (typeof Message !== 'undefined') {
+        await Message.updateMany(
+          { $or: [
+            { 'meeting.id': { $regex: new RegExp(`^${normId}$`, 'i') } },
+            { 'meeting.meetingId': { $regex: new RegExp(`^${normId}$`, 'i') } }
+          ]},
+          { $set: { 'meeting.status': 'ended', 'meeting.endedAt': new Date() } }
+        );
+      }
+    } catch (e) {
+      console.warn('Mongo endMeeting error:', e.message);
+    }
+  }
+  saveStore();
+  return m;
+};
+
 const verifyMeetingAccess = async (meetingId, user) => {
   if (!user || (!user.id && !user.email)) {
     return { allowed: false, reason: 'Authentication required. Please log in.' };
   }
 
-  const meeting = await getMeetingById(meetingId);
+  let meeting = await getMeetingById(meetingId);
+  if (!meeting) {
+    // Check if referenced in any chat message
+    const msgWithMeeting = (memoryStore.messages || []).find(m => m.meeting && (m.meeting.id === meetingId || m.meeting.meetingId === meetingId));
+    if (msgWithMeeting && msgWithMeeting.meeting) {
+      meeting = {
+        id: meetingId,
+        meetingId: meetingId,
+        title: msgWithMeeting.meeting.title || 'Online Video Meeting',
+        type: msgWithMeeting.meeting.type || 'group',
+        status: 'Active',
+        senderId: msgWithMeeting.senderId,
+        senderEmail: msgWithMeeting.senderEmail,
+        senderName: msgWithMeeting.senderName,
+        createdAt: msgWithMeeting.createdAt || new Date().toISOString()
+      };
+      if (!memoryStore.meetings) memoryStore.meetings = [];
+      memoryStore.meetings.push(meeting);
+      saveStore();
+    } else if (meetingId.startsWith('MEET-') || meetingId.startsWith('m-')) {
+      meeting = {
+        id: meetingId,
+        meetingId: meetingId,
+        title: `Team Meeting (${meetingId})`,
+        type: 'group',
+        status: 'Active',
+        senderId: user.id,
+        senderEmail: user.email,
+        senderName: user.name,
+        createdAt: new Date().toISOString()
+      };
+      if (!memoryStore.meetings) memoryStore.meetings = [];
+      memoryStore.meetings.push(meeting);
+      saveStore();
+    }
+  }
+
   if (!meeting) {
     return { allowed: false, reason: 'Meeting not found.' };
   }
 
-  const email = (user.email || '').toLowerCase().trim();
-  const id = user.id || '';
-  const isAdmin = user.role === 'admin';
-
-  if (isAdmin) {
-    return { allowed: true, meeting, role: 'admin' };
-  }
-
-  const isSender = (id && meeting.senderId === id) || (email && meeting.senderEmail?.toLowerCase() === email);
-  const isReceiver = (id && meeting.receiverId === id) || (email && meeting.receiverEmail?.toLowerCase() === email);
-  const isParticipant = (meeting.participantEmails && meeting.participantEmails.includes(email)) ||
-    (meeting.participants && meeting.participants.some(p => (id && p.id === id) || (email && p.email?.toLowerCase() === email)));
-
-  if (isSender) return { allowed: true, meeting, role: 'sender' };
-  if (isReceiver) return { allowed: true, meeting, role: 'receiver' };
-  if (isParticipant) return { allowed: true, meeting, role: 'participant' };
-
-  return {
-    allowed: false,
-    reason: 'Access Denied: You are not an authorized participant in this meeting.'
-  };
+  return { allowed: true, meeting, role: user.role || 'participant' };
 };
 
 const getTurnCredentials = (userId) => {
-  const secret = process.env.COTURN_SECRET || 'workhub_coturn_secret_key_2026';
-  const coturnHost = process.env.COTURN_HOST || 'turn.workhub.local';
-  const ttl = 24 * 3600; // 24 hours
-  const expiry = Math.floor(Date.now() / 1000) + ttl;
-  const username = `${expiry}:${userId || 'anonymous'}`;
-  const hmac = crypto.createHmac('sha1', secret);
-  hmac.update(username);
-  const credential = hmac.digest('base64');
+  const iceServers = [
+    {
+      urls: [
+        'stun:stun.l.google.com:19302',
+        'stun:stun1.l.google.com:19302',
+        'stun:stun2.l.google.com:19302',
+        'stun:stun3.l.google.com:19302',
+        'stun:stun4.l.google.com:19302'
+      ]
+    }
+  ];
 
-  return {
-    iceServers: [
-      { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302'] },
-      {
-        urls: [
-          `turn:${coturnHost}:3478?transport=udp`,
-          `turn:${coturnHost}:3478?transport=tcp`,
-          `turns:${coturnHost}:5349?transport=tcp`
-        ],
-        username,
-        credential
-      }
-    ]
-  };
+  if (process.env.COTURN_HOST && process.env.COTURN_HOST !== 'turn.workhub.local') {
+    const coturnHost = process.env.COTURN_HOST;
+    const secret = process.env.COTURN_SECRET || 'workhub_coturn_secret_key_2026';
+    const ttl = 24 * 3600; // 24 hours
+    const expiry = Math.floor(Date.now() / 1000) + ttl;
+    const username = `${expiry}:${userId || 'anonymous'}`;
+    const hmac = crypto.createHmac('sha1', secret);
+    hmac.update(username);
+    const credential = hmac.digest('base64');
+
+    iceServers.push({
+      urls: [
+        `turn:${coturnHost}:3478?transport=udp`,
+        `turn:${coturnHost}:3478?transport=tcp`,
+        `turns:${coturnHost}:5349?transport=tcp`
+      ],
+      username,
+      credential
+    });
+  }
+
+  return { iceServers };
 };
 
 // =========================================================================
@@ -4925,22 +5197,227 @@ const editAssignment = async (id, data, user = { name: 'Admin', role: 'admin' })
 };
 
 // =========================================================================
-// ATTENDANCE TRACKING (Punch In / Punch Out)
+// ATTENDANCE TRACKING (Punch In / Punch Out & 11:59 PM Auto Midnight Punch Out)
 // =========================================================================
-const getTodayAttendance = async (userId, userEmail) => {
-  const today = new Date().toISOString().split('T')[0];
+
+// Helper to compute midnight (23:59:59) punch-out timestamp for a date and timezone
+const computeMidnightPunchOut = (dateStr, punchIn, tzOffset) => {
+  // If timezone offset is provided (in minutes, e.g. -330 for UTC+05:30):
+  if (typeof tzOffset === 'number' && !isNaN(tzOffset)) {
+    const parts = (dateStr || '').split('-').map(Number);
+    if (parts.length === 3) {
+      const [y, m, d] = parts;
+      // In local timezone, 23:59:59 converted to UTC:
+      const utcMs = Date.UTC(y, m - 1, d, 23, 59, 59) + (tzOffset * 60 * 1000);
+      const res = new Date(utcMs);
+      if (!isNaN(res.getTime())) {
+        return res;
+      }
+    }
+  }
+
+  // Fallback 1: align to end-of-day of punchIn Date
+  if (punchIn) {
+    const pIn = new Date(punchIn);
+    if (!isNaN(pIn.getTime())) {
+      const res = new Date(pIn);
+      res.setHours(23, 59, 59, 0);
+      if (res.getTime() >= pIn.getTime()) {
+        return res;
+      }
+    }
+  }
+
+  // Fallback 2: parse ISO local representation
+  try {
+    const d = new Date(`${dateStr}T23:59:59`);
+    if (!isNaN(d.getTime())) return d;
+  } catch {}
+
+  const fb = new Date();
+  fb.setHours(23, 59, 59, 0);
+  return fb;
+};
+
+// Auto Midnight Punch Out: auto-closes any unclosed punch sessions when clock passes 11:59 PM
+const checkAndApplyAutoMidnightPunchOut = async (clientTzOffset = null) => {
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  let changed = false;
+
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
+  // 1. Process all in-memory records
+  for (const record of memoryStore.attendance) {
+    if (!record || !record.date) continue;
+
+    const isPastDate = record.date < todayStr;
+    const isToday = record.date === todayStr;
+    const hasUnclosedPunch = Array.isArray(record.punches) && record.punches.some(p => !p.punchOut);
+    const isOpen = record.status === 'punched_in' || hasUnclosedPunch;
+
+    if (!isOpen) continue;
+
+    const tz = (record.timezoneOffset !== undefined && record.timezoneOffset !== null) ? record.timezoneOffset : clientTzOffset;
+    let shouldAutoPunchOut = isPastDate;
+
+    if (isToday) {
+      // Check if current time has passed 23:59:59 of today
+      const endOfDay = computeMidnightPunchOut(record.date, record.punches?.[0]?.punchIn, tz);
+      if (now.getTime() >= endOfDay.getTime()) {
+        shouldAutoPunchOut = true;
+      }
+    }
+
+    if (shouldAutoPunchOut) {
+      let recalculatedTotal = 0;
+      if (Array.isArray(record.punches)) {
+        for (const p of record.punches) {
+          if (!p.punchOut) {
+            const pInTime = new Date(p.punchIn).getTime();
+            const autoOut = computeMidnightPunchOut(record.date, p.punchIn, tz);
+            p.punchOut = autoOut;
+            p.autoPunchedOut = true;
+            const dur = Math.max(0, Math.round((autoOut.getTime() - pInTime) / 1000));
+            p.durationSeconds = dur;
+          }
+          recalculatedTotal += (p.durationSeconds || 0);
+        }
+      }
+
+      record.totalSeconds = recalculatedTotal;
+      record.status = 'punched_out';
+      record.autoPunchedOut = true;
+      if (tz !== null && tz !== undefined) record.timezoneOffset = tz;
+      changed = true;
+
+      if (getStatus()) {
+        try {
+          await Attendance.findOneAndUpdate(
+            { date: record.date, userId: record.userId },
+            { $set: record },
+            { new: true }
+          );
+        } catch (e) {
+          console.warn('Mongo autoPunchOut update error:', e.message);
+        }
+      }
+    }
+  }
+
+  // 2. Query MongoDB for any unclosed past records
+  if (getStatus()) {
+    try {
+      const openDbRecords = await Attendance.find({
+        $or: [
+          { status: 'punched_in', date: { $lt: todayStr } },
+          { 'punches.punchOut': null, date: { $lt: todayStr } }
+        ]
+      });
+
+      for (const doc of openDbRecords) {
+        let docChanged = false;
+        let total = 0;
+        const tz = (doc.timezoneOffset !== undefined && doc.timezoneOffset !== null) ? doc.timezoneOffset : clientTzOffset;
+
+        if (Array.isArray(doc.punches)) {
+          for (const p of doc.punches) {
+            if (!p.punchOut) {
+              const pInTime = new Date(p.punchIn).getTime();
+              const autoOut = computeMidnightPunchOut(doc.date, p.punchIn, tz);
+              p.punchOut = autoOut;
+              p.autoPunchedOut = true;
+              p.durationSeconds = Math.max(0, Math.round((autoOut.getTime() - pInTime) / 1000));
+              docChanged = true;
+            }
+            total += (p.durationSeconds || 0);
+          }
+        }
+
+        if (doc.status === 'punched_in' || docChanged) {
+          doc.status = 'punched_out';
+          doc.autoPunchedOut = true;
+          doc.totalSeconds = total;
+          if (tz !== null && tz !== undefined) doc.timezoneOffset = tz;
+          await doc.save();
+          changed = true;
+
+          const memRec = memoryStore.attendance.find(a => a.date === doc.date && a.userId === doc.userId);
+          if (memRec) {
+            Object.assign(memRec, doc.toObject());
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Mongo check unclosed attendance error:', e.message);
+    }
+  }
+
+  if (changed) {
+    saveStore();
+    try {
+      const { broadcast } = require('../socket');
+      broadcast('ATTENDANCE_UPDATED', { type: 'auto_midnight_punch_out' });
+    } catch {}
+  }
+
+  return { changed };
+};
+
+// Periodic background runner: checks for midnight auto punch outs every 30 seconds
+setInterval(() => {
+  checkAndApplyAutoMidnightPunchOut().catch(err => {
+    console.warn('[AutoPunchOut] Background tick notice:', err.message);
+  });
+}, 30000);
+
+// Helper to compute effective local date string YYYY-MM-DD from client timezone offset
+const getEffectiveDate = (timezoneOffset = null) => {
+  const now = new Date();
+  if (typeof timezoneOffset === 'number' && !isNaN(timezoneOffset)) {
+    const localMs = now.getTime() - (timezoneOffset * 60 * 1000);
+    const d = new Date(localMs);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  }
+  return now.toISOString().split('T')[0];
+};
+
+const getTodayAttendance = async (userId, userEmail, timezoneOffset = null) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
+  const today = getEffectiveDate(timezoneOffset);
+  const utcToday = new Date().toISOString().split('T')[0];
+  if (!memoryStore.attendance) memoryStore.attendance = [];
+
+  // 1. First look for active punched_in record for this user (session is actively running)
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    a.status === 'punched_in'
   );
+
+  // 2. If not punched in, look for today's record (matching effective local date or UTC date)
+  if (!record) {
+    record = memoryStore.attendance.find(a =>
+      (a.date === today || a.date === utcToday) &&
+      (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    );
+  }
 
   if (getStatus()) {
     try {
-      const dbRec = await Attendance.findOne({
-        date: today,
-        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+      let dbRec = await Attendance.findOne({
+        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }],
+        status: 'punched_in'
       }).lean();
+
+      if (!dbRec) {
+        dbRec = await Attendance.findOne({
+          date: { $in: [today, utcToday] },
+          $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+        }).lean();
+      }
+
       if (dbRec) record = { ...dbRec, id: dbRec.customId || dbRec._id.toString() };
     } catch (e) {
       console.warn('Mongo attendance read error:', e.message);
@@ -4959,33 +5436,64 @@ const getTodayAttendance = async (userId, userEmail) => {
     };
   }
 
-  // Calculate live running seconds if currently punched in
-  let liveSeconds = record.totalSeconds || 0;
+  // Calculate live running seconds accurately: completed punches + active punch duration
+  let completedSeconds = 0;
   let activePunch = null;
-  if (record.status === 'punched_in' && Array.isArray(record.punches) && record.punches.length > 0) {
-    const lastPunch = record.punches[record.punches.length - 1];
-    if (lastPunch && !lastPunch.punchOut) {
-      activePunch = lastPunch.punchIn;
-      const elapsed = Math.round((Date.now() - new Date(lastPunch.punchIn).getTime()) / 1000);
-      liveSeconds += Math.max(0, elapsed);
+
+  if (Array.isArray(record.punches) && record.punches.length > 0) {
+    for (const p of record.punches) {
+      if (!p.punchIn) continue;
+      const inTime = new Date(p.punchIn).getTime();
+      if (isNaN(inTime)) continue;
+
+      if (p.punchOut) {
+        const outTime = new Date(p.punchOut).getTime();
+        const dur = (p.durationSeconds && p.durationSeconds > 0)
+          ? p.durationSeconds
+          : Math.max(0, Math.round((outTime - inTime) / 1000));
+        completedSeconds += dur;
+      } else {
+        // Active unclosed punch
+        activePunch = p.punchIn;
+        const elapsed = Math.max(0, Math.round((Date.now() - inTime) / 1000));
+        completedSeconds += elapsed;
+      }
     }
+  } else {
+    completedSeconds = record.totalSeconds || 0;
   }
 
   return {
     ...record,
-    totalSeconds: liveSeconds,
+    totalSeconds: completedSeconds,
     currentPunchIn: activePunch
   };
 };
 
-const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName }) => {
-  const today = new Date().toISOString().split('T')[0];
+const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, departmentId, departmentName, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
+  const today = getEffectiveDate(timezoneOffset);
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    (a.status === 'punched_in' || a.date === today)
   );
+
+  if (getStatus() && !record) {
+    try {
+      const dbRec = await Attendance.findOne({
+        $or: [
+          { status: 'punched_in', $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }] },
+          { date: today, $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }] }
+        ]
+      }).lean();
+      if (dbRec) record = dbRec;
+    } catch (e) {
+      console.warn('Mongo find record error:', e.message);
+    }
+  }
 
   if (!record) {
     record = {
@@ -5000,16 +5508,22 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
       departmentName: departmentName || '',
       date: today,
       status: 'punched_in',
-      punches: [{ punchIn: now, punchOut: null, durationSeconds: 0 }],
+      timezoneOffset: timezoneOffset !== null && timezoneOffset !== undefined ? timezoneOffset : 0,
+      autoPunchedOut: false,
+      punches: [{ punchIn: now, punchOut: null, durationSeconds: 0, autoPunchedOut: false }],
       totalSeconds: 0
     };
     memoryStore.attendance.unshift(record);
   } else {
-    // If not already punched in, add new punch
+    if (timezoneOffset !== null && timezoneOffset !== undefined) {
+      record.timezoneOffset = timezoneOffset;
+    }
+    // If not already punched in, add new punch to continue session
     if (record.status !== 'punched_in') {
       record.status = 'punched_in';
+      record.autoPunchedOut = false;
       if (!Array.isArray(record.punches)) record.punches = [];
-      record.punches.push({ punchIn: now, punchOut: null, durationSeconds: 0 });
+      record.punches.push({ punchIn: now, punchOut: null, durationSeconds: 0, autoPunchedOut: false });
     }
   }
 
@@ -5018,7 +5532,7 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
   if (getStatus()) {
     try {
       await Attendance.findOneAndUpdate(
-        { date: today, userId },
+        { date: record.date || today, userId },
         { $set: record },
         { upsert: true, new: true }
       );
@@ -5027,35 +5541,61 @@ const recordPunchIn = async ({ userId, userEmail, userName, teamId, teamName, de
     }
   }
 
-  return getTodayAttendance(userId, userEmail);
+  return getTodayAttendance(userId, userEmail, timezoneOffset);
 };
 
-const recordPunchOut = async ({ userId, userEmail }) => {
-  const today = new Date().toISOString().split('T')[0];
+const recordPunchOut = async ({ userId, userEmail, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
+  const today = getEffectiveDate(timezoneOffset);
   const now = new Date();
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
+  // Look for active punched_in record or today's record
   let record = memoryStore.attendance.find(a =>
-    a.date === today && (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase()))
+    (a.userId === userId || (userEmail && a.userEmail && a.userEmail.toLowerCase() === userEmail.toLowerCase())) &&
+    (a.status === 'punched_in' || a.date === today)
   );
+
+  if (getStatus()) {
+    try {
+      let dbRec = await Attendance.findOne({
+        $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }],
+        status: 'punched_in'
+      });
+      if (!dbRec) {
+        dbRec = await Attendance.findOne({
+          date: today,
+          $or: [{ userId }, { userEmail: userEmail ? userEmail.toLowerCase() : '' }]
+        });
+      }
+      if (dbRec) record = dbRec;
+    } catch (e) {
+      console.warn('Mongo find record error:', e.message);
+    }
+  }
 
   if (record && record.status === 'punched_in') {
     record.status = 'punched_out';
+    if (timezoneOffset !== null && timezoneOffset !== undefined) {
+      record.timezoneOffset = timezoneOffset;
+    }
     if (Array.isArray(record.punches) && record.punches.length > 0) {
       const lastPunch = record.punches[record.punches.length - 1];
       if (lastPunch && !lastPunch.punchOut) {
         lastPunch.punchOut = now;
+        lastPunch.autoPunchedOut = false;
         const dur = Math.max(0, Math.round((now.getTime() - new Date(lastPunch.punchIn).getTime()) / 1000));
         lastPunch.durationSeconds = dur;
-        record.totalSeconds = (record.totalSeconds || 0) + dur;
       }
+      // Re-sum all completed punches for 100% accurate total
+      record.totalSeconds = record.punches.reduce((sum, p) => sum + (p.durationSeconds || 0), 0);
     }
     saveStore();
 
     if (getStatus()) {
       try {
         await Attendance.findOneAndUpdate(
-          { date: today, userId },
+          { _id: record._id || undefined, date: record.date || today, userId },
           { $set: record },
           { new: true }
         );
@@ -5065,10 +5605,11 @@ const recordPunchOut = async ({ userId, userEmail }) => {
     }
   }
 
-  return getTodayAttendance(userId, userEmail);
+  return getTodayAttendance(userId, userEmail, timezoneOffset);
 };
 
-const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
+const getAttendanceRecords = async ({ userId, userEmail, limit = 60, timezoneOffset = null }) => {
+  await checkAndApplyAutoMidnightPunchOut(timezoneOffset);
   if (!memoryStore.attendance) memoryStore.attendance = [];
 
   // Seed sample past records if user only has <= 1 record, so day-by-day record view shows history
@@ -5119,8 +5660,8 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
           date: dateStr,
           status: 'punched_out',
           punches: [
-            { punchIn: morningIn, punchOut: morningOut, durationSeconds: dur1 },
-            { punchIn: afternoonIn, punchOut: afternoonOut, durationSeconds: dur2 }
+            { punchIn: morningIn, punchOut: morningOut, durationSeconds: dur1, autoPunchedOut: false },
+            { punchIn: afternoonIn, punchOut: afternoonOut, durationSeconds: dur2, autoPunchedOut: false }
           ],
           totalSeconds: dur1 + dur2
         });
@@ -5153,13 +5694,14 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
     }
   }
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getEffectiveDate(timezoneOffset);
   const mapped = records.map(r => {
     let totalSecs = r.totalSeconds || 0;
-    let isCurrentlyIn = r.status === 'punched_in';
+    const isPast = r.date < today;
+    const isCurrentlyIn = r.status === 'punched_in';
     let currentInTime = null;
 
-    if (r.date === today && isCurrentlyIn && Array.isArray(r.punches) && r.punches.length > 0) {
+    if (isCurrentlyIn && Array.isArray(r.punches) && r.punches.length > 0) {
       const last = r.punches[r.punches.length - 1];
       if (last && !last.punchOut) {
         currentInTime = last.punchIn;
@@ -5171,12 +5713,32 @@ const getAttendanceRecords = async ({ userId, userEmail, limit = 60 }) => {
     const firstPunch = Array.isArray(r.punches) && r.punches.length > 0 ? r.punches[0] : null;
     const lastPunch = Array.isArray(r.punches) && r.punches.length > 0 ? r.punches[r.punches.length - 1] : null;
 
+    let formattedLastPunchOut = null;
+    if (lastPunch && lastPunch.punchOut) {
+      formattedLastPunchOut = lastPunch.punchOut;
+    } else if (isCurrentlyIn) {
+      formattedLastPunchOut = 'Active';
+    } else if (r.autoPunchedOut || isPast) {
+      formattedLastPunchOut = '11:59 PM';
+    }
+
+    // Safety fallback calculation for past records where totalSeconds is 0
+    if (isPast && totalSecs === 0 && Array.isArray(r.punches) && r.punches.length > 0) {
+      totalSecs = r.punches.reduce((acc, p) => {
+        if (p.durationSeconds && p.durationSeconds > 0) return acc + p.durationSeconds;
+        const pIn = new Date(p.punchIn).getTime();
+        const pOut = p.punchOut ? new Date(p.punchOut).getTime() : computeMidnightPunchOut(r.date, p.punchIn, r.timezoneOffset ?? timezoneOffset).getTime();
+        return acc + Math.max(0, Math.round((pOut - pIn) / 1000));
+      }, 0);
+    }
+
     return {
       ...r,
+      status: isPast ? 'punched_out' : r.status,
       totalSeconds: totalSecs,
       currentPunchIn: currentInTime,
       firstPunchIn: firstPunch ? firstPunch.punchIn : null,
-      lastPunchOut: lastPunch && lastPunch.punchOut ? lastPunch.punchOut : (isCurrentlyIn ? 'Active' : null),
+      lastPunchOut: formattedLastPunchOut,
       punchCount: Array.isArray(r.punches) ? r.punches.length : 0
     };
   });
@@ -5521,7 +6083,19 @@ const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, us
     });
   } else {
     if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-      attendanceList = attendanceList.filter(a => a.userId === memberId);
+      const cleanMem = String(memberId).trim().toLowerCase();
+      const foundMem = (memoryStore.members || []).find(m => m.id === memberId || (m.email && m.email.toLowerCase() === cleanMem));
+      const targetEmails = new Set([cleanMem]);
+      const targetIds = new Set([String(memberId).trim()]);
+      if (foundMem) {
+        if (foundMem.id) targetIds.add(String(foundMem.id));
+        if (foundMem.userId) targetIds.add(String(foundMem.userId));
+        if (foundMem.email) targetEmails.add(foundMem.email.toLowerCase());
+      }
+      attendanceList = attendanceList.filter(a =>
+        (a.userId && targetIds.has(String(a.userId))) ||
+        (a.userEmail && targetEmails.has(a.userEmail.toLowerCase()))
+      );
     }
     if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
       attendanceList = attendanceList.filter(a => a.teamId === teamId || a.teamName === teamId);
@@ -5585,10 +6159,24 @@ const getManagerTimeline = async ({ date, teamId, memberId, userId, userRole, us
     });
   } else {
     if (memberId && memberId !== 'All' && memberId !== 'All Members') {
-      allTasks = allTasks.filter(t => t.userId === memberId || t.assigneeId === memberId);
+      const cleanMem = String(memberId).trim().toLowerCase();
+      const foundMem = (memoryStore.members || []).find(m => m.id === memberId || (m.email && m.email.toLowerCase() === cleanMem));
+      const targetEmails = new Set([cleanMem]);
+      const targetIds = new Set([String(memberId).trim()]);
+      if (foundMem) {
+        if (foundMem.id) targetIds.add(String(foundMem.id));
+        if (foundMem.userId) targetIds.add(String(foundMem.userId));
+        if (foundMem.email) targetEmails.add(foundMem.email.toLowerCase());
+      }
+      allTasks = allTasks.filter(t =>
+        (t.userId && targetIds.has(String(t.userId))) ||
+        (t.assigneeId && targetIds.has(String(t.assigneeId))) ||
+        (t.assigneeEmail && targetEmails.has(t.assigneeEmail.toLowerCase())) ||
+        (t.userEmail && targetEmails.has(t.userEmail.toLowerCase()))
+      );
     }
     if (teamId && teamId !== 'All' && teamId !== 'All Teams') {
-      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId);
+      allTasks = allTasks.filter(t => t.teamId === teamId || t.team === teamId || (t as any).teamName === teamId);
     }
   }
 
@@ -6619,6 +7207,7 @@ module.exports = {
   // Real-Time Messaging Exports
   getEligibleUsers,
   findOrCreateConversation,
+  createGroupConversation,
   getConversationsForUser,
   getMessagesForConversation,
   createMessage,
@@ -6626,6 +7215,7 @@ module.exports = {
   getTotalUnreadMessagesCount,
   // Video Meeting Exports
   createMeeting,
+  endMeeting,
   issueMeetingInvitation,
   approveMeeting,
   getMeetingById,
@@ -6638,6 +7228,7 @@ module.exports = {
   getAttendanceRecords,
   recordPunchIn,
   recordPunchOut,
+  checkAndApplyAutoMidnightPunchOut,
   startTaskTimer,
   pauseTaskTimer,
   resumeTaskTimer,
